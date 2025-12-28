@@ -1,11 +1,11 @@
 # PVC UNIX to SuperCollider Script Translator
 
-This SuperCollider program translates PVC Unix shell scripts into SuperCollider format. It parses shell scripts from the SCRIPTS directory and generates corresponding SC files in the SUPERCOLLIDER_SCRIPTS directory.
+This SuperCollider program translates PVC Unix shell scripts into SuperCollider format. It parses shell scripts from the scripts directory and generates corresponding SC files in the supercollider_scripts directory.
 
 ## Usage
 
-1. Set the `scriptsDirectory` to point to your PVC SCRIPTS folder
-2. Set the `superColliderDirectory` to point to your SUPERCOLLIDER_SCRIPTS folder
+1. Set the `scriptsDirectory` to point to your PVC scripts folder
+2. Set the `superColliderDirectory` to point to your supercollider_scripts folder
 3. Uncomment the script names you want to translate in the array at the bottom
 4. Execute the code in SuperCollider
 
@@ -435,8 +435,8 @@ Document.listener.string="" ;
 
 
 // Set these paths to match your installation
-scriptsDirectory =  "/path/to/PVCplus/SCRIPTS/" ;
-superColliderDirectory = "/path/to/PVCplus/SUPERCOLLIDER_SCRIPTS/" ;
+scriptsDirectory =  "/path/to/PVCplus/scripts/" ;
+superColliderDirectory = "/path/to/PVCplus/supercollider_scripts/" ;
 
 [
 // Uncomment the scripts you want to translate:
