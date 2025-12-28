@@ -11,7 +11,7 @@
 #include "stdbool.h"
 
 #include <time.h>
-#include "../PVC_LIB/pv.h"
+#include "../pvc_lib/pv.h"
 
 
 #define flog10 log10

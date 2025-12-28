@@ -22,29 +22,29 @@ COPY . .
 # Fix hardcoded MacPorts paths in Makefiles
 # Remove /opt/local/include from CFLAGS and /opt/local/lib from LDFLAGS
 # (libsndfile is installed in standard system locations in the container)
-RUN sed -i 's|-I/opt/local/include||g' PVC_LIB/Makefile PVC_SRC/Makefile CMUSIC_GEN/gen/Makefile && \
-    sed -i 's|-L/opt/local/lib/||g' PVC_LIB/Makefile PVC_SRC/Makefile
+RUN sed -i 's|-I/opt/local/include||g' pvc_lib/Makefile pvc_src/Makefile cmusic_gen/gen/Makefile && \
+    sed -i 's|-L/opt/local/lib/||g' pvc_lib/Makefile pvc_src/Makefile
 
 # Fix library linking order: libpvoc depends on libsndfile and libm
 # On Linux, dependent libraries must come after the library that uses them
-RUN sed -i 's/LDFLAGS.*=.*/LDFLAGS = -lpvoc -lsndfile -lm/' PVC_SRC/Makefile
+RUN sed -i 's/LDFLAGS.*=.*/LDFLAGS = -lpvoc -lsndfile -lm/' pvc_src/Makefile
 
 # Add -fcommon flag to handle legacy C code with duplicate global definitions
 # (required for GCC 10+ which defaults to -fno-common)
-RUN sed -i 's/^CFLAGS =/CFLAGS = -fcommon/' CMUSIC_GEN/lib/libran/Makefile
+RUN sed -i 's/^CFLAGS =/CFLAGS = -fcommon/' cmusic_gen/lib/libran/Makefile
 
 # Fix macOS-specific ranlib -s flag (Linux ranlib doesn't need it)
-RUN sed -i 's/ranlib -s/ranlib/' PVC_LIB/Makefile
+RUN sed -i 's/ranlib -s/ranlib/' pvc_lib/Makefile
 
-# Build CMUSIC_GEN libraries and generators
-RUN cd CMUSIC_GEN && make
+# Build cmusic_gen libraries and generators
+RUN cd cmusic_gen && make
 
 # Build the PVC library
-RUN cd PVC_LIB && make clean && make
+RUN cd pvc_lib && make clean && make
 
 # Build all PVC tools (explicitly run 'make all' as lib: is the first target)
-RUN cd PVC_SRC && make clean && make all
-RUN cd PVC_SRC && make install
+RUN cd pvc_src && make clean && make all
+RUN cd pvc_src && make install
 
 # Add bin directory to PATH
 ENV PATH="/src/PVCplus/bin:${PATH}"

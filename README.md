@@ -6,6 +6,7 @@ source pulled from: <https://sourceforge.net/projects/pvcplus/>
 
 - [INTRODUCTION](#introduction)
 - [INSTALLATION](#installation)
+  - [Verify Installation](#verify-installation)
 - [UNIX COMMAND](#unix-command-line-format)
   - [INFORMATION PAGE](#information-page)
   - [SETTING FLAG VALUES](#setting-flag-values)
@@ -105,9 +106,109 @@ Paul Koonce
 
 ## INSTALLATION
 
-All origininal compilation directions have been superceeded by building within a docker container.
+### Docker (Recommended)
 
-you should be able to type any of the routines and see their flag information page. Try typing: `plainpv` for example.
+Build and run using Docker:
+
+```bash
+# Build the container
+docker build -t pvcplus .
+
+# Run a PVC tool (mount your audio directory)
+docker run --rm -v /path/to/audio:/audio pvcplus plainpv -N1024 /audio/input.wav /audio/output.wav
+
+# List available tools
+docker run --rm pvcplus
+
+# Interactive shell
+docker run --rm -it -v /path/to/audio:/audio pvcplus /bin/bash
+```
+
+### Verify Installation
+
+This walkthrough confirms the container is working correctly by processing a test audio file.
+
+**Step 1: Create a test directory and audio file**
+
+```bash
+# Create a working directory
+mkdir -p ~/pvctest
+cd ~/pvctest
+
+# Generate a 2-second test tone (440Hz sine wave) using sox, ffmpeg, or your DAW
+# With sox:
+sox -n -r 44100 -c 1 test_input.wav synth 2 sine 440
+
+# Or with ffmpeg:
+ffmpeg -f lavfi -i "sine=frequency=440:duration=2" -ar 44100 test_input.wav
+```
+
+**Step 2: Verify tools are available**
+
+```bash
+docker run --rm pvcplus
+```
+
+You should see a list of 54 tools including `plainpv`, `harmonizer`, `noisefilter`, etc.
+
+**Step 3: View tool help**
+
+```bash
+docker run --rm pvcplus plainpv
+```
+
+This displays the flag options for plainpv. No input file means it shows help.
+
+**Step 4: Process audio - Time stretch to 2x duration**
+
+```bash
+docker run --rm -v ~/pvctest:/audio pvcplus \
+  plainpv -N1024 -I2 /audio/test_input.wav /audio/test_stretched.wav
+```
+
+The `-I2` flag stretches time by 2x. The output file should be ~4 seconds.
+
+**Step 5: Process audio - Pitch shift up 7 semitones (perfect fifth)**
+
+```bash
+docker run --rm -v ~/pvctest:/audio pvcplus \
+  plainpv -N1024 -P7 /audio/test_input.wav /audio/test_pitched.wav
+```
+
+The `-P7` flag transposes pitch up 7 semitones. Play the output to hear ~659Hz (E5).
+
+**Step 6: Verify output files**
+
+```bash
+ls -la ~/pvctest/
+# You should see:
+#   test_input.wav      (original 440Hz tone, ~2 sec)
+#   test_stretched.wav  (440Hz tone, ~4 sec)
+#   test_pitched.wav    (659Hz tone, ~2 sec)
+```
+
+Use any audio player to verify the results sound correct.
+
+### Native Build (macOS/Linux)
+
+Requirements: C compiler, libsndfile
+
+```bash
+# macOS with MacPorts
+sudo port install libsndfile
+
+# Ubuntu/Debian
+sudo apt-get install build-essential libsndfile1-dev
+
+# Build
+cd cmusic_gen && make && cd ..
+cd pvc_lib && make && cd ..
+cd pvc_src && make all && make install && cd ..
+```
+
+The binaries are installed to the `bin/` directory. Add it to your PATH or run tools directly.
+
+You should be able to type any of the routines and see their flag information page. Try typing: `plainpv` for example.
 
 ## UNIX COMMAND-LINE FORMAT
 
@@ -197,7 +298,7 @@ can be controlled dynamically. This is done by providing a full pathname file in
 
 ### RUNNING THE COMMANDS WITH SHELL SCRIPTS
 
-While all routines can be run at the commandline, they are most easily run using the shell scripts found in the SCRIPTS directory. These scripts are useful for saving and managing the parameters; in many ways they are a poor-man's GUI. All scripts contain a top section for setting variables, and a bottom section where those variables are placed into the commandline flag structure and run. Some scripts perform two routines such as a short analysis routine followed by the main synthesis routine, while others run just one routine. The variables for the routines in a shell are set in the top section. Take note that shell script variable assignments do not allow for spaces. The numerous parameters, which in some routines run as high as 53, make these scripts a necessity. They will be your friend if you take care to leave the bottom part alone, and don't corrupt your variable names. Someday I will make a better way to interface with the routines; for now this is the way it is.
+While all routines can be run at the commandline, they are most easily run using the shell scripts found in the `scripts/` directory. These scripts are useful for saving and managing the parameters; in many ways they are a poor-man's GUI. All scripts contain a top section for setting variables, and a bottom section where those variables are placed into the commandline flag structure and run. Some scripts perform two routines such as a short analysis routine followed by the main synthesis routine, while others run just one routine. The variables for the routines in a shell are set in the top section. Take note that shell script variable assignments do not allow for spaces. The numerous parameters, which in some routines run as high as 53, make these scripts a necessity. They will be your friend if you take care to leave the bottom part alone, and don't corrupt your variable names. Someday I will make a better way to interface with the routines; for now this is the way it is.
 
 To run the scripts, simply type the name of the file (or appropriate pathname when running from outside the directory in which it resides). For example: `S.plainpv`.
 

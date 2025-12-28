@@ -16,14 +16,14 @@ MOLES = plainpv \
 	roomresponsemaker roomresponsesequencer
 
 
-LIBDIR = ../PVC_LIB
+LIBDIR = ../pvc_lib
 DESTDIR = ../bin
 #LDFLAGS = -lpvoc -lm
 LDFLAGS =  -lsndfile -lpvoc -L/opt/local/lib/
 
 
 lib:		
-		(cd ../PVC_LIB ; make clean; make ; cd ../PVC_SRC)
+		(cd ../pvc_lib ; make clean; make ; cd ../pvc_src)
 
 all:		$(MOLES)
 

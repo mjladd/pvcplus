@@ -308,7 +308,7 @@ if( argc > 1   ){ 	//
 	     prline( 69, "=" ); 
 	     prt( "NUMBER OF CHANNELS EXCEEDS CURRENT MAXIMUM SETTING." ); 
 	     prt( ""); 
-	     fprintf( stderr, "\n\nIN FILE PVC_LIB/pv.h, CHANGE MAXIMUM CHANNEL SETTING OF %d TO %d.\n\n", 
+	     fprintf( stderr, "\n\nIN FILE pvc_lib/pv.h, CHANGE MAXIMUM CHANNEL SETTING OF %d TO %d.\n\n",
 			MAXIMUM_CHANNELS, largestNumberOfInputChannels ) ; 
 	     prt( "THEN RECOMPILE AND REINSTALL." ) ; 
 	     prline( 69, "=" ); 
