@@ -1,0 +1,545 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  ringfilter_with_analysis = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		reverb_output_low_shelf_eq_gain_in_decibels, \
+		reverb_feedback_low_shelf_eq_frequency, \
+		analysis_sndfile, \
+		time_expansion_contraction_factor, \
+		reverb_input_envelope_attack_time_in_seconds, \
+		source_frequency_shift, \
+		rescale_level_in_decibels, \
+		analysis_low_shelf_eq_frequency, \
+		reverb_output_high_shelf_eq_frequency, \
+		formant_peak_amplitude_threshold_in_db, \
+		reverb_threshold_in_db, \
+		reverb_filter_on_input_0__feedback_1, \
+		reverb_frequency_shift, \
+		reverb_input_high_shelf_eq_gain_in_decibels, \
+		frames_per_second, \
+		formantsbarplotfile, \
+		print_amplitude_statistics_0_no__1_yes, \
+		p_change_select__source_only_0__both_source_and_filter_1, \
+		reverb_feedback_low_shelf_eq_gain_in_decibels, \
+		reverb_random_freq_deviation_in_hz, \
+		analysis_endtime, \
+		input_file, \
+		source_pitch_transposition_in_semitones, \
+		reverb_random_amplitude_deviation__response_time_in_seconds, \
+		reverb_feedback_high_shelf_eq_gain_in_decibels, \
+		reverb_decay_time_in_seconds, \
+		reverb_filter_shift, \
+		output_file, \
+		analysis_method_average_0__peak_1, \
+		formants_ascii_data_file, \
+		analysis_high_shelf_eq_gain_in_decibels, \
+		freqresponsefile, \
+		source_gain_in_decibels, \
+		window_type, \
+		output_channel, \
+		amplitude_statistics_time_interval, \
+		warp_index_for_spectral_expansion_or_compression, \
+		formants_data_file, \
+		reverb_feedback_high_shelf_eq_frequency, \
+		analysis_begintime, \
+		reverb_pitch_transposition_in_semitones, \
+		normalize_spectrum_to_formant_peaks__off_0__on_1, \
+		analysis_channel, \
+		reverb_filter_transposition_in_semitones, \
+		reverb_feedback_filter_decay_time_in_seconds, \
+		reverb_feedback_eq_signal_balance_gain_limiter_in_db, \
+		filter_analysis_frames_per_second, \
+		reverb_input_high_shelf_eq_frequency, \
+		reverb_random_amplitude_deviation_floor_in_decibels, \
+		oscillator_resynthesis_threshold_in_db, \
+		freqresponse_filter_analysis_printout_high_cutoff_frequency, \
+		spectrumplotfileindb, \
+		reverb_input_envelope_release_time_in_seconds, \
+		endtime, \
+		freqresponse_printout_high_cutoff_frequency, \
+		analysis_low_shelf_eq_gain_in_decibels, \
+		reverb_output_low_shelf_eq_frequency, \
+		fft_length, \
+		reverb_random_deviation_response_time_in_seconds, \
+		reverb_input_low_shelf_eq_gain_in_decibels, \
+		formant_selection_threshold__0_to_1, \
+		master_gain_in_decibels, \
+		reverb_filter_source_db, \
+		auto_output_sound_file_play__repetitions, \
+		reverb_threshold_passmode__above_1_below_0, \
+		reverb_feedback_eq_decay_time_in_seconds, \
+		reverb_gain_in_decibels, \
+		begintime, \
+		reverb_output_high_shelf_eq_gain_in_decibels, \
+		reverb_input_low_shelf_eq_frequency, \
+		analysis_high_shelf_eq_frequency, \
+		reverb_filter_spectrum_warpshape, \
+		windowsize, \
+		freqresponse_window_type, \
+		low_formant_frequency_limit, \
+		high_formant_frequency_limit\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //..... RINGFILTER WITH FREQ RESPONSE ANALYSIS .........\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //******************** ANALYSIS ************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		freqresponsefile = \cf4 "~/freqresponsefile"\cf2  ;\
+\
+		formants_data_file = \cf4 "~/Formants_Data_File"\cf2  ;\
+		formants_ascii_data_file = \cf4 "~/Formants_ASCII_Data_File"\cf2  ;\
+\
+		\cf5 //************ PLOT OUTPUT FILES **********************\cf2 \
+\
+\
+		spectrumplotfileindb = \cf4 "~/sp"\cf2  ;\
+		formantsbarplotfile = \cf4 "~/bp"\cf2  ;\
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		analysis_sndfile = \cf4 "~/ridecymbal.au"\cf2  ;\
+\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		analysis_begintime = 0 ;\
+		analysis_endtime = -1 ;\
+\
+		freqresponse_window_type = 16 ;\
+\
+		\cf5 //........... ANALYSIS CHANNEL(S) .......................\cf2 \
+\
+		analysis_channel = 1 ;\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //...................................................... \cf2 \
+\
+		filter_analysis_frames_per_second = 100 ;\
+\
+\
+		\cf5 //********** FORMANT ANALYSIS **************************\cf2 \
+\
+		analysis_method_average_0__peak_1 = 1 ;\
+		formant_selection_threshold__0_to_1 = 0.5 ;\
+		\cf5 //\cf2 \
+		\cf5 // Using the difference between analyzed peak and average amps for\cf2 \
+		\cf5 // windowed frequency regions, an amplitude variation range, in dB, \cf2 \
+		\cf5 // is set and used to select formants; 0 to 1 threshold control is \cf2 \
+		\cf5 // mapped into decibel selection range for selection/rejection of\cf2 \
+		\cf5 // spectral peaks as formants. \cf2 \
+		\cf5 // 0 = all formants, 1 = few to none. Try .5 to .8\cf2 \
+\
+		formant_peak_amplitude_threshold_in_db = -90.0 ;\
+		\cf5 // Formants in the normalized formant range are selected or rejected based\cf2 \
+		\cf5 // on whether their peak amplitude meets the threshold. \cf2 \
+\
+\
+		low_formant_frequency_limit = 0 ;\
+		high_formant_frequency_limit = 20000 ;\
+\
+		\cf5 //********* FORMANT NORMALIZATION -- SPECTRUM COMPANDING **\cf2 \
+\
+\
+\
+		normalize_spectrum_to_formant_peaks__off_0__on_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // If on, formant peaks in the spectrum are normalized to 1.0\cf2 \
+		\cf5 // with bins between formants scaled by a gain interpolated \cf2 \
+		\cf5 // between the adjoing formant normalization gains according to \cf2 \
+		\cf5 // the bin's respective position between them. Normalization of\cf2 \
+		\cf5 // peaks equalizes formant amplitude differences, allowing\cf2 \
+		\cf5 // more source energy to pass (producing a brighter output) while\cf2 \
+		\cf5 // not losing the resonant characteristics of the filter response. \cf2 \
+\
+		warp_index_for_spectral_expansion_or_compression = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // 0: compression or expansion.\cf2 \
+		\cf5 // Values > 0: expand dynamic range between formants; try 0 to 30.\cf2 \
+		\cf5 // Values < 0: compress dynamic range; try 0 to -30.  \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // A non-zero warp index reshapes the distribution of amplitudes of bins\cf2 \
+		\cf5 // lying between formants. Positive warp indices reshape distribution \cf2 \
+		\cf5 // towards lower amplitudes, thus expanding the mid-formant dynamic range;\cf2 \
+		\cf5 // expansion increases with higher values; negative indices do the reverse, \cf2 \
+		\cf5 // compressing the range. Compression/expansion is greatest at the midpoint\cf2 \
+		\cf5 // between formants and decreasingly less to none in approach of the formant.\cf2 \
+\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //********ANALYSIS LOW/HIGH SHELF EQ *******************\cf2 \
+\
+		analysis_low_shelf_eq_gain_in_decibels = -0 ;\
+		analysis_low_shelf_eq_frequency = 300 ;\
+\
+		analysis_high_shelf_eq_gain_in_decibels = 0 ;\
+		analysis_high_shelf_eq_frequency = 1000 ;\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		freqresponse_filter_analysis_printout_high_cutoff_frequency = 2000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //***************** RINGFILTER *************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = -0 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		input_file = \cf4 "~/voice.NF.au"\cf2  ;\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		begintime = 0 ;\
+		endtime = 0 ;\
+		\cf5 // (-1 end time defaults to end of file)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		fft_length = 8192 ;\
+		window_type = 16 ;\
+		windowsize = 0 ;\
+\
+		\cf5 //( Use larger FFT sizes for ring routines.)\cf2 \
+\
+		frames_per_second = 200 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+\
+		output_channel = 0 ;\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -70 ;\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. TIME ..............................\cf2 \
+\
+		time_expansion_contraction_factor = 1 ;\
+\
+\
+		\cf5 //.........  MASTER DECIBELS (source + reverb) .........\cf2 \
+\
+		master_gain_in_decibels = -0 ;\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //.......... SOURCE PARAMETERS .........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		source_gain_in_decibels = -100 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		source_frequency_shift = 0 ;\
+		source_pitch_transposition_in_semitones = 0 ;\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //.......... REVERB PARAMETERS ........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //...REVERB OUTPUT CONTROLS ** y(n) ***...............\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+		reverb_gain_in_decibels = -0 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+		reverb_frequency_shift = 0 ;\
+		reverb_pitch_transposition_in_semitones = 0 ;\
+		p_change_select__source_only_0__both_source_and_filter_1 = 0 ;\
+		\cf5 //((0) applies pitch changes before feedback filter, (1) after)\cf2 \
+\
+\
+		\cf5 //-----------------------------------------------------\cf2 \
+		\cf5 //........... OUTPUT EQ .............................. \cf2 \
+		reverb_output_low_shelf_eq_gain_in_decibels = -0 ;\
+		reverb_output_low_shelf_eq_frequency = 60 ;\
+		reverb_output_high_shelf_eq_gain_in_decibels = -0 ;\
+		reverb_output_high_shelf_eq_frequency = 100 ;\
+		\cf5 //-----------------------------------------------------\cf2 \
+\
+\
+		\cf5 //-----------------------------------------------------\cf2 \
+		\cf5 //-------------> RANDOM DEVIATION CONTROLS <----------\cf2 \
+		\cf5 //......... RANDOM  FREQUENCY DEVIATION.................\cf2 \
+\
+		reverb_random_freq_deviation_in_hz = 0 ;\
+		reverb_random_deviation_response_time_in_seconds = 0.1 ;\
+		\cf5 //(this low pass filters the change, slowing it., .1 is good)\cf2 \
+\
+		\cf5 //......... RANDOM  AMPLITUDE DEVIATION...............\cf2 \
+\
+		reverb_random_amplitude_deviation_floor_in_decibels = -0 ;\
+		\cf5 //(0 (none) to -96 (full range) )\cf2 \
+		reverb_random_amplitude_deviation__response_time_in_seconds = 0.3 ;\
+		\cf5 //(this low pass filters the change, slowing it.)\cf2 \
+		\cf5 //-----------------------------------------------------\cf2 \
+\
+\
+		\cf5 //=====================================================\cf2 \
+\
+		\cf5 //...REVERB INPUT CONTROLS ** x(n) ***..................\cf2 \
+\
+		\cf5 //........... INPUT THRESHOLD CONTROLS .................\cf2 \
+\
+		reverb_threshold_in_db = -40 ;\
+		reverb_threshold_passmode__above_1_below_0 = 1 ;\
+\
+		\cf5 // The source bins are input into the reverb path depending\cf2 \
+		\cf5 //  on whether they lie above or below the threshold. The\cf2 \
+		\cf5 //  passmode determines whether to pass bins above or below \cf2 \
+		\cf5 // the threshold. For harmonic sounds,  passing above -20\cf2 \
+		\cf5 //  works well. For some noisy sounds,  passing stuff below\cf2 \
+		\cf5 // -20 can be interesting. \cf2 \
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //*** REVERB INPUT x(n) ENVELOPE RESPONSE\cf2 \
+\
+		reverb_input_envelope_release_time_in_seconds = 0 ;\
+		reverb_input_envelope_attack_time_in_seconds = 0 ;\
+\
+		\cf5 //-----------------------------------------------------\cf2 \
+		\cf5 //........... INPUT EQ .............................. \cf2 \
+		reverb_input_low_shelf_eq_gain_in_decibels = -0 ;\
+		reverb_input_low_shelf_eq_frequency = 500 ;\
+		reverb_input_high_shelf_eq_gain_in_decibels = -0 ;\
+		reverb_input_high_shelf_eq_frequency = 2000 ;\
+		\cf5 //-----------------------------------------------------\cf2 \
+\
+		\cf5 //=====================================================\cf2 \
+		\cf5 //...REVERB FEEDBACK CONTROLS ** y(n-1) ***............\cf2 \
+\
+		reverb_decay_time_in_seconds = 3 ;\
+		\cf5 //( This is a master decay time control.)\cf2 \
+\
+		reverb_feedback_eq_decay_time_in_seconds = 1 ;\
+		\cf5 //( This controls the decay into the feedback eq.)\cf2 \
+\
+		\cf5 //-----------------------------------------------------\cf2 \
+		\cf5 //........... FEEDBACK_EQ .............................. \cf2 \
+		reverb_feedback_low_shelf_eq_gain_in_decibels = -0 ;\
+		reverb_feedback_low_shelf_eq_frequency = 500 ;\
+		reverb_feedback_high_shelf_eq_gain_in_decibels = -0 ;\
+		reverb_feedback_high_shelf_eq_frequency = 2000 ;\
+		\cf5 //-----------------------------------------------------\cf2 \
+\
+		\cf5 //............BALANCE...................................\cf2 \
+		reverb_feedback_eq_signal_balance_gain_limiter_in_db = 0 ;\
+		\cf5 //(0 to 96dB, 0 = balancing off full limiting), \cf2 \
+		\cf5 //               96 = balance full-on (no limiting)\cf2 \
+\
+		\cf5 //-----------------------------------------------------\cf2 \
+		\cf5 //..........FREQRESPONSE FILTER .......................\cf2 \
+		\cf5 //-----------------------------------------------------\cf2 \
+\
+\
+		\cf5 //.................FILTER PLACEMENT...................\cf2 \
+		reverb_filter_on_input_0__feedback_1 = 0 ;\
+\
+		\cf5 //( Set this to apply the freqresponse to the input xn), \cf2 \
+		\cf5 //  or the feedback return y(n-1). When applied to the \cf2 \
+		\cf5 // return, set the decay time below.\cf2 \
+\
+		\cf5 //..............FILTER DECAY TIME........................\cf2 \
+\
+		reverb_feedback_filter_decay_time_in_seconds = 1 ;\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		reverb_filter_source_db = -96 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		reverb_filter_shift = 0 ;\
+		reverb_filter_transposition_in_semitones = 0 ;\
+\
+		\cf5 //............ SPECTRUM WARPSHAPE ......................\cf2 \
+\
+		reverb_filter_spectrum_warpshape = 0 ;\
+\
+\
+		\cf5 //-----------------------------------------------------\cf2 \
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //********** AMPLITUDE STATISTICS ********************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1.0 ;\
+\
+		\cf5 //.............. PRINT ................................ \cf2 \
+\
+		freqresponse_printout_high_cutoff_frequency = 2000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "freqresponse"\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -R"\cf2  ++ analysis_high_shelf_eq_frequency ++  \cf4 " -w"\cf2  ++ freqresponse_window_type ++ \
+			 \cf4 " -N"\cf2  ++ fft_length ++  \cf4 " -b"\cf2  ++ analysis_begintime ++  \cf4 " -C"\cf2  ++ analysis_channel ++ \
+			 \cf4 " -A"\cf2  ++ formant_peak_amplitude_threshold_in_db ++  \cf4 " -j"\cf2  ++ high_formant_frequency_limit ++ \
+			 \cf4 " -M0"\cf2  ++  \cf4 " -X"\cf2  ++ analysis_high_shelf_eq_gain_in_decibels ++  \cf4 " -D"\cf2  ++ filter_analysis_frames_per_second ++ \
+			 \cf4 " -p"\cf2  ++ normalize_spectrum_to_formant_peaks__off_0__on_1 ++  \cf4 " -H"\cf2  ++ analysis_low_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -a"\cf2  ++ spectrumplotfileindb ++  \cf4 " -P"\cf2  ++ freqresponse_filter_analysis_printout_high_cutoff_frequency ++ \
+			 \cf4 " -F"\cf2  ++ formants_data_file ++  \cf4 " -i"\cf2  ++ formants_ascii_data_file ++  \cf4 " -m"\cf2  ++ analysis_low_shelf_eq_frequency ++ \
+			 \cf4 " -e"\cf2  ++ analysis_endtime ++  \cf4 " -c"\cf2  ++ analysis_method_average_0__peak_1 ++ \
+			 \cf4 " -g"\cf2  ++ formant_selection_threshold__0_to_1 ++  \cf4 " -o"\cf2  ++ formantsbarplotfile ++ \
+			 \cf4 " -L"\cf2  ++ low_formant_frequency_limit ++  \cf4 " -E"\cf2  ++ warp_index_for_spectral_expansion_or_compression\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ analysis_sndfile ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ freqresponsefile\
+\
+		) ;\
+ \
+\
+\
+		\cf5 // ******** UNIX COMMAND LINE 1 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "ringfilter "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -B"\cf2  ++ p_change_select__source_only_0__both_source_and_filter_1 ++  \cf4 " -u"\cf2  ++ reverb_filter_transposition_in_semitones ++ \
+			 \cf4 " -x"\cf2  ++ reverb_filter_source_db ++  \cf4 " -L"\cf2  ++ reverb_input_envelope_release_time_in_seconds ++ \
+			 \cf4 " -c"\cf2  ++ reverb_output_high_shelf_eq_gain_in_decibels ++  \cf4 " -V"\cf2  ++ reverb_filter_shift ++ \
+			 \cf4 " -w"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++  \cf4 " -P"\cf2  ++ reverb_pitch_transposition_in_semitones ++ \
+			 \cf4 " -I"\cf2  ++ time_expansion_contraction_factor ++  \cf4 " -o"\cf2  ++ reverb_filter_on_input_0__feedback_1 ++ \
+			 \cf4 " -n"\cf2  ++ reverb_input_high_shelf_eq_frequency ++  \cf4 " -b"\cf2  ++ begintime ++  \cf4 " -F"\cf2  ++ reverb_gain_in_decibels ++ \
+			 \cf4 " -W"\cf2  ++ reverb_random_amplitude_deviation_floor_in_decibels ++  \cf4 " -C"\cf2  ++ output_channel ++ \
+			 \cf4 " -q"\cf2  ++ reverb_filter_spectrum_warpshape ++  \cf4 " -v"\cf2  ++ freqresponse_printout_high_cutoff_frequency ++ \
+			 \cf4 " -a"\cf2  ++ reverb_random_amplitude_deviation__response_time_in_seconds ++  \cf4 " -J"\cf2  ++ analysis_sndfile ++ \
+			 \cf4 " -S"\cf2  ++ source_gain_in_decibels ++  \cf4 " -H"\cf2  ++ reverb_frequency_shift ++  \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++ \
+			 \cf4 " -h"\cf2  ++ window_type ++  \cf4 " -l"\cf2  ++ reverb_input_envelope_attack_time_in_seconds ++ \
+			 \cf4 " -O"\cf2  ++ reverb_input_low_shelf_eq_gain_in_decibels ++  \cf4 " -="\cf2  ++ rescale_level_in_decibels ++ \
+			 \cf4 " -N"\cf2  ++ fft_length ++  \cf4 " -g"\cf2  ++ reverb_threshold_passmode__above_1_below_0 ++ \
+			 \cf4 " -j"\cf2  ++ reverb_random_freq_deviation_in_hz ++  \cf4 " -D"\cf2  ++ frames_per_second ++ \
+			 \cf4 " -Q"\cf2  ++ reverb_feedback_high_shelf_eq_gain_in_decibels ++  \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++ \
+			 \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -U"\cf2  ++ reverb_feedback_low_shelf_eq_frequency ++  \cf4 " -E"\cf2  ++ reverb_feedback_eq_signal_balance_gain_limiter_in_db ++ \
+			 \cf4 " -M"\cf2  ++ windowsize ++  \cf4 " -d"\cf2  ++ reverb_input_low_shelf_eq_frequency ++  \cf4 " -T"\cf2  ++ reverb_feedback_eq_decay_time_in_seconds ++ \
+			 \cf4 " -X"\cf2  ++ reverb_feedback_low_shelf_eq_gain_in_decibels ++  \cf4 " -k"\cf2  ++ reverb_output_low_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -G"\cf2  ++ reverb_output_high_shelf_eq_frequency ++  \cf4 " -Z"\cf2  ++ reverb_decay_time_in_seconds ++ \
+			 \cf4 " -r"\cf2  ++ reverb_feedback_filter_decay_time_in_seconds ++  \cf4 " -K"\cf2  ++ reverb_random_deviation_response_time_in_seconds ++ \
+			 \cf4 " -Y"\cf2  ++ reverb_input_high_shelf_eq_gain_in_decibels ++  \cf4 " -y"\cf2  ++ freqresponsefile ++ \
+			 \cf4 " -s"\cf2  ++ reverb_output_low_shelf_eq_frequency ++  \cf4 " -f"\cf2  ++ source_frequency_shift ++ \
+			 \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -A"\cf2  ++ master_gain_in_decibels ++ \
+			 \cf4 " -p"\cf2  ++ source_pitch_transposition_in_semitones ++  \cf4 " -z"\cf2  ++ reverb_threshold_in_db ++ \
+			 \cf4 " -m"\cf2  ++ reverb_feedback_high_shelf_eq_frequency\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+ringfilter_with_analysis.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

@@ -1,0 +1,483 @@
+orchname:  /S1/csound/CSOUND/CSOUND_PLAY/tabsamp.nts.orc.cpp
+scorename: /S1/csound/CSOUND/CSOUND_PLAY/tabsamp.nts.sco.cpp
+sorting score ...
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+Escaped
+	... done
+orch compiler:
+865 lines read
+	instr	1	
+Extending Local pool to 800
+Extending Local pool to 1200
+MIT Csound: 3.482 (Aug  8 1998)
+orch now loaded
+displays suppressed
+audio buffered in 1024 sample-frame blocks
+writing 4096-byte blks of shorts to /S1/cs.aiff (AIFF)
+SECTION 1:
+ftable 1:
+/S1/Dynatek_BACKUP/flute.samples.aiff: AIFF, 2037952 stereo samples, no looping
+audio sr = 44100, stereo, reading channel 1
+ftable 2:
+/S1/Dynatek_BACKUP/flute.samples.aiff: AIFF, 2037952 stereo samples, no looping
+audio sr = 44100, stereo, reading channel 2
+ftable 3:
+ftable 6:
+ftable 30:
+ftable 32:
+ftable 34:
+ftable 36:
+ftable 38:
+ftable 40:
+ftable 42:
+ftable 44:
+ftable 46:
+ftable 48:
+ftable 50:
+ftable 52:
+ftable 54:
+ftable 56:
+ftable 58:
+ftable 60:
+ftable 31:
+ftable 33:
+ftable 35:
+ftable 37:
+ftable 39:
+ftable 41:
+ftable 43:
+ftable 45:
+ftable 47:
+ftable 49:
+ftable 51:
+ftable 53:
+ftable 55:
+ftable 57:
+ftable 59:
+ftable 61:
+ftable 4:
+ftable 5:
+new alloc for instr 1:
+instr 1:  id1 = 2.000  id2 = 0.000  ioldscalept = 0.000  inewscalept = 2.000  iscalerem = 0.000
+instr 1:  ioct = 9.000
+instr 1:  icf = 0.000  icfm = 1.000  ikf = 2594.000
+instr 1:  ifdevgain = 1.000  ioct = 9.000
+B  0.000 ..  0.500 T  0.500 TT  0.500 M:  10094.3   9429.0
+end of score.		   overall amps:  10094.3   9429.0
+	   overall samples out of range:        0        0
+0 errors in performance
+22 4096-byte soundblks of shorts written to /S1/cs.aiff (AIFF)

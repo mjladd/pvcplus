@@ -1,0 +1,61 @@
+#!/bin/sh
+#******************************************************
+#.................... CHANNELMIX .........................
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=-2
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+
+#******************** INPUT ***************************
+
+ 
+input_file=~/woodCreaks.aif
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=-1
+
+# (End time of -1 defaults to end of file.)
+
+mono_1__stereo_2=2
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=channelmix 
+
+PVFLAGS="\
+\
+\
+-b$begintime \
+-e$endtime \
+-c$mono_1__stereo_2 \
+-_$auto_output_sound_file_play__repetitions \
+\
+"
+
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+$pvroutine  $PVFLAGS $input_file $output_file

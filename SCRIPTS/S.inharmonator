@@ -1,0 +1,382 @@
+#!/bin/sh
+#******************************************************
+#................. INHARMONATOR .......................
+#******************************************************
+# Inharmonator uses the specified fundamental frequency, 
+# bandwidth, and data file of harmonics, map points, and 
+# amplitudes to transpose particular bins in the analysis; 
+# the identified and shifted bins are known as the "targets" 
+# and have macro controls for their manipulation as a group. 
+# The remaining analysis bins (identified as the "non-targets) 
+# and the source may be included in the output, through 
+# separate adjustment of their pitch, amplitude, and time. 
+
+
+#======================================================
+#********** AMPLITUDE STATISTICS *********************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1.
+
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+input_file=~/oboe.B4.au
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+# End time or 0 or less defaults to end of file.
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=4096 
+# Powers of two (512, 1024, 2048, 4096...)
+# Larger values increase bins, adding frequency resolution while
+# decreasing time resolution; smaller values effect the opposite.   
+# Start with 1024. 
+
+window_type=12
+
+# hamming(0),  rectangular(1) Blackman(2), Bartlett(3)
+# Kaiser(4-12) for corresponding alpha values:
+# alpha = 4: sidelobe of -30dB, narrow center lobe
+# alpha = 8: sidelobe of -58dB, medium center lobe
+# alpha = 4: sidelobe of -90dB, wide center lobe
+
+windowsize=0
+# (0 sets windowsize to 2 * FFT)
+
+frames_per_second=200
+
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=1
+
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****************** MODIFICATIONS *********************
+
+#.................. DECIBELS ..........................
+
+MASTER_gain_in_decibels=0
+
+#======================================================
+#********** SOURCE ************************************
+
+#.................. DECIBELS ..........................
+
+SOURCE_gain_in_dB=-100
+
+#.................. PITCH .............................
+
+SOURCE_frequency_shift=0
+SOURCE_pitch_transposition_in_semitones=0
+
+#gen4 -L1000 0 0 0	1 7 > /tmp/pt
+
+#............ AMPLITUDE RESPONSE ......................
+
+SOURCE_attack_time_in_seconds=0
+SOURCE_release_time_in_seconds=0
+
+#.................. DELAY TIME ........................
+
+SOURCE_delay_time=0
+
+
+
+#======================================================
+#********** INHARMONATOR ********************************
+#======================================================
+
+#======================================================
+#************ TARGETS AND NON-TARGETS *****************
+
+#............ SPECTRUM WARPSHAPE ......................
+spectrum_warpshape_index=0
+# Values greater than 0 expand dynamic range, suppressing
+# weaker amplitudes.
+
+#.... RESPONSE TIME  ...........
+
+attack_time_in_seconds=0
+release_time_in_seconds=0
+frequency_response_time_in_seconds=0
+
+#======================================================
+#********** NON TARGETS ********************************
+
+#.................. DECIBELS ..........................
+
+NON_TARGETS_gain_in_dB=-0
+
+#.................. PITCH .............................
+
+NON_TARGETS_frequency_shift=0
+NON_TARGETS_pitch_transposition_in_semitones=0
+
+
+#.................. DELAY TIME ........................
+
+NON_TARGETS_delay_time=0
+
+
+NON_TARGETS_decay_time=0
+
+NON_TARGETS_time_delay_randomization__off_0__on_1=0
+NON_TARGETS_time_delay_response_time_in_seconds=0.2
+# .2 or more
+
+
+#======================================================
+#*************** TARGETS ********************************
+
+#............ FUNDAMENTAL FREQUENCY .....................
+
+TARGETS_Fundamental_Frequency_or_OctavePointPitchClass=57.4
+#
+# Values of 12 or less are treated as octave.pitchclass.
+# 8.00 = middle C
+
+TARGETS_partial_bandwidth_proportion=0.4
+
+TARGETS_PartialWindowType__rectangle_0__Hann_1__Welch_2=1
+
+
+#.................. DECIBELS ..........................
+
+TARGETS_gain_in_dB=-0
+
+#.................. PITCH .............................
+
+TARGETS_frequency_shift=0
+TARGETS_pitch_transposition_in_semitones=0
+
+
+#................. TIME DELAY .........................
+TARGETS_time_delay_randomization__off_0__on_1=0
+TARGETS_time_delay_response_time_in_seconds=0.5
+
+TARGETS_shift_file=~/partials
+
+SHIFT_DATA_FORMAT=3
+
+#( 0 = frequency multiplier )
+#( 1 = map to frequency )
+#( 2 = map to octave.pitchclass )
+#( 3 = map to partial number )
+
+
+
+#*****TARGETS SHIFT FILE: DATA FORMAT ******************
+# Only one shift-line per partial 
+# (Duplicate partial specifications revert to last in list.)
+# 1: partial number
+# 2: shift data (in format specified above)
+# 3: decibels
+# 4: delay time
+# 5: decay time
+
+# An "m" (for mute) at the beginning of a data set will comment it out. 
+# A "!" (for solo)  at the beginning of a data set will mute all other data sets.
+# More than one data set may be set to solo at a time. 
+
+# Text/data between curly braces -- "{ }" -- is cut before input, thus allowing comments.  
+
+
+#======================================================
+#**** SCALERS AND SHIFTERS FOR DATA SETUP 
+#======================================================
+# The following controls allow pre-synthesis, 
+# macro-modification of values in particular parameters. 
+#
+# Scalers are multipliers, shifts are adders. 
+# Thus, multipliers of 1 and shifts of 0 produce
+# no change to parameter values. Negative values 
+# are allowed. Scaling is always applied first, followed 
+# by shifting. Beware the accident of a scalar value of 0.
+
+# ** PARTIAL NUMBER
+# Partial numbers less than 1 become 1. 
+
+TARGETS__Partial_Number_Scaler=1
+#
+# With 1 as floor, i.e. 1 remains constant.
+# [1, 2, 3, 4] become [1, 3, 5, 7] with scaler of 2.
+# new_partial_number = 1 + (scaler * (partial_number - 1))
+
+TARGETS__Partial_Number_Shifter=0
+
+# ** DECIBELS
+TARGETS_Decibels_Scaler=1.
+
+# ** DELAY TIME
+TARGETS__Delay_Time_Scaler=1.0
+TARGETS__Delay_Time_Shifter=0
+
+# ** DECAY TIME
+TARGETS__Decay_Time_Scaler=1.0
+TARGETS__Decay_Time_Shifter=0
+
+
+#======================================================
+#*** AMPLITUDE AND FREQUENCY INTERPOLATION CONTROLS **
+#======================================================
+# 0: original source values
+# 1: target values
+# 0-1: interpolation between, by constant or function
+
+
+TARGETS_Amplitude_Interpolation_Control=1
+
+
+TARGETS_Frequency_Interpolation_Control=1
+
+
+TARGETS_Time_Interpolation_Control=1
+
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+#[partial number][shift data][decibels][delay time][ decay time]
+
+echo \
+\
+1  1.1   0 0.0 0 \
+2  1.9   -0 0.0 0 \
+3  3.5   -0 0.0 0 \
+4  4.4   -0 0.0 0 \
+5  5.7   0 0.0 0 \
+6  5.8   -0 0.0 0 \
+7  7.8   -0 0.0 0 \
+8  8.9   -0 0.0 0 \
+9  10    0 0.0 0 \
+\
+\
+> ~/partials ;
+
+
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=inharmonator
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+-w$window_type \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-A$MASTER_gain_in_decibels \
+\
+-Q$SOURCE_frequency_shift \
+-u$SOURCE_pitch_transposition_in_semitones \
+-r$SOURCE_gain_in_dB \
+-l$SOURCE_attack_time_in_seconds \
+-L$SOURCE_release_time_in_seconds \
+-J$SOURCE_delay_time \
+\
+-f$TARGETS_Fundamental_Frequency_or_OctavePointPitchClass \
+-x$TARGETS_partial_bandwidth_proportion \
+\
+-v$attack_time_in_seconds \
+-V$release_time_in_seconds \
+-Y$frequency_response_time_in_seconds \
+-Z$SHIFT_DATA_FORMAT \
+\
+-a$NON_TARGETS_frequency_shift \
+-P$NON_TARGETS_pitch_transposition_in_semitones \
+-G$NON_TARGETS_gain_in_dB \
+-j$NON_TARGETS_delay_time \
+-E$NON_TARGETS_decay_time \
+-K$NON_TARGETS_time_delay_randomization__off_0__on_1 \
+-n$NON_TARGETS_time_delay_response_time_in_seconds \
+\
+-F$TARGETS_shift_file \
+-B$TARGETS_PartialWindowType__rectangle_0__Hann_1__Welch_2 \
+-q$TARGETS_frequency_shift \
+-X$TARGETS_pitch_transposition_in_semitones \
+-m$TARGETS_gain_in_dB \
+-U$TARGETS_Amplitude_Interpolation_Control \
+-S$TARGETS_Frequency_Interpolation_Control \
+-T$TARGETS_Time_Interpolation_Control \
+-H$TARGETS_time_delay_randomization__off_0__on_1 \
+-c$TARGETS_time_delay_response_time_in_seconds \
+\
+\
+-W$spectrum_warpshape_index \
+\
+-z$TARGETS__Partial_Number_Scaler \
+-R$TARGETS__Partial_Number_Shifter \
+-y$TARGETS_Decibels_Scaler \
+-o$TARGETS__Delay_Time_Scaler \
+-O$TARGETS__Delay_Time_Shifter \
+\
+-g$TARGETS__Decay_Time_Scaler \
+-k$TARGETS__Decay_Time_Shifter \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+"
+
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 

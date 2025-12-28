@@ -1,0 +1,230 @@
+#!/bin/sh
+#******************************************************
+#*** NOISE FILTER WITH EQ *****************************
+#******************************************************
+
+
+
+#------------------------------------------------------
+#************** NOISE FILTERING ***********************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+input_file=~/blackbird.aiff
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0	
+endtime=-1
+# (-1 end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=2048
+window_type=16
+windowsize=0
+
+frames_per_second=200
+
+#( For predominantly noise oriented material, 
+# or if the result sounds colored, try
+# short(er) FFTs, and many (1000-5000) 
+#frames per second.) 
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=1
+
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1
+
+#.................. DECIBELS ..........................
+
+gain_in_decibels=0
+
+#.................. PITCH .............................
+frequency_shift=0
+pitch_transposition_in_semitones=0
+
+#............ AMPLITUDE RESPONSE ......................
+
+release_time_in_seconds=.1
+attack_time_in_seconds=0.1
+
+
+#( These values can smooth the gurgle which can occur. 
+#   Use .01 to .1. For signifcant reverb tails, use 
+# .1-.4 release time to smooth the trail to the noise
+# floor. )
+
+#------------------------------------------------------
+#******* NOISE SAMPLE ANALYSIS ************************
+#------------------------------------------------------
+
+#........ANALYSIS BEGIN/END TIMES ......................
+
+analysis_begintime=4.5
+analysis_endtime=4.6
+
+
+ANALYSIS_METHOD_average_0_peak_1_nonzero_minimum_2=0
+
+#------------------------------------------------------
+
+FREQRESPONSE_filter_ANALYSIS_PRINTOUT_high_cutoff_frequency=0
+# ( 0 = off )
+#======================================================
+#********** NOISE  FILTER *****************************
+
+NOISE_threshold_adjust_in_decibels=30
+
+
+# When averaging, 10 to 30 dB works well (try 20).
+# When using peak, 0 to 20 dB works well.
+# Greater values increase noise reduction, lesser values decrease it.
+# Use lower values if gurgling occurs and explore the use of non-zero
+# amplitude response times. (See above.)
+
+NOISE_expansion_index=3
+
+# This index specifies the shape of the exponential expansion curve.
+# 0 = linear (no expansion),  positive values increase rate of expansion.
+# 2-10 is a good range.
+#...................................................... 
+
+NOISE_FILTER_bypass_threshold_in_decibels=1
+
+# USE THIS PARAMETER WHEN NOISE SAMPLE IS NOT AVAILABLE.
+# Bins in the  normalized (0 dB) noise response whose amplitude
+# are greater than the threshold are replaced with 0., 
+# letting those frequencies pass when filtered. 
+# Try thresholds of -50 to -60.
+# IMPORTANT: Set noise sample range to include entire file. 
+# Set this option to 1.0 to bypass.
+
+#******************************************************
+#********* LOW/HIGH SHELF EQ (pre-processing) *********
+#****** (POST NOISEFILTER -- PRE PITCH PROCESSING )****
+#******************************************************
+
+FILTER_LOW_SHELF_EQ_gain_in_decibels=-0
+FILTER_LOW_SHELF_EQ_frequency=10
+
+FILTER_HIGH_SHELF_EQ_gain_in_decibels=0
+FILTER_HIGH_SHELF_EQ_frequency=20
+
+
+#********** AMPLITUDE STATISTICS ********************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1
+
+#.............. PRINT ................................ 
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=10000
+# ( 0 = off )
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+ 
+ 
+#====================================================
+
+
+
+pvroutine=noisefilter 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-y$FREQRESPONSE_filter_ANALYSIS_PRINTOUT_high_cutoff_frequency
+\
+-a$frequency_shift \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-B$analysis_begintime \
+-E$analysis_endtime \
+-F$ANALYSIS_METHOD_average_0_peak_1_nonzero_minimum_2 \
+\
+-S$NOISE_threshold_adjust_in_decibels \
+-x$NOISE_expansion_index \
+\
+-H$FILTER_LOW_SHELF_EQ_gain_in_decibels \
+-m$FILTER_LOW_SHELF_EQ_frequency \
+\
+-X$FILTER_HIGH_SHELF_EQ_gain_in_decibels \
+-R$FILTER_HIGH_SHELF_EQ_frequency \
+\
+-Q$NOISE_FILTER_bypass_threshold_in_decibels \
+-L$release_time_in_seconds \
+-l$attack_time_in_seconds \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+-Z$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+"
+
+
+echo "$pvroutine $PVFLAGS $input_file $output_file"
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 

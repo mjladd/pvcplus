@@ -1,0 +1,232 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  freqresponse = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		normalize_spectrum_to_formant_peaks__off_0__on_1, \
+		freq_response_data_file, \
+		analysis_low_shelf_eq_gain_in_decibels, \
+		analysis_endtime, \
+		analysis_high_shelf_eq_gain_in_decibels, \
+		warp_index_for_spectral_expansion_or_compression, \
+		formants_bar_plot_file, \
+		analysis_low_shelf_eq_frequency, \
+		fft_length, \
+		formant_analysis_low_frequency_limit, \
+		analysis_channel, \
+		analysis_frames_per_second, \
+		formant_selection_threshold__0_to_1, \
+		analysis_sndfile, \
+		formant_analysis_high_frequency_limit, \
+		formant_peak_amplitude_threshold_in_db, \
+		formants_data_file, \
+		analysis_high_shelf_eq_frequency, \
+		spectrum_db_plot_file, \
+		freqresponse_printout_high_cutoff_frequency, \
+		analysis_begintime, \
+		amplitude_weighted_average__off_0__on_1, \
+		window_type, \
+		analysis_method_average_0__peak_1, \
+		formants_ascii_data_file\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //*** FREQRESPONSE ANALYSIS ****************\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //******************** ANALYSIS ************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		freq_response_data_file = \cf4 "~/Freq_Response_Data_File"\cf2  ;\
+\
+		formants_data_file = \cf4 "~/Formants_Data_File"\cf2  ;\
+		formants_ascii_data_file = \cf4 "~/Formants_ASCII_Data_File"\cf2  ;\
+\
+		\cf5 //**************** PLOT FILES **************************\cf2 \
+\
+		spectrum_db_plot_file = \cf4 "~/sp"\cf2  ;\
+		formants_bar_plot_file = \cf4 "~/bp"\cf2  ;\
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		analysis_sndfile = \cf4 "~/Oboe.NF.C5.au"\cf2  ;\
+\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		analysis_begintime = 0 ;\
+		analysis_endtime = 0 ;\
+\
+		\cf5 //........... ANALYSIS CHANNEL(S) .......................\cf2 \
+\
+		analysis_channel = 0 ;\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //...................................................... \cf2 \
+\
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		fft_length = 4096 ;\
+		window_type = 2 ;\
+\
+		analysis_frames_per_second = 200 ;\
+\
+\
+\
+		\cf5 //********** FORMANT ANALYSIS **************************\cf2 \
+\
+		analysis_method_average_0__peak_1 = 0 ;\
+\
+		amplitude_weighted_average__off_0__on_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // Amplitude weighting biases the final average spectrum toward \cf2 \
+		\cf5 // frames with greater overall amplitude. The weighted average spectrum \cf2 \
+		\cf5 // and peak spectra can be very similar. \cf2 \
+\
+		formant_selection_threshold__0_to_1 = 1.0 ;\
+		\cf5 // Using the difference between analyzed peak and average amps for\cf2 \
+		\cf5 // windowed frequency regions, an amplitude variation range, in dB, \cf2 \
+		\cf5 // is set and used to select formants; the 0 to 1 threshold control is \cf2 \
+		\cf5 // mapped into the range and used to select/reject spectral peaks as formants. \cf2 \
+		\cf5 // 0 = all peaks, 1 = few. \cf2 \
+		\cf5 // Effective threshold can vary depending on input. Try .4 to .8\cf2 \
+\
+		formant_peak_amplitude_threshold_in_db = -60.0 ;\
+		\cf5 // Formants in the normalized formant range are selected depending\cf2 \
+		\cf5 // on whether their peak amplitude is above threshold. \cf2 \
+\
+\
+		formant_analysis_low_frequency_limit = 20 ;\
+		formant_analysis_high_frequency_limit = 20000 ;\
+\
+\
+		\cf5 //********* FORMANT NORMALIZATION -- SPECTRUM COMPANDING **\cf2 \
+\
+		normalize_spectrum_to_formant_peaks__off_0__on_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // If on, formant peaks in the spectrum are normalized to 1.0\cf2 \
+		\cf5 // with bins between formants scaled by a gain interpolated \cf2 \
+		\cf5 // between the adjoining formant normalization gains according to \cf2 \
+		\cf5 // the bin's respective position between them. Normalization of\cf2 \
+		\cf5 // peaks equalizes formant amplitude differences, allowing\cf2 \
+		\cf5 // more source energy to pass (producing a brighter output) while\cf2 \
+		\cf5 // not losing the resonant characteristics of the filter response. \cf2 \
+\
+		warp_index_for_spectral_expansion_or_compression = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // 0: compression or expansion.\cf2 \
+		\cf5 // Values > 0: expand dynamic range between formants; try 0 to 30.\cf2 \
+		\cf5 // Values < 0: compress dynamic range; try 0 to -30.  \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // A non-zero warp index reshapes the distribution of amplitudes of bins\cf2 \
+		\cf5 // lying between formants. Positive warp indices reshape distribution \cf2 \
+		\cf5 // towards lower amplitudes, thus expanding the mid-formant dynamic range;\cf2 \
+		\cf5 // expansion increases with higher values; negative indices do the reverse, \cf2 \
+		\cf5 // compressing the range. Compression/expansion is greatest at the midpoint\cf2 \
+		\cf5 // between formants and decreasingly less to none in approach of the formant.\cf2 \
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //********ANALYSIS LOW/HIGH SHELF EQ *******************\cf2 \
+\
+		analysis_low_shelf_eq_gain_in_decibels = -0 ;\
+		analysis_low_shelf_eq_frequency = 300 ;\
+\
+		analysis_high_shelf_eq_gain_in_decibels = 0 ;\
+		analysis_high_shelf_eq_frequency = 1000 ;\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		freqresponse_printout_high_cutoff_frequency = 20000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "freqresponse"\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -F"\cf2  ++ formants_data_file ++  \cf4 " -E"\cf2  ++ warp_index_for_spectral_expansion_or_compression ++ \
+			 \cf4 " -R"\cf2  ++ analysis_high_shelf_eq_frequency ++  \cf4 " -D"\cf2  ++ analysis_frames_per_second ++ \
+			 \cf4 " -M0"\cf2  ++  \cf4 " -W"\cf2  ++ amplitude_weighted_average__off_0__on_1 ++  \cf4 " -N"\cf2  ++ fft_length ++ \
+			 \cf4 " -b"\cf2  ++ analysis_begintime ++  \cf4 " -e"\cf2  ++ analysis_endtime ++  \cf4 " -g"\cf2  ++ formant_selection_threshold__0_to_1 ++ \
+			 \cf4 " -a"\cf2  ++ spectrum_db_plot_file ++  \cf4 " -c"\cf2  ++ analysis_method_average_0__peak_1 ++ \
+			 \cf4 " -C"\cf2  ++ analysis_channel ++  \cf4 " -P"\cf2  ++ freqresponse_printout_high_cutoff_frequency ++ \
+			 \cf4 " -L"\cf2  ++ formant_analysis_low_frequency_limit ++  \cf4 " -m"\cf2  ++ analysis_low_shelf_eq_frequency ++ \
+			 \cf4 " -A"\cf2  ++ formant_peak_amplitude_threshold_in_db ++  \cf4 " -p"\cf2  ++ normalize_spectrum_to_formant_peaks__off_0__on_1 ++ \
+			 \cf4 " -X"\cf2  ++ analysis_high_shelf_eq_gain_in_decibels ++  \cf4 " -j"\cf2  ++ formant_analysis_high_frequency_limit ++ \
+			 \cf4 " -H"\cf2  ++ analysis_low_shelf_eq_gain_in_decibels ++  \cf4 " -w"\cf2  ++ window_type ++ \
+			 \cf4 " -o"\cf2  ++ formants_bar_plot_file ++  \cf4 " -i"\cf2  ++ formants_ascii_data_file\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ analysis_sndfile ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ freq_response_data_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+freqresponse.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

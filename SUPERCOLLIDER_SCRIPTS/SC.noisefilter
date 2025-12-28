@@ -1,0 +1,297 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  noisefilter = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		windowsize, \
+		pitch_transposition_in_semitones, \
+		gain_in_decibels, \
+		frames_per_second, \
+		frequency_shift, \
+		filter_high_shelf_eq_gain_in_decibels, \
+		noise_filter_bypass_threshold_in_decibels, \
+		freqresponse_printout_high_cutoff_frequency, \
+		noise_expansion_index, \
+		output_file, \
+		oscillator_resynthesis_threshold_in_db, \
+		time_expansion_contraction_factor, \
+		analysis_method_average_0_peak_1_nonzero_minimum_2, \
+		freqresponse_filter_analysis_printout_high_cutoff_frequency, \
+		release_time_in_seconds, \
+		fft_length, \
+		rescale_level_in_decibels, \
+		filter_high_shelf_eq_frequency, \
+		analysis_endtime, \
+		begintime, \
+		attack_time_in_seconds, \
+		window_type, \
+		endtime, \
+		noise_threshold_adjust_in_decibels, \
+		filter_low_shelf_eq_gain_in_decibels, \
+		auto_output_sound_file_play__repetitions, \
+		filter_low_shelf_eq_frequency, \
+		print_amplitude_statistics_0_no__1_yes, \
+		input_file, \
+		output_channel, \
+		analysis_begintime, \
+		amplitude_statistics_time_interval\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //*** NOISE FILTER WITH EQ *****************************\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //************** NOISE FILTERING ***********************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+\
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = -0 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		input_file = \cf4 "~/blackbird.aiff"\cf2  ;\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		begintime = 0	 ;\
+		endtime = -1 ;\
+		\cf5 // (-1 end time defaults to end of file)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		fft_length = 2048 ;\
+		window_type = 16 ;\
+		windowsize = 0 ;\
+\
+		frames_per_second = 200 ;\
+\
+		\cf5 // For predominantly noise oriented material, \cf2 \
+		\cf5 // or if the result sounds colored, try\cf2 \
+		\cf5 // short(er) FFTs, and many (1000-5000) \cf2 \
+		\cf5 //frames per second. \cf2 \
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+		output_channel = 1 ;\
+\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -96 ;\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. TIME ..............................\cf2 \
+\
+		time_expansion_contraction_factor = 1 ;\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		gain_in_decibels = 0 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+		frequency_shift = 0 ;\
+		pitch_transposition_in_semitones = 0 ;\
+\
+		\cf5 //............ AMPLITUDE RESPONSE ......................\cf2 \
+\
+		release_time_in_seconds = 0.1 ;\
+		attack_time_in_seconds = 0.1 ;\
+\
+\
+		\cf5 // These values can smooth the gurgle which can occur. \cf2 \
+		\cf5 //   Use .01 to .1. For signifcant reverb tails, use \cf2 \
+		\cf5 // .1-.4 release time to smooth the trail to the noise\cf2 \
+		\cf5 // floor. \cf2 \
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //******* NOISE SAMPLE ANALYSIS ************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //........ANALYSIS BEGIN/END TIMES ......................\cf2 \
+\
+		analysis_begintime = 4.5 ;\
+		analysis_endtime = 4.6 ;\
+\
+\
+		analysis_method_average_0_peak_1_nonzero_minimum_2 = 0 ;\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		freqresponse_filter_analysis_printout_high_cutoff_frequency = 0 ;\
+		\cf5 // ( 0 = off )\cf2 \
+		\cf5 //======================================================\cf2 \
+		\cf5 //********** NOISE  FILTER *****************************\cf2 \
+\
+		noise_threshold_adjust_in_decibels = 30 ;\
+\
+\
+		\cf5 // When averaging, 10 to 30 dB works well (try 20).\cf2 \
+		\cf5 // When using peak, 0 to 20 dB works well.\cf2 \
+		\cf5 // Greater values increase noise reduction, lesser values decrease it.\cf2 \
+		\cf5 // Use lower values if gurgling occurs and explore the use of non-zero\cf2 \
+		\cf5 // amplitude response times. (See above.)\cf2 \
+\
+		noise_expansion_index = 3 ;\
+\
+		\cf5 // This index specifies the shape of the exponential expansion curve.\cf2 \
+		\cf5 // 0 = linear (no expansion),  positive values increase rate of expansion.\cf2 \
+		\cf5 // 2-10 is a good range.\cf2 \
+		\cf5 //...................................................... \cf2 \
+\
+		noise_filter_bypass_threshold_in_decibels = 1 ;\
+\
+		\cf5 // USE THIS PARAMETER WHEN NOISE SAMPLE IS NOT AVAILABLE.\cf2 \
+		\cf5 // Bins in the  normalized (0 dB) noise response whose amplitude\cf2 \
+		\cf5 // are greater than the threshold are replaced with 0., \cf2 \
+		\cf5 // letting those frequencies pass when filtered. \cf2 \
+		\cf5 // Try thresholds of -50 to -60.\cf2 \
+		\cf5 // IMPORTANT: Set noise sample range to include entire file. \cf2 \
+		\cf5 // Set this option to 1.0 to bypass.\cf2 \
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //********* LOW/HIGH SHELF EQ (pre-processing) *********\cf2 \
+		\cf5 //****** (POST NOISEFILTER -- PRE PITCH PROCESSING )****\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		filter_low_shelf_eq_gain_in_decibels = -0 ;\
+		filter_low_shelf_eq_frequency = 10 ;\
+\
+		filter_high_shelf_eq_gain_in_decibels = 0 ;\
+		filter_high_shelf_eq_frequency = 20 ;\
+\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ********************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1 ;\
+\
+		\cf5 //.............. PRINT ................................ \cf2 \
+\
+		freqresponse_printout_high_cutoff_frequency = 10000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "noisefilter "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -m"\cf2  ++ filter_low_shelf_eq_frequency ++ \
+			 \cf4 " -Q"\cf2  ++ noise_filter_bypass_threshold_in_decibels ++  \cf4 " -Z"\cf2  ++ freqresponse_printout_high_cutoff_frequency ++ \
+			 \cf4 " -a"\cf2  ++ frequency_shift ++  \cf4 " -N"\cf2  ++ fft_length ++  \cf4 " -R"\cf2  ++ filter_high_shelf_eq_frequency ++ \
+			 \cf4 " -H"\cf2  ++ filter_low_shelf_eq_gain_in_decibels ++  \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++ \
+			 \cf4 " -D"\cf2  ++ frames_per_second ++  \cf4 " -L"\cf2  ++ release_time_in_seconds ++  \cf4 " -B"\cf2  ++ analysis_begintime ++ \
+			 \cf4 " -S"\cf2  ++ noise_threshold_adjust_in_decibels ++  \cf4 " -x"\cf2  ++ noise_expansion_index ++ \
+			 \cf4 " -X"\cf2  ++ filter_high_shelf_eq_gain_in_decibels ++  \cf4 " -w"\cf2  ++ window_type ++ \
+			 \cf4 " -="\cf2  ++ rescale_level_in_decibels ++  \cf4 " -l"\cf2  ++ attack_time_in_seconds ++ \
+			 \cf4 " -A"\cf2  ++ gain_in_decibels ++  \cf4 " -I"\cf2  ++ time_expansion_contraction_factor ++ \
+			 \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -F"\cf2  ++ analysis_method_average_0_peak_1_nonzero_minimum_2 ++ \
+			 \cf4 " -P"\cf2  ++ pitch_transposition_in_semitones ++  \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++ \
+			 \cf4 " -y"\cf2  ++ freqresponse_filter_analysis_printout_high_cutoff_frequency ++  \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++ \
+			 \cf4 " -C"\cf2  ++ output_channel ++  \cf4 " -E"\cf2  ++ analysis_endtime ++  \cf4 " -M"\cf2  ++ windowsize ++ \
+			 \cf4 " -b"\cf2  ++ begintime\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+noisefilter.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

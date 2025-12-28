@@ -1,0 +1,333 @@
+(
+var readSpectrumFile, readPVCSpectrumFile, amps, freqs, findSpectrumPeaks, symmetryFactor,
+	formantIndeces, 	numFormants, formantFreqs, formantAmps, formantRQs, writeFormantsFile, readFormantsFile, name,
+	printFormantData  ; 
+
+
+readPVCSpectrumFile = { arg spectrumFileUNIXPath ;
+	var fileLengthInBytes, data, count=0, tripleCount=0, realAmp, imagAmp ; 
+
+	("FILE: " ++ spectrumFileUNIXPath ++ "    exists? " ++ File.exists( spectrumFileUNIXPath ) ).postln ; 
+
+	// OPEN DATA FILE FOR READING
+	data = File( spectrumFileUNIXPath, "rb" ); 
+
+	fileLengthInBytes = data.length ;  
+	("fileLengthInBytes: " ++ fileLengthInBytes).postln ; 
+
+	freqs = Array.new( (fileLengthInBytes / 2) / 4 ) ; 
+	amps = Array.new( (fileLengthInBytes / 2) / 4 )  ; 
+
+	(fileLengthInBytes / 8).asInteger.do({ 
+		amps.add( data.getFloat ) ; freqs.add( data.getFloat ) ; 
+	}); 
+
+	data.close ; 
+
+	amps = amps.normalize ; 
+}; 
+
+
+
+readSpectrumFile = { arg spectrumFileUNIXPath ; 
+	var fileLengthInBytes, data, count=0, tripleCount=0, realAmp, imagAmp ; 
+
+	("FILE: " ++ spectrumFileUNIXPath ++ "    exists? " ++ File.exists( spectrumFileUNIXPath ) ).postln ; 
+
+	// OPEN DATA FILE FOR READING
+	data = File( spectrumFileUNIXPath, "r" ); 
+
+	fileLengthInBytes = data.length ;  
+	("fileLengthInBytes: " ++ fileLengthInBytes).postln ; 
+	
+	c = data.getChar ; count = count + 1 ; 
+	// COUNT PAST TEXT
+	while( {c.isSpace || c.isAlpha}, { c = data.getChar ; count = count + 1 }); 
+	s = String.new(50) ; 
+	freqs = List.new ; amps = List.new ; 
+	
+	// DATA
+	while( { count < fileLengthInBytes },{
+		if( c.isDecDigit || (c == $\.),{
+			s = s ++ c.asString ; 
+		},{
+//			s.postln ; 
+			if( tripleCount == 0, { freqs.add( s.asFloat ) }); 
+			if( tripleCount == 1, { realAmp = s.asFloat }); 
+			if( tripleCount == 2, { 
+				imagAmp = s.asFloat;
+				amps.add( (realAmp.squared + imagAmp.squared ).sqrt ) ;  
+			}); 
+
+			tripleCount = (tripleCount + 1).mod(3) ;
+			s = String.new(50) ;  
+		}); 
+		
+		c = data.getChar ; count = count + 1 ; 
+
+
+	}); 
+
+	amps = amps.asArray ; 
+
+	freqs = freqs.asArray ; 
+
+	("count: " ++ count).postln ; 
+
+	"DONE".postln ; 
+
+
+	
+	data.close ; 
+
+}; 
+
+
+
+findSpectrumPeaks = { arg dbThreshold=(-60.0), lowFreqLimit=20, highFreqLimit=22050,
+			maxNumberOfFormants=inf, 
+			smoothingBW_Q, smoothingHzBW, plotFlag=false, peakPlotFreq=22050, dbPlotFlag=false  ;  
+
+	var newAmps, interleavedAmps, selectedFormantsAmps, selectedFormantsDBs, peakPlotFreqIndex, 
+		avgWinSize=20, scaleWinSize=5, winArray, maxValue, triWindow, windowBW,
+	avgBinFreqDiff, strongestFreq, rescaleAmps, peakAmp, scaleFactor, centroidFreq, sum,
+	tempList, exit, indecesOfFormantsToKeep ; 
+	
+	// MAKE DUPLICATE ARRAY OF AMPS
+	newAmps = Array.new( amps.size ); 
+
+	// FIND CENTROID
+	centroidFreq = (freqs * amps).sum / amps.sum ; 
+	// FIND STRONGEST FREQ
+	strongestFreq = freqs.at( amps.indexOf( amps.maxItem ) ) ; 
+
+	// CREATE BW: IF SMOOTHING SETTING EXISTS, SET IT; OTHERWISE, CREATE ONE 
+	if( smoothingHzBW.notNil, {
+		windowBW = smoothingHzBW ; 
+	},{
+		if( smoothingBW_Q.notNil, {
+			windowBW = centroidFreq / smoothingBW_Q ; 
+		},{
+			windowBW = centroidFreq / 10 ; 
+		}) ;
+	}); 
+	// CREATE AVERAGE BIN FREQ
+	avgBinFreqDiff = freqs.differentiate.mean ; 
+	avgWinSize = (windowBW / avgBinFreqDiff).asInteger ; 
+	if( avgWinSize.even, {avgWinSize = avgWinSize + 1}); 	if( avgWinSize < 3, {avgWinSize = 3}); 	
+	n = (avgWinSize - 1) / 2 ; 
+	triWindow = Array.fill( (avgWinSize - 1) / 2, {arg i; i });
+	triWindow = (triWindow ++ [ n ] ++ triWindow.reverse) ; 
+	triWindow.postln ; 
+	triWindow = triWindow.normalize ; 
+
+	amps.size.do({ arg i; 
+		winArray = Array.fill( avgWinSize, {arg n; 
+			amps.at( (n + i - (avgWinSize / 2.0).asInteger).max(0).min( amps.lastIndex ) )
+		});
+		winArray = triWindow * winArray ;  
+		v = winArray.pow(2).mean ; 
+		newAmps.add( v ); 
+	}); 	
+
+	newAmps = newAmps.normalize ; 	
+
+
+	// FIND SYMMETRIES
+	symmetryFactor = Array.fill( newAmps.size, {0.0} ); 
+	peakAmp = 	newAmps.maxItem ; 
+
+	k = (avgWinSize - 1) / 2 ; 
+	for( k, (newAmps.lastIndex - k), { arg i;
+		scaleFactor =  (newAmps.at(i) / peakAmp) ; 
+
+		v = Array.fill( k, {arg n; 
+			newAmps.at(  (i - 1 - n).max(0).min( newAmps.lastIndex )   )
+		}) ;
+		w = Array.fill( k, {arg n; 
+			newAmps.at(  (i + 1 + n).max(0).min( newAmps.lastIndex )   )
+		}) ;
+
+		
+		if( newAmps.at(i) > ((v ++ w).maxItem), {
+			v = v.sum ; w = w.sum ; 
+			if( v < w, {
+				symmetryFactor.put( i,  scaleFactor * v / w );
+			},{
+				symmetryFactor.put( i,  scaleFactor *  w / v );
+			}); 
+		},{
+			symmetryFactor.add( 0.0 );
+		}); 
+
+	}); 	
+	
+//	if( plotFlag, { symmetryFactor.plot }) ; 
+
+	// FIND FORMANT FREQS AND AMPS
+	selectedFormantsAmps = Array.fill( newAmps.size, {0.0}); 
+	formantIndeces = List.new ; formantFreqs = List.new ; formantAmps = List.new ; 
+	for( 1, newAmps.lastIndex - 1, { arg i; 
+		if( (newAmps.at(i) > newAmps.at(i -1)) && (newAmps.at(i) > newAmps.at(i + 1)),{
+			if( newAmps.at(i).ampdb > dbThreshold &&
+				((freqs.at(i) >= lowFreqLimit) && (freqs.at(i) <= highFreqLimit)), {
+					selectedFormantsAmps[i] = newAmps.at(i) ; 
+					formantFreqs.add(freqs.at(i)) ; formantAmps.add(newAmps.at(i)) ;
+					formantIndeces.add(i) ;  
+			}); 
+		}); 
+	}); 
+	if( formantFreqs.size > maxNumberOfFormants, {
+		indecesOfFormantsToKeep = 
+			formantAmps.copy.order.reverse.copyRange(0, (maxNumberOfFormants - 1)).sort ; 
+			formantAmps = Array.fill( maxNumberOfFormants, {arg ind ; 
+				formantAmps[ indecesOfFormantsToKeep[ind] ]
+			}) ; 
+			formantFreqs = Array.fill( maxNumberOfFormants, {arg ind ; 
+				formantFreqs[ indecesOfFormantsToKeep[ind] ]
+			}) ; 
+			formantIndeces = Array.fill( maxNumberOfFormants, {arg ind ; 
+				formantIndeces[ indecesOfFormantsToKeep[ind] ]
+			}) ; 
+	}); 
+
+	selectedFormantsAmps.size.do({arg index; 
+		if( formantIndeces.includes(index).not, {
+			selectedFormantsAmps[index] = 0.0 ; 
+		}); 
+	}); 
+
+	numFormants = formantFreqs.size ; 
+
+	// FIND THE RQ FOR THE FORMANTS
+	formantRQs = List.new ; 	
+	
+	formantIndeces.do({arg i;
+		sum = 0.0 ; 
+		tempList = List.new ; 
+		
+		[-1, 1].do({arg sign; 
+			n = i ; c = 1 ; exit = false ; 
+			while( { exit.not },{
+
+				if( (newAmps.at(n) > (newAmps.at(n + sign)) ) && (c <= 5),{
+					tempList.add(
+							(freqs.at(i) - freqs.at(i + (c * sign))).abs * 
+							((newAmps.at(i).ampdb - newAmps.at(i + (c * sign)).ampdb) / 3.0 )
+					); 
+
+				},{exit = true}); 
+
+				n = n + sign ; c = c + 1 ;
+				if( (n == 0) || (n == newAmps.lastIndex),{exit = true});  
+
+
+			}); 
+		}); 
+		
+		formantRQs.add( 2.0 * (tempList.sum / tempList.size.asFloat) / freqs.at(i) ) ; 
+	}); 
+
+	peakPlotFreqIndex = freqs.indexInBetween( peakPlotFreq).asInteger ; 
+	selectedFormantsDBs = (selectedFormantsAmps.ampdb.max(-96) + 96.0) / 96.0 ;
+
+	interleavedAmps = 
+		[
+			amps.copyRange(0,peakPlotFreqIndex), 
+			newAmps.copyRange(0,peakPlotFreqIndex),
+			selectedFormantsAmps.copyRange(0,peakPlotFreqIndex),
+			selectedFormantsDBs
+		].lace( peakPlotFreqIndex * 4) ; 
+	
+//	if( dbPlotFlag, {
+//		interleavedAmps = (interleavedAmps.ampdb.max(-96) + 96.0) / 96.0 ;  
+//	}); 
+	if( plotFlag, { interleavedAmps.plot( 
+		name: 
+			numFormants.asString ++ " Formants (" ++ 
+			"Threshold: " ++ dbThreshold.asInteger ++
+			"dB, Limits[ " ++ lowFreqLimit.asInteger ++
+			"-" ++ highFreqLimit.asInteger ++
+			" Hz], Smoothing BW: " ++ smoothingHzBW.asInteger ++
+			"Hz, Plot Peak: " ++ peakPlotFreq.asInteger ++ "Hz)"
+			,
+			numChannels: 4 
+	) })  ; 
+
+
+
+}; 
+
+writeFormantsFile = { arg formantsFileUNIXPath ; 
+	var file ; 
+	
+	file = File.new( formantsFileUNIXPath, "wb" ) ; 
+
+
+	// WRITE OUT THE VALUES IN BINARY
+	file.putFloat( numFormants.asFloat ); 
+
+	numFormants.do({arg f; 
+		file.putFloat( formantFreqs.at(f) ); 
+		file.putFloat( formantAmps.at(f) ); 
+		file.putFloat( formantRQs.at(f) ); 
+	}); 
+		
+	file.close ; 
+	
+	readFormantsFile.value( formantsFileUNIXPath: formantsFileUNIXPath ) ; 
+	
+}; 
+
+
+readFormantsFile = { arg formantsFileUNIXPath ; 
+	var file ; 
+
+	file = File( formantsFileUNIXPath, "rb" ) ; 
+
+	formantRQs = List.new ; formantFreqs = List.new ; formantAmps = List.new ; 
+
+	numFormants = file.getFloat.asInteger ;
+	
+	 numFormants.do({arg f; 
+		formantFreqs.add( file.getFloat ); 
+		formantAmps.add( file.getFloat ); 
+		formantRQs.add( file.getFloat ); 
+	 }); 
+
+	file.close ; 
+
+};  
+
+printFormantData = {
+	formantFreqs.size.do({arg i; 
+		(" " ++ (i + 1) ++ ".  " ++ formantFreqs.at(i).asInteger ++ " Hz\t" ++ 
+			formantAmps.at(i).ampdb.asInteger ++ " dB\t" ++
+				(( (1.0 / formantRQs.at(i)) * 100.0).asInteger * 0.01) ++ " Q\t" ++
+				((formantRQs.at(i) * 10000.0).asInteger * 0.0001) ++ " RQ"  ).postln  ; 
+	}); 
+
+}; 
+
+
+// READ PVC SPECTRUM INTO ARRAYS
+readPVCSpectrumFile.value( 
+	spectrumFileUNIXPath: 
+//		"/Users/koonce/Spectrum.for.piano.A0"
+		"/Users/koonce/Spectrum.for.ridecymbal"
+	
+) ;  
+
+findSpectrumPeaks.value( dbThreshold: -50, lowFreqLimit: 30, highFreqLimit: 5000, 
+	maxNumberOfFormants: 100,
+	smoothingHzBW: 30, plotFlag: true, peakPlotFreq: 5000, dbPlotFlag: false ) ; 
+
+writeFormantsFile.value( 
+	formantsFileUNIXPath: 
+		"/Users/koonce/Formants.for.ridecymbal"
+//		"/Users/koonce/Formants.for.piano.A0"
+); 
+
+printFormantData.value ; 
+
+)

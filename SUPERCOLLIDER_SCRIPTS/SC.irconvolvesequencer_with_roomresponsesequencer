@@ -1,0 +1,1388 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  irconvolvesequencer_with_roomresponsesequencer = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		origin_to_corners_angle_uniformity_0_to_1_proportion, \
+		source_position_radius, \
+		number_of_walls, \
+		ro_ir_bpf_high_edge_amplitude_rolloff_in_decibels_per_octave, \
+		source_coordinates_plot_file, \
+		room__pre_rotation_positive_y_scale_factor, \
+		source_origin_x_coordinate, \
+		shaping_breakpoint_in_db, \
+		source_orientation_mode__to_room_0__to_listener_1, \
+		wall_ir_bpf_high_edge_amplitude_rolloff_in_decibels_per_octave, \
+		maximum_distance_from_origin_to_corners, \
+		low_order_attack_duration, \
+		normalized_sound_path_movement_function__0_to_1, \
+		reflection_order_impulse_response_sound_file, \
+		room_scale_factor, \
+		wall_ir_bpf_low_edge_amplitude_rolloff_in_decibels_per_octave, \
+		low_order_release_duration, \
+		speaker__pre_rotation_negative_y_scale_factor, \
+		speaker__x_translation_factor, \
+		speaker__pre_rotation_positive_y_scale_factor, \
+		speaker__pre_rotation_positive_x_scale_factor, \
+		reflection_order_impulse_responses__off_0__on_1, \
+		source_dispersion_pattern_rolloff_in_decibels, \
+		wall_ir_bpf_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3, \
+		room__x_translation_factor, \
+		wall_db_gainscale_factors_file, \
+		speaker_rotation_in_degrees, \
+		room_synthesis_rotation_in_degrees, \
+		output_sound__all_0__direct_1__reflections_2, \
+		speaker__y_translation_factor, \
+		source_rotation_in_degrees, \
+		impulse_end_truncation_release_time_in_seconds, \
+		impulse_channel, \
+		source_gain_in_decibels, \
+		peak_shaping_amplitude_in_db, \
+		convolution_multichannel_output_mode__standard_0__alternate_1, \
+		endtime, \
+		input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave, \
+		ro_ir_bpf_low_edge_amplitude_rolloff_in_decibels_per_octave, \
+		listener_space_cross_reflections__include_0__exclude_1, \
+		irconvolvesequencer_auto_output_sound_file_play__repetitions, \
+		ro_ir_bpf_low_rolloff_frequency, \
+		amplitude_statistics_time_interval, \
+		reflection_order_db_gainscale_factors_file, \
+		room__pre_rotation_negative_x_scale_factor, \
+		input_sound_filter_band_low_rolloff_frequency, \
+		room__pre_rotation_negative_y_scale_factor, \
+		normalization, \
+		reflection_order_impulse_response_decibels_presence_file, \
+		air_absorption_exponent_for_virtual_space_source, \
+		ro_ir_bpf_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3, \
+		lower_shaping_curve_index, \
+		high_order_release_duration, \
+		input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave, \
+		polygon_reflections_plot_file, \
+		normalization__0__1__2__3, \
+		source_minimum_distance_from_listener, \
+		impulse_inclusion_threshold_in_db, \
+		wall_ir_sound_file, \
+		output_impulse_response_sound_format_template_file, \
+		use_collapsed_threshold_amplitudes__no_0__yes_1, \
+		impulse_end_truncation_threshold_in_db, \
+		convolution_output_gain_in_decibels, \
+		impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave, \
+		impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave, \
+		wall_impulse_response_decibels_presence_file, \
+		air_absorption_exponent_for_reflections, \
+		wall_ir_envelope_file, \
+		wall_ir_channel_assignments_file, \
+		input_file, \
+		minimum_distance_from_origin_to_corners, \
+		speaker__pre_rotation_negative_x_scale_factor, \
+		high_order_attack_duration, \
+		reflection_order_ir_convolution_mode, \
+		room__y_translation_factor, \
+		reflection_order_impulse_response_channel_assignments_file, \
+		reflection_order_ir_window_sample_mode__off_0__on_1__on_with_sync_2, \
+		impulse_response_shaping_switch__off_0__on_1, \
+		output_directory, \
+		speaker_configuration__sequence_0__polygon_1, \
+		begintime, \
+		plot_mode__one_file_0__channel_files_1__channel_and_order_files_2, \
+		roomresponsesequencer_auto_output_sound_file_play__repetitions, \
+		wall_ir_bpf_low_rolloff_frequency, \
+		highest_order_reflection, \
+		impulse_response_filter_band_low_rolloff_frequency, \
+		master_gain_in_decibels, \
+		roomresponsesequencer_output_channel, \
+		scale_to_pre_envelope_window_sample_peak_amps__off_0__on_1, \
+		impulse_response_filter_band_high_rolloff_frequency, \
+		output_file, \
+		polygonal_room_coordinates_file, \
+		source_origin_y_coordinate, \
+		speaker_scale_factor, \
+		irconvolvesequencer_output_channel, \
+		number_of_movement_function_points, \
+		base_shaping_amplitude_in_db, \
+		wall_ir_bpf_high_rolloff_frequency, \
+		reflection_order_ir_truncate_duration, \
+		source_position_angle, \
+		room__pre_rotation_positive_x_scale_factor, \
+		air_absorption_exponent_for_real_space_source, \
+		polygon_coordinates__synthesized_0__cartesian_file_1__polar_file_2, \
+		reflected_sound_gain_in_decibels, \
+		reflection_order_ir_envelope_file, \
+		add_ring_time__off_0__on_1, \
+		envelope_shape_index, \
+		print_amplitude_statistics_0_no__1_yes, \
+		listener_x_y_coordinate_positions_file, \
+		lowest_order_reflection, \
+		ro_ir_bpf_high_rolloff_frequency, \
+		room_rotation_in_degrees, \
+		speaker_x_y_coordinate_positions_file, \
+		upper_shaping_curve_index, \
+		minimumreferencedistanceinfeet, \
+		wall_ir_truncate_duration, \
+		wall_ir_from_sound_file__off_0__on_1, \
+		input_sound_filter_band_high_rolloff_frequency, \
+		reflections_time_scaler, \
+		wall_ir_convolution_mode, \
+		direct_sound_gain_in_decibels\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //................ ROOM RESPONSE SEQUENCER .................\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+		\cf5 // Roomresponsesequencer creates a sequence of synthesized\cf2 \
+		\cf5 // impulse responses using roomresponsemaker; the responses\cf2 \
+		\cf5 // are used by irconvolversequencer, which convolves them with \cf2 \
+		\cf5 // a series of sound crossfade segments and sequences their mix, \cf2 \
+		\cf5 // using mixfiles, to create a room impulse response transition,\cf2 \
+		\cf5 // reflecting the movement of the source, its changes, and any change\cf2 \
+		\cf5 // to the space responding to it. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // To serve the making of these transitions, many of the \cf2 \
+		\cf5 // roomresponsemaker parameters used at each iteration \cf2 \
+		\cf5 // can be expressed as functions articulating the parameter's \cf2 \
+		\cf5 // change across the transition. Central to the transition is the concept of\cf2 \
+		\cf5 // source sound movement specified using separate\cf2 \
+		\cf5 // X and Y coordinate functions:, defining a movement path, and\cf2 \
+		\cf5 // a movement function, defining the source's travel along\cf2 \
+		\cf5 // the path. \cf2 \
+\
+		output_directory = \cf4 "/tmp/rr"\cf2  ;\
+		\cf5 // Common directory for collecting impulse responses.  \cf2 \
+\
+		output_impulse_response_sound_format_template_file = \cf4 "~/32bit.BLANK.au"\cf2  ;\
+		\cf5 // Template sound file whose format is used to create impulse response files. \cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		roomresponsesequencer_auto_output_sound_file_play__repetitions = -0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+\
+\
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+		roomresponsesequencer_output_channel = 0 ;\
+		\cf5 // (channels are numbered from 1 to the maximum.)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //............. POLYGON ROOM .........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 // \cf2 \
+		\cf5 // Room polygon may be input using coordinates, either Cartesian or polar,\cf2 \
+		\cf5 // or may be synthesized using the parameters below.  \cf2 \
+\
+		polygon_coordinates__synthesized_0__cartesian_file_1__polar_file_2 = 0 ;\
+\
+		polygonal_room_coordinates_file = \cf4 "/tmp/polygonCoordinates"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // File of ascii room corner coordinates. Cartesian grid is oriented to listener\cf2 \
+		\cf5 // with positive Y to listener's front and negative and positive X dimensions\cf2 \
+		\cf5 // extending to the listener's respective left and right side. Polar coordinates \cf2 \
+		\cf5 // are oriented with an angle of 0 degrees positioned to the listener's right side \cf2 \
+		\cf5 // and positive angles rotating counter-clockwise. Successive coordinates are \cf2 \
+		\cf5 // connected together, with the last connected back to the first, to make \cf2 \
+		\cf5 // what must be a polygonal space; wall segments must not cross and the origin at [0, 0]\cf2 \
+		\cf5 // must be within the space, both of which will be checked and fatally flagged \cf2 \
+		\cf5 // if in error. \cf2 \
+\
+\
+\
+		addCommand.value(\
+			\cf4 "echo -30 30    30 30   30 -30   -300 -30 > /tmp/polygonCoordinates"\cf2 \
+		) ;\
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //.......POLYGON ROOM SYNTHESIS PARAMETERS ............\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 // Room corners are synthesized using a collection of polar radii extending\cf2 \
+		\cf5 // out from the origin to the prospective corners of the room. Radial distance\cf2 \
+		\cf5 // to the corners is randomly determined by minimum and maximum distances, with \cf2 \
+		\cf5 // the subtending angles being designed to be uniform or randomly different, \cf2 \
+		\cf5 // with the degree of non-uniformity controlled through an angle regularity \cf2 \
+		\cf5 // proportion. Polar orientation of synthesis region is with 0 degrees \cf2 \
+		\cf5 // to the listener's right with positive angles extending counter-clockwise.\cf2 \
+		\cf5 // A rotation factor is available during the initial synthesis phase. \cf2 \
+		\cf5 // Further modification of rooms coordinates, be they synthesized or specified, \cf2 \
+		\cf5 // is available below. \cf2 \
+\
+		number_of_walls = 5 ;\
+		\cf5 // (func)\cf2 \
+\
+\
+		room_synthesis_rotation_in_degrees = 0 ;\
+		\cf5 // (func)\cf2 \
+\
+		minimum_distance_from_origin_to_corners = 30 ;\
+		\cf5 // (func)\cf2 \
+		maximum_distance_from_origin_to_corners = 30 ;\
+		\cf5 // (func)\cf2 \
+\
+		origin_to_corners_angle_uniformity_0_to_1_proportion = 1.0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // 1: maximum uniformity (all angles are the same).\cf2 \
+		\cf5 // 0: maximum variability \cf2 \
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //...... ROOM MODIFICATION PARAMETERS ...........\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 // (Applied in the order given.)\cf2 \
+\
+		room__x_translation_factor = 0 ;\
+		\cf5 // (func)\cf2 \
+		room__y_translation_factor = 0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // X and/or Y value is added to respective axis. \cf2 \
+\
+		room__pre_rotation_negative_x_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		room__pre_rotation_positive_x_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		room__pre_rotation_negative_y_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		room__pre_rotation_positive_y_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Value is used to scale the X or Y coordinate value of\cf2 \
+		\cf5 // points lying within the respective positive/negative\cf2 \
+		\cf5 // X/Y region. \cf2 \
+\
+		room_rotation_in_degrees = 0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Rotation of all points around [0, 0] origin.\cf2 \
+\
+		room_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Value is used to scale size of room. \cf2 \
+\
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //......... LISTENER POSITION ........\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		listener_x_y_coordinate_positions_file = \cf4 "/tmp/listenerCoordinates"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // NOTE: To simulate source sound movement between speakers as in \cf2 \
+		\cf5 // conventional stereo or surround sound setups:, the listener position \cf2 \
+		\cf5 // should be no closer to either of the adjacent speakers between which movement \cf2 \
+		\cf5 // is to be simulated than the speakers are to each other. In other words,\cf2 \
+		\cf5 // for convincing movement panning, the listener should be no closer than \cf2 \
+		\cf5 // the classic X/Y recording stereo listening sweet spot, often imagined \cf2 \
+		\cf5 // as forming an equilateral or isosceles triangle with the speakers. \cf2 \
+		\cf5 // Closer positions will cause the amplitude of sources positioned in between\cf2 \
+		\cf5 // to increasingly dip and therefore destroy the illusion of a moving source sound. \cf2 \
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //......... SOURCE POSITION TRAJECTORY ........\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 // The sequence of source positions is created using values\cf2 \
+		\cf5 // from the normalized movement function, iterated equidistantly across its\cf2 \
+		\cf5 // range, to access the movement path across its range, \cf2 \
+		\cf5 // normalized to the movement function's 0 to 1 range.\cf2 \
+		\cf5 // \cf2 \
+		\cf5 // The path is specified using a Cartesian origin, angle, and radius. \cf2 \
+		\cf5 // All three can be controlled using functions, which allows users to \cf2 \
+		\cf5 // specify paths in either Cartesian or polar coordinates, or a combination of both.\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // (a) For Cartesian coordinates, set radius to zero and give X and Y \cf2 \
+		\cf5 // origin coordinate functions. \cf2 \
+		\cf5 // (b) For polar coordinates, set the X/Y polar origin values and \cf2 \
+		\cf5 // radius and/or angle functions. \cf2 \
+\
+		source_origin_x_coordinate = \cf4 "/tmp/xSourceCoordinates"\cf2  ;\
+		\cf5 // (func)\cf2 \
+		source_origin_y_coordinate = \cf4 "/tmp/ySourceCoordinates"\cf2  ;\
+		\cf5 // (func)\cf2 \
+		source_position_angle = 0 ;\
+		\cf5 // (func)\cf2 \
+		source_position_radius = 0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // \cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "gen4 -L1000 0 0.001 0 1 0.001  > /tmp/xSourceCoordinates"\cf2 \
+		) ;\
+\
+		addCommand.value(\
+			\cf4 "gen4 -L1000 0 2 0 1 2 > /tmp/ySourceCoordinates"\cf2 \
+		) ;\
+\
+		normalized_sound_path_movement_function__0_to_1 = \cf4 "/tmp/move"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // Function will be reduced to normalized fractional part.\cf2 \
+		\cf5 // Functions greater than 1 may be designed to create \cf2 \
+		\cf5 // repeated sound path patterns, especially if paths\cf2 \
+		\cf5 // are designed connect begin to end. \cf2 \
+\
+		\cf5 //gen4 -L1000 0 0 0 1 1 0   2 0 0   3 1 0   4 0 0   5 1 0   6 0  > /tmp/move\cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "gen4 -L1000 0 0.5 0 1 0.5   > /tmp/move"\cf2 \
+		) ;\
+\
+\
+		number_of_movement_function_points = 10 ;\
+\
+		source_coordinates_plot_file = \cf4 "/tmp/sourcePlot"\cf2  ;\
+\
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //......... SPEAKER POSITIONS ........\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+\
+		speaker_x_y_coordinate_positions_file = \cf4 "/tmp/speakerCoordinatesStereo"\cf2  ;\
+\
+		speaker_configuration__sequence_0__polygon_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // To evaluate the validity of the listener placement, \cf2 \
+		\cf5 // the sequence of speaker coordinates must be declared as either\cf2 \
+		\cf5 // a sequence with a beginning and end, as in a wave field array or \cf2 \
+		\cf5 // stereo pair, or as a polygon designed to surround the listener \cf2 \
+		\cf5 // with speakers. \cf2 \
+\
+\
+\
+\
+\
+		\cf5 //echo 0 -6.92  > /tmp/listenerCoordinates\cf2 \
+\
+		addCommand.value(\
+			\cf4 "echo 0 -5.65  > /tmp/listenerCoordinates"\cf2 \
+		) ;\
+\
+\
+		addCommand.value(\
+			\cf4 "echo 0 0 > /tmp/sourceCoordinates"\cf2 \
+		) ;\
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			 \
+			-1.75 -0  \
+			-1.25 -0  \
+			-.75 -0  \
+			 \
+			-.25 -0  \
+			.25 -0  \
+			 \
+			.75 -0  \
+			1.25 -0  \
+			1.75 -0  \
+			 \
+			 > /tmp/speakerCoordinates8"\cf2 \
+		) ;\
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			 \
+			-2.25 0  \
+			-1.75 -0  \
+			-1.25 -0  \
+			-.75 -0  \
+			 \
+			-.25 -0  \
+			.25 -0  \
+			 \
+			.75 -0  \
+			1.25 -0  \
+			1.75 -0  \
+			2.25 0  \
+			 \
+			 > /tmp/speakerCoordinates10"\cf2 \
+		) ;\
+\
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			 \
+			-4 0  \
+			4 -0  \
+			 \
+			 > /tmp/speakerCoordinatesStereo"\cf2 \
+		) ;\
+\
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			 \
+			-20 20  \
+			20 20  \
+			20 -20  \
+			-20 -20  \
+			 \
+			> /tmp/speakerCoordinatesQuad"\cf2 \
+		) ;\
+\
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			 \
+			-3.75 -0  \
+			-3.25 -0  \
+			-2.75 -0  \
+			-2.25 -0  \
+			-1.75 -0  \
+			-1.25 -0  \
+			-.75 -0  \
+			-.25 -0  \
+			 \
+			.25 -0  \
+			.75 -0  \
+			1.25 -0  \
+			1.75 -0  \
+			2.25 0  \
+			2.75 -0  \
+			3.25 -0  \
+			3.75 -0  \
+			 \
+			 > /tmp/speakerCoordinates16"\cf2 \
+		) ;\
+\
+\
+\
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //.. SPEAKER POSITION MODIFICATION PARAMETERS .......\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 // (Applied in the order given.)\cf2 \
+\
+		speaker__x_translation_factor = 0 ;\
+		\cf5 // (func)\cf2 \
+		speaker__y_translation_factor = 0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // X and/or Y value is added to respective axis. \cf2 \
+\
+		speaker__pre_rotation_negative_x_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		speaker__pre_rotation_positive_x_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		speaker__pre_rotation_negative_y_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		speaker__pre_rotation_positive_y_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Value is used to scale the X or Y coordinate value of\cf2 \
+		\cf5 // points lying within the respective positive/negative\cf2 \
+		\cf5 // X/Y region. \cf2 \
+\
+		speaker_rotation_in_degrees = 0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Rotation of all points around [0, 0] origin.\cf2 \
+\
+		speaker_scale_factor = 1 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Value is used to scale size of speaker layout. \cf2 \
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //......... SOURCE AND REFLECTION PARAMETERS ........\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 // The final audio room impulse response may be written\cf2 \
+		\cf5 // to include both source and reflections or only one\cf2 \
+		\cf5 // of the two. Both gain and normalization controls are available \cf2 \
+		\cf5 // for controlling the output amplitudes. Normalization is\cf2 \
+		\cf5 // convenient for exploration, but should not be used in cases \cf2 \
+		\cf5 // where multiple responses are to be generated reflecting different \cf2 \
+		\cf5 // source positions, since different responses need to remain in\cf2 \
+		\cf5 // scale with each other. Gainparameters controlling the direct, \cf2 \
+		\cf5 // reflected, and global sound are available for making the necessary\cf2 \
+		\cf5 // adjustments, which can be necessary depending on how parameters\cf2 \
+		\cf5 // are set. \cf2 \
+\
+\
+		\cf5 // QW\cf2 \
+		output_sound__all_0__direct_1__reflections_2 = 0 ;\
+\
+		\cf5 // MASTER GAIN\cf2 \
+		master_gain_in_decibels = 20 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // DIRECT SOUND GAIN\cf2 \
+		direct_sound_gain_in_decibels = 0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // REFLECTED SOUND GAIN\cf2 \
+		reflected_sound_gain_in_decibels = 25 ;\
+		\cf5 // (func)\cf2 \
+\
+\
+\
+		highest_order_reflection = 5 ;\
+		\cf5 // (func)\cf2 \
+		lowest_order_reflection = 1 ;\
+		\cf5 // (func)\cf2 \
+\
+\
+		\cf5 //\cf2 \
+		\cf5 // Reflection order represents the number of walls that a reflection\cf2 \
+		\cf5 // intersects on its path from source to speaker. The highest order\cf2 \
+		\cf5 // limits the extent of reflections computation; the lowest order\cf2 \
+		\cf5 // limits the which shorter reflections are included in the output. \cf2 \
+		\cf5 // The two together can be used to output a band or single order of\cf2 \
+		\cf5 // reflections. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // The speed of the routine is a result of the subsequent computation\cf2 \
+		\cf5 // required by the number of walls and the highest reflection order sought.\cf2 \
+		\cf5 // The two factors work together multiplicatively to compound the number \cf2 \
+		\cf5 // of reflection paths to consider. While the routine is optimized, adding\cf2 \
+		\cf5 // an order or a few walls will geometrically expand the amount of computation,\cf2 \
+		\cf5 // as one quickly sees. High orders limits of 6 to 9 or 10 are generally reasonable \cf2 \
+		\cf5 // with 3 to 7 walls. \cf2 \
+\
+\
+		listener_space_cross_reflections__include_0__exclude_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // When the distance from the last reflection wall point to speaker\cf2 \
+		\cf5 // is greater than the distance from the same wall point to the \cf2 \
+		\cf5 // specified listener position, the reflection is called a \cf2 \
+		\cf5 // listener-space cross reflection; listener-space cross reflections\cf2 \
+		\cf5 // essentially cross implausibly through the listener space \cf2 \
+		\cf5 // (coming close to the listener) before reaching their respective speaker, \cf2 \
+		\cf5 // where they are translated from the virtual into the real space.\cf2 \
+		\cf5 // A simple example these reflections in stereo or in a front-spanning \cf2 \
+		\cf5 // wave-field array would be those reflections whose last point of \cf2 \
+		\cf5 // reflection is behind the listener, even though they are coming\cf2 \
+		\cf5 // from speakers placed in front of the listener--i.e. while originating\cf2 \
+		\cf5 // from behind, they are instead heard from in front. \cf2 \
+		\cf5 //  \cf2 \
+		\cf5 // The parameter above allows these less plausible speaker reflections \cf2 \
+		\cf5 // to be omitted, the choice of which reduces the field of reflections \cf2 \
+		\cf5 // to those that follow a more or less direct path from last reflection wall\cf2 \
+		\cf5 // to speaker to listener.\cf2 \
+\
+		polygon_reflections_plot_file = \cf4 "/tmp/plot"\cf2  ;\
+		\cf5 // Give a UNIX plot file name in which gnuplot room and sound path coordinates\cf2 \
+		\cf5 // will be written. Plot the file in gnuplot with the command:\cf2 \
+		\cf5 // \cf2 \
+		\cf5 // plot "your_plot_file_path" with lines\cf2 \
+\
+\
+		plot_mode__one_file_0__channel_files_1__channel_and_order_files_2 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // Selecting separate files causes a separate file to be written for \cf2 \
+		\cf5 // each channel, with each filename appended with a postfix channel number\cf2 \
+		\cf5 // beginning from channel 1, i.e. file.1 file.2 etc.   \cf2 \
+\
+\
+\
+		\cf5 // ***** Air Absorption Exponents ********\cf2 \
+		\cf5 // QW\cf2 \
+\
+		air_absorption_exponent_for_virtual_space_source = 1.5 ;\
+		\cf5 // (func)\cf2 \
+		air_absorption_exponent_for_real_space_source = 2 ;\
+		\cf5 // (func)\cf2 \
+		air_absorption_exponent_for_reflections = 1.5 ;\
+		\cf5 // (func)\cf2 \
+\
+\
+		use_collapsed_threshold_amplitudes__no_0__yes_1 = 0 ;\
+\
+		source_minimum_distance_from_listener = 6 ;\
+		\cf5 // (func)\cf2 \
+\
+		minimumreferencedistanceinfeet = 0.5 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // The amplitude of both the reflections and source sound\cf2 \
+		\cf5 // decay exponentially as a factor of distance, much as they do in \cf2 \
+		\cf5 // the acoustic world. The exponent for this decay can be set separately \cf2 \
+		\cf5 // for both the source and reflections, with separate virtual space \cf2 \
+		\cf5 // (i.e. behind speakers) and real space (i.e. in front of speakers) exponents\cf2 \
+		\cf5 // for the source position. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // A value of 2.0 produces the standard distance-squared law associated\cf2 \
+		\cf5 // with unobstructed, unenclosed sound waves. Higher values increase\cf2 \
+		\cf5 // the rate of decay, and lesser values reduce it. A value of 0\cf2 \
+		\cf5 // will result in no decay, causing all source and reflection distances\cf2 \
+		\cf5 // to be of equal amplitude. Negative values will produce the opposite\cf2 \
+		\cf5 // effect, with longer distances being amplified compared to shorter.\cf2 \
+		\cf5 // Values between 1.0 and 2.0 tend to work well, although no combination \cf2 \
+		\cf5 // of values is automatic, with experimentation being a must. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // A minimum reference distance, which is required to calculate the decay,\cf2 \
+		\cf5 // serves as the physical distance at which a maximum unity gain of 0 dB\cf2 \
+		\cf5 // is produced. For sound path distances shorter than the reference minimum, \cf2 \
+		\cf5 // such as with very close source to speaker paths, the amplitude is limited \cf2 \
+		\cf5 // to unity gain.  \cf2 \
+\
+		source_orientation_mode__to_room_0__to_listener_1 = 1 ;\
+		source_rotation_in_degrees = \cf4 "/tmp/angle"\cf2  ;\
+		\cf5 // (func)\cf2 \
+\
+		\cf5 //gen4 -L1000 0 180 0 1 360 0   2 180 0   3 360 0   4 180 0   5 360 0   6 180  > /tmp/angle\cf2 \
+\
+		addCommand.value(\
+			\cf4 "gen4 -L1000 0 0 0 1 360   > /tmp/angle"\cf2 \
+		) ;\
+\
+		source_dispersion_pattern_rolloff_in_decibels = -90.0 ;\
+		\cf5 // (func)\cf2 \
+\
+		\cf5 // The source sound is conceptualized to have a front, the directionality of which can \cf2 \
+		\cf5 // be revealed and accentuated by progressively rolling off its emitted amplitude toward its \cf2 \
+		\cf5 // rear using the rolloff parameter above; the rolloff changes the otherwise\cf2 \
+		\cf5 // omni-directional source to one with a varyingly directional orientation. \cf2 \
+		\cf5 // The directionality of the source effects the distribution of both \cf2 \
+		\cf5 // direct and reflected sound. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // The direction of the source is determined by the mode of orientation \cf2 \
+		\cf5 // and the amount of rotation. Treating the current source position as a polar-Cartesian \cf2 \
+		\cf5 // origin, orientation to the room aligns the zero degree angle with the\cf2 \
+		\cf5 // positive x-axis vector i.e. the direction of the non-rotated source is \cf2 \
+		\cf5 // always fixed along a vector running parallel to the room's pre-rotation \cf2 \
+		\cf5 // x-axis--it faces positive x:. When oriented to the listener--i.e. facing the listener, \cf2 \
+		\cf5 // the directionality of the non-rotated source rotates around the listener, \cf2 \
+		\cf5 // the effect of which changes the source's orientation to the room, while \cf2 \
+		\cf5 // fixing its rotation orientation to the listener.  \cf2 \
+		\cf5 // \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Non-zero source rotation values re-orient the directional source; positive values \cf2 \
+		\cf5 // rotate the source in a counter-clockwise direction, and negative \cf2 \
+		\cf5 // values rotate it to its right.\cf2 \
+		\cf5 //\cf2 \
+\
+		reflections_time_scaler = 1 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // \cf2 \
+		\cf5 // Time scaler is multiplied against the reflection delay time to increase or decrease \cf2 \
+		\cf5 // the distribution of reflection times; reflection impulse responses are not changed. \cf2 \
+\
+\
+\
+		impulse_inclusion_threshold_in_db = -600 ;\
+		\cf5 // (func)\cf2 \
+\
+		\cf5 // ------------------------------------------------------------------------\cf2 \
+		\cf5 // ************ REFLECTION ORDER (RO) IMPULSE RESPONSES *********************\cf2 \
+		\cf5 // ------------------------------------------------------------------------\cf2 \
+\
+		reflection_order_impulse_responses__off_0__on_1 = 0 ;\
+		\cf5 // Turns the reflection order impulse responses on or off. \cf2 \
+\
+		\cf5 // Roomresponsemaker's default mode is to place pulses at the reflection time\cf2 \
+		\cf5 // points, scaled in amplitude according to the absorption exponents, for later\cf2 \
+		\cf5 // use in convolution with a selected source sound. These raw pulses, which identify\cf2 \
+		\cf5 // the arrival of source and reflected sounds to the respective speaker, may be used\cf2 \
+		\cf5 // as-is or may be replaced or mixed with impulse responses or sounds read in from a \cf2 \
+		\cf5 // multi-channel sound file. Using the parameters and files below, the channels of \cf2 \
+		\cf5 // the sound file are assigned to the orders of reflection, then balanced against \cf2 \
+		\cf5 // the default pulse (so as to control its presence), convolved with adjacent orders, \cf2 \
+		\cf5 // filtered (either initially or successively) and then finally scaled in amplitude,\cf2 \
+		\cf5 // like the raw pulses, according to their specified air absorption exponents. \cf2 \
+\
+\
+\
+\
+		reflection_order_impulse_response_sound_file = \cf4 "/Users/koonce/WaveFieldSynthesis/SEAMUS2016.WFS.Presentation/Audio.Examples/Audio.Examples.Input.Sounds/impulse.responses/multi-channel/multi-channel.impulse.wood.recording.room.au"\cf2  ;\
+		\cf5 // The multi-channel sound file. \cf2 \
+\
+\
+		reflection_order_impulse_response_channel_assignments_file = \cf4 "/tmp/reflectionOrderChannelAssignments"\cf2  ;\
+		\cf5 // \cf2 \
+		\cf5 // The ascii file of space-separated integers specified above determines how the \cf2 \
+		\cf5 // channels of the reflection order impulse response sound file will be assigned\cf2 \
+		\cf5 // to the available reflection orders. Channels are numbered from 1. \cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo  1 2 3 4 5 6 7       > /tmp/reflectionOrderChannelAssignments"\cf2 \
+		) ;\
+\
+		reflection_order_impulse_response_decibels_presence_file = \cf4 "/tmp/ROimpulseResponsePresenceLevels"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // The space-separated decibel values, contained in the ascii file specified above, control the \cf2 \
+		\cf5 // amplitude balance between the pulse and the imported impulse response. The file values \cf2 \
+		\cf5 // represent the amplitudes of the imported impulse responses, with the pulses for each \cf2 \
+		\cf5 // receiving the cross-fade amplitude remainder. Thus, a value of 0 dB contributes all impulse \cf2 \
+		\cf5 // response and no pulse; -6 dB would assign half amplitude to each, -12 dB would assign \cf2 \
+		\cf5 // .25 to the response and .75 to the pulse, etc.   \cf2 \
+		\cf5 // The file's values are assigned to orders beginning with the first order and proceeding to the\cf2 \
+		\cf5 // highest; sequences falling short of the number of orders are loop-assigned to the \cf2 \
+		\cf5 // remaining orders. Decibel levels should not exceed 0dB. \cf2 \
+		\cf5 //\cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo   -0    > /tmp/ROimpulseResponsePresenceLevels"\cf2 \
+		) ;\
+\
+		addCommand.value(\
+			\cf4 " #echo    -90 -45 -20 -10 -5          > /tmp/ROimpulseResponsePresenceLevels"\cf2 \
+		) ;\
+		\cf5 //echo    -5 -10 -20 -45 -90 -60 -40 -20 -0          > /tmp/ROimpulseResponsePresenceLevels\cf2 \
+\
+		reflection_order_db_gainscale_factors_file = \cf4 "/tmp/reflectionOrderGainscaleLevels"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // The ascii file of space-separated decibel values, specified above, control the \cf2 \
+		\cf5 // overall amplitude of the different reflection orders. The gain-scale levels \cf2 \
+		\cf5 // are listed from low to high orders; sequences falling short of\cf2 \
+		\cf5 // the number of orders will be loop-assigned to the remaining orders. \cf2 \
+		\cf5 // Decibel levels may exceed 0dB. \cf2 \
+\
+\
+\
+		addCommand.value(\
+			\cf4 "echo 0 0 0 0 0 0 0 > /tmp/reflectionOrderGainscaleLevels"\cf2 \
+		) ;\
+\
+\
+		\cf5 // *********** REFLECTION ORDER CONVOLUTION MODES ****************\cf2 \
+\
+		reflection_order_ir_convolution_mode = 0 ;\
+\
+		\cf5 //\cf2 \
+		\cf5 // The impulse response assigned to each reflection order can be used as-is, \cf2 \
+		\cf5 // i.e. unmodified, or can be convolved with other responses adjacent to it\cf2 \
+		\cf5 // in the sequence of order-organized responses. A value of 0 for the parameter\cf2 \
+		\cf5 // above outputs the original response. A value of -1, however causes the response\cf2 \
+		\cf5 // to be convolved with the response of its immediately lesser order. Hence, \cf2 \
+		\cf5 // with reflections limited to the 5 reflections (order 5), a mode setting of -1 would\cf2 \
+		\cf5 // convolve order 5 with 4, 4 with 3, 3 with 2, and 2 with 1, with 1 output as-is. \cf2 \
+		\cf5 // A setting of -2 would expand the convolution sequences, adding another lesser order,\cf2 \
+		\cf5 // where available. (5 with 4 and 3, 4 with 3 and 2, etc.) Positive modes function \cf2 \
+		\cf5 // similarly with the sequence of convolved responses progressing not to the lesser, \cf2 \
+		\cf5 // but to the greater orders, when available. Hence, for a mode of 1, \cf2 \
+		\cf5 // first-order reflections would be convolved with the second order response, i.e. \cf2 \
+		\cf5 // 1 with 2, and 2 with 3. A mode of 2 would add greater orders to the sequence--1 with\cf2 \
+		\cf5 // 2 and 3, etc. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Convolution of an increasing number of adjacent orders will generally rarify the\cf2 \
+		\cf5 // spectral characteristics of the reflection while lengthening its response and \cf2 \
+		\cf5 // increasing the homogeneity of the resulting reflection order responses and \cf2 \
+		\cf5 // subsequent reverberation. Convolution of classic room impulse responses, especially\cf2 \
+		\cf5 // the same response applied to all orders, will produce a kind of increasingly \cf2 \
+		\cf5 // metallic sound, which some may find interesting. \cf2 \
+\
+		\cf5 // ***** REFLECTION ORDER IMPULSE RESPONSE (RO_IR_BPF) BAND PASS FILTERING ****** \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Reflection order impulse responses may be filtered using the following \cf2 \
+		\cf5 // parameters, which allow a single pre-filtering of the input responses or\cf2 \
+		\cf5 // a compounded poselet-filtering of the successive convolution outputs (see above). \cf2 \
+\
+		ro_ir_bpf_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3 = 0 ;\
+\
+\
+		ro_ir_bpf_low_rolloff_frequency = 500 ;\
+		ro_ir_bpf_high_rolloff_frequency = 4000 ;\
+		\cf5 // High boundary of 0 or less defaults to Nyquist. \cf2 \
+\
+		ro_ir_bpf_low_edge_amplitude_rolloff_in_decibels_per_octave = -10 ;\
+		ro_ir_bpf_high_edge_amplitude_rolloff_in_decibels_per_octave = -10 ;\
+\
+		\cf5 // *** REFLECTION ORDER IMPULSE RESPONSE TRUNCATION AND AMPLITUDE SHAPING *****\cf2 \
+\
+		\cf5 // Reflection order impulse responses may be truncated in duration \cf2 \
+		\cf5 // and shaped by the duration and amplitude envelope specified below. \cf2 \
+\
+		reflection_order_ir_truncate_duration = 0 ;\
+		\cf5 // 0 = bypass\cf2 \
+\
+		reflection_order_ir_envelope_file = \cf4 "/tmp/reflectionOrderAmpEnv"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // The envelope file should be in function file form, using either\cf2 \
+		\cf5 // ascii or binary values.  \cf2 \
+		\cf5 //\cf2 \
+		\cf5 ///tmp/ampEnv\cf2 \
+		\cf5 // 0 = No envelope.\cf2 \
+		\cf5 //gen4 -L1024 0  1 -2        1 0 > /tmp/reflectionOrderAmpEnv\cf2 \
+\
+		addCommand.value(\
+			\cf4 "gen4 -L1024 0  0   -2       0.33 1  2        1 0 > /tmp/reflectionOrderAmpEnv"\cf2 \
+		) ;\
+\
+\
+\
+		\cf5 // ********** SAMPLED REFLECTION ORDER (RO) IMPULSE RESPONSE MODE *******************\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // The reflection order impulse response may be used in a special sampled mode\cf2 \
+		\cf5 // in which windowed samples of the response are taken from points in the response's time\cf2 \
+		\cf5 // corresponding to the reflection delay times. Used without sync, samples are taken\cf2 \
+		\cf5 // from an impulse response point computed as the average delay time for that order;\cf2 \
+		\cf5 // adding synchronization (i.e. with sync) causes windowed samples to be sampled at \cf2 \
+		\cf5 // the reflection's exact delay time, which causes a synchronization of all reflection \cf2 \
+		\cf5 // sample points that effectively replicates the original impulse response through its \cf2 \
+		\cf5 // synchronized summed reconstruction. Without sync, each reflection order's \cf2 \
+		\cf5 // sampled response window is shifted in time by according to its respective reflection time, \cf2 \
+		\cf5 // which has the net effect of preserving each reflection's unique presence in time while\cf2 \
+		\cf5 // imparting the general characteristic of the original impulse response associated with\cf2 \
+		\cf5 // that delay point.  \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Scaling the convolved windowed samples further preserves the original\cf2 \
+		\cf5 // impulse response identity by conforming to the response's original amplitude levels. \cf2 \
+\
+		\cf5 // QW\cf2 \
+		reflection_order_ir_window_sample_mode__off_0__on_1__on_with_sync_2 = 0 ;\
+\
+		scale_to_pre_envelope_window_sample_peak_amps__off_0__on_1 = 0 ;\
+\
+		\cf5 //\cf2 \
+		\cf5 // The duration of the sampled response windows are equal to the sum of their\cf2 \
+		\cf5 // attack and release times, which are the only envelope stages used. The\cf2 \
+		\cf5 // parameters below determine the duration of those stages, specifying them\cf2 \
+		\cf5 // as a function of low to high reflection order. In addition, the shape of the\cf2 \
+		\cf5 // window's envelope may be warped using the envelope shape index; as with other \cf2 \
+		\cf5 // applications of this index, positive values sharpen the window's peak and decrease\cf2 \
+		\cf5 // its underlying area, negative values do the opposite.  \cf2 \
+		\cf5 //\cf2 \
+		low_order_attack_duration = 0.001 ;\
+		\cf5 // (func)\cf2 \
+		low_order_release_duration = 0.3 ;\
+		\cf5 // (func)\cf2 \
+		high_order_attack_duration = 0.001 ;\
+		\cf5 // (func)\cf2 \
+		high_order_release_duration = 0.001 ;\
+		\cf5 // (func)\cf2 \
+		envelope_shape_index = 7 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // 0 equals linear gradients, increasing, positive values produce an \cf2 \
+		\cf5 // increasingly pointed envelope and decreasing, negative values an\cf2 \
+		\cf5 // increasingly rounded or flat-topped envelope.\cf2 \
+\
+		\cf5 // ------------------------------------------------------------------------\cf2 \
+		\cf5 // ******************* WALL IMPULSE RESPONSES *****************************\cf2 \
+		\cf5 // ------------------------------------------------------------------------\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Impulse responses may be used not only in conjunction with reflection orders, but \cf2 \
+		\cf5 // with the walls of the space and the wall sequences that reflections produce.\cf2 \
+		\cf5 // Wall characteristics are convolved with reflection order impulse responses to make a \cf2 \
+		\cf5 // rich array of options in which the range of reflection orders and array of wall \cf2 \
+		\cf5 // sequence patterns become distinguished by differences of color and sound shape. \cf2 \
+		\cf5 // The following parameters for specifying and controlling wall impulse responses, \cf2 \
+		\cf5 // save some adjustments, function similarly to reflection order impulse response\cf2 \
+		\cf5 // parameters. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Walls, by default, are given a single pulse impulse response. The default pulse may be \cf2 \
+		\cf5 // used as-is or be replaced by impulse responses read in from selected channels of a sound\cf2 \
+		\cf5 //  file, according to the parameters and file specifications supplied through the parameters below. \cf2 \
+		\cf5 // Using the code specified in the wall convolution mode and the wall sequences it \cf2 \
+		\cf5 // identifies, impulse response sequences may be convolved together to add distinguishing\cf2 \
+		\cf5 // colors to the reflection. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Band pass filtering may be applied to the wall impulse responses, be they file-determined \cf2 \
+		\cf5 // or default pulses. Filtering may be applied either once, as an input pre-processing of the \cf2 \
+		\cf5 // pulse or file-determined responses, or multiple times, following the successive convolutions,  \cf2 \
+		\cf5 // which in default pulse mode take the place of the wall impulse response convolution. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Sound file wall impulse responses may be balanced against the default pulse, which takes \cf2 \
+		\cf5 // place in a pre-processing stage, the same as with reflection order impulse responses. \cf2 \
+\
+\
+		wall_ir_from_sound_file__off_0__on_1 = 1 ;\
+		\cf5 //\cf2 \
+		\cf5 // Switch to turn off any reading of wall impulses from a sound file. \cf2 \
+\
+		wall_ir_sound_file = \cf4 "/Users/koonce/WaveFieldSynthesis/SEAMUS2016.WFS.Presentation/Audio.Examples/Audio.Examples.Input.Sounds/impulse.responses/multi-channel/multi-channel.impulse.02.au"\cf2  ;\
+\
+\
+		\cf5 // Wall impulse response multi-channel sound file from which wall impulse response\cf2 \
+		\cf5 // assignments will be made. \cf2 \
+\
+		wall_ir_channel_assignments_file = \cf4 "/tmp/wallChannelAssignments"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // As with reflection order impulse responses, the channel assignments in the file above\cf2 \
+		\cf5 // are used to connect walls with sound file channels. The walls of user supplied room \cf2 \
+		\cf5 // coordinates are numbered in the order in which they are listed and read. \cf2 \
+		\cf5 // Synthesized walls are numbered relative to a counter-clockwise \cf2 \
+		\cf5 // sequencing that begins at the zero degree point, which is positioned to the \cf2 \
+		\cf5 // listener's right side. \cf2 \
+\
+		\cf5 ///tmp/wallChannelAssignments\cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo  1 2 3 4 5 6 7       > /tmp/wallChannelAssignments"\cf2 \
+		) ;\
+		\cf5 //reshape -T0 -A1 /tmp/wallChannelAssignments > /tmp/newWallChannelAssignments\cf2 \
+		\cf5 //mv /tmp/newWallChannelAssignments /tmp/wallChannelAssignments\cf2 \
+\
+		wall_db_gainscale_factors_file = \cf4 "/tmp/wallGainscaleLevels"\cf2  ;\
+		\cf5 // \cf2 \
+		\cf5 // The code specified in the convolution mode (see below) determines the subset of reflection\cf2 \
+		\cf5 // walls that will be convolved together (if more than one) to create the reflection's \cf2 \
+		\cf5 // impulse response; the final convolved response, once normalized, is scaled by the \cf2 \
+		\cf5 // appropriate delay time absorption and by the sum of decibel gain-scale levels \cf2 \
+		\cf5 // assigned to the subset of walls. \cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo  -0  -0  -0  -0  -0  -0  -0 -0 -0     > /tmp/wallGainscaleLevels"\cf2 \
+		) ;\
+		\cf5 // \cf2 \
+		\cf5 // Same as reflection orders except applied to numbered walls. \cf2 \
+\
+		wall_impulse_response_decibels_presence_file = \cf4 "/tmp/wallimpulseResponsePresenceLevels"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // These wall-assigned decibel levels are used, as they are with reflection orders, \cf2 \
+		\cf5 // to balance (in a pre-processing stage) the wall impulse response against the unmodified pulse.\cf2 \
+\
+		\cf5 //echo   -50 -40 -30 -70 -60 -20 -30 -10        > /tmp/wallimpulseResponsePresenceLevels\cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo   -0 0 0 0 0 0 0 0 0          > /tmp/wallimpulseResponsePresenceLevels"\cf2 \
+		) ;\
+\
+		wall_ir_convolution_mode = -1 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // The convolution of wall impulse responses functions in a way similar to reflection \cf2 \
+		\cf5 // order responses, with significant changes. Wall reflection patterns are \cf2 \
+		\cf5 // distinguished not only by their reflection order, but by the sequence of walls \cf2 \
+		\cf5 // off of which the source sound is reflected on its way to the speaker. This sequence of \cf2 \
+		\cf5 // wall impulse responses determines how particular reflections will be represented,\cf2 \
+		\cf5 // either through individual wall-identifying impulse responses or their reflection \cf2 \
+		\cf5 // wall segment convolutions. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Unlike reflection orders, use of a single wall impulse response is designated by a\cf2 \
+		\cf5 // convolution mode number of either 1 or -1; for -1, the last wall of reflection \cf2 \
+		\cf5 // reached before arrival at the speaker determines the impulse response used, for 1,\cf2 \
+		\cf5 // the selection is reversed, with the first reflection wall being used. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Convolution modes of greater magnitude, be they + or -, cause the respective last(-)\cf2 \
+		\cf5 // or first(+) reflection wall to be convolved with its respective previous or following \cf2 \
+		\cf5 // wall sequence impulse responses. For example, a source-to-speaker reflection wall sequence \cf2 \
+		\cf5 // pattern of [2 3 1 7 5 2] and a convolution mode of -2 would result in the convolution\cf2 \
+		\cf5 // and use of the impulse responses from walls 5 and 2, which occur at the end of the pattern.\cf2 \
+		\cf5 // Conversely, a mode of 2 would use the convolution of 2 and 3, which are the first \cf2 \
+		\cf5 // two walls encountered. As many walls are convolved together for use by the reflection\cf2 \
+		\cf5 // as the mode and wall sequence pattern allow.  \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Convolution modes may exceed the reflection wall sequence length, which will not exceed\cf2 \
+		\cf5 // the high order limit; in such cases, every wall reflection sequence will convolve\cf2 \
+		\cf5 // all of its wall impulse responses together for use by the reflection in the output\cf2 \
+		\cf5 // impulse response. For simplicity, the convolution mode of 0 designates the same thing\cf2 \
+		\cf5 // for all high order limits. \cf2 \
+\
+		\cf5 // \cf2 \
+		\cf5 // 0 = all walls\cf2 \
+		\cf5 // -1 = last wall, 1 = first wall, \cf2 \
+		\cf5 // -2 = (up to) last 2, 2 = (up to) first 2. etc.\cf2 \
+		\cf5 // -n = (up to) last n, n = (up to) first n\cf2 \
+\
+		wall_ir_truncate_duration = 0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // 0 = bypass\cf2 \
+		\cf5 // Same as reflection orders except applied to wall impulse responses. \cf2 \
+\
+		wall_ir_envelope_file = \cf4 "/tmp/wallAmpEnv"\cf2  ;\
+		\cf5 // Same as reflection orders except applied to wall impulse responses. \cf2 \
+\
+		\cf5 ///tmp/ampEnv\cf2 \
+		\cf5 // 0 = No envelope.\cf2 \
+\
+		addCommand.value(\
+			\cf4 "gen4 -L1024 0 1  0        1 0 > /tmp/wallAmpEnv"\cf2 \
+		) ;\
+\
+\
+		\cf5 //..... WALL IMPULSE RESPONSES BAND PASS FILTER ........\cf2 \
+		wall_ir_bpf_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3 = 1 ;\
+		\cf5 //\cf2 \
+		\cf5 // Same as reflection orders except applied to wall impulse responses and their\cf2 \
+		\cf5 // convolution sequences. \cf2 \
+\
+\
+		wall_ir_bpf_low_rolloff_frequency = 500 ;\
+		\cf5 // (func)\cf2 \
+		wall_ir_bpf_high_rolloff_frequency = 2000 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // High boundary of 0 or less defaults to Nyquist. \cf2 \
+\
+		wall_ir_bpf_low_edge_amplitude_rolloff_in_decibels_per_octave = -10 ;\
+		\cf5 // (func)\cf2 \
+		wall_ir_bpf_high_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // .............\cf2 \
+\
+		\cf5 // THIS IS A PROBLEM!\cf2 \
+		\cf5 // LOOK AT THIS.\cf2 \
+		impulse_end_truncation_threshold_in_db = -60 ;\
+		impulse_end_truncation_release_time_in_seconds = 0.25 ;\
+		\cf5 //\cf2 \
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //............ NORMALIZATION .........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		normalization = 0 ;\
+		\cf5 // SET THIS TO 0.\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // 0: Do not normalize. \cf2 \
+		\cf5 // 1: Normalize channels independently.\cf2 \
+		\cf5 // 2: Normalize channels together against channel with greatest amplitude.\cf2 \
+		\cf5 // 3: Normalize channels together if any channel exceeds 0 decibels.\cf2 \
+\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //........... IR CONVOLUTION SEQUENCER\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		add_ring_time__off_0__on_1 = 1 ;\
+		\cf5 //\cf2 \
+		\cf5 // If sound end seems cutoff, then add this; in most situations, this should be on.\cf2 \
+\
+		output_file = \cf4 "/tmp/output.mix.au"\cf2  ;\
+\
+\
+\
+\
+\
+		addCommand.value(\
+			\cf4 "cp ~/32bit.BLANK.au $output_file"\cf2 \
+		) ;\
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		irconvolvesequencer_auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+\
+		\cf5 //input_file=~/DealWithIt.Mono.wav\cf2 \
+\
+		\cf5 //input_file=~/violin.A5.au\cf2 \
+		input_file = \cf4 "~/water10.Five.Seconds.au"\cf2  ;\
+\
+		\cf5 ///Users/koonce/WaveFieldSynthesis/SEAMUS2016.WFS.Presentation/Audio.Examples/Audio.Examples.Input.Sounds/footsteps.au\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+		irconvolvesequencer_output_channel = 1 ;\
+		\cf5 // (channels are numbered from 1 to the maximum.)\cf2 \
+		\cf5 // (To specify mono file for multi-channel convolution, should be 1 or greater.)\cf2 \
+\
+		convolution_multichannel_output_mode__standard_0__alternate_1 = 1 ;\
+		\cf5 // (Should be 1 for mono-to-multi-channel convolution.)\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // *Standard-output-mode* matches the input audio file channels \cf2 \
+		\cf5 // specified above (either one or all) with the channels of the \cf2 \
+		\cf5 // impulse analysis file, loop assigning the (one or more) \cf2 \
+		\cf5 // impulse channels to the input audio channels, as needed. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // *Alternate-output-mode* offers the step-saving option of\cf2 \
+		\cf5 // convolving a single specified input channel or monophonic \cf2 \
+		\cf5 // audio file with all the channels of the impulse analysis file \cf2 \
+		\cf5 // in a multi-channel output file of the same number of channels.\cf2 \
+		\cf5 // The selected channel is through the output channel parameter \cf2 \
+		\cf5 // (see above), which *must* be selected (i.e. cannot be 0). \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Impulse analysis channels may be initially limited/selected by  \cf2 \
+		\cf5 // specifying one or more channels in the impulse response \cf2 \
+		\cf5 // analysis stage (see beginning of script) or by selecting one \cf2 \
+		\cf5 // channel from the resulting impulse analysis file (see below), \cf2 \
+		\cf5 // for subsequent use in irconvolver.\cf2 \
+		\cf5 //\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		\cf5 // IMPULSE FREQ RESPONSE FILE\cf2 \
+		\cf5 //impulse_frequency_response_file=~/Impulse_Response_Data_File\cf2 \
+\
+		impulse_channel = 0 ;\
+		\cf5 // (Should be 0 for mono-to-multi-channel convolution.)\cf2 \
+		\cf5 // Channels are numbered from 1 to the maximum.\cf2 \
+		\cf5 // 0 = all channels\cf2 \
+		\cf5 // Impulse channels will be loop-assigned when input\cf2 \
+		\cf5 // channels exceed impulse channels.\cf2 \
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		begintime = 0 ;\
+		endtime = 0 ;\
+\
+		\cf5 // (End time of 0 or less defaults to end of file.)\cf2 \
+		\cf5 // \cf2 \
+\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+\
+\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		source_gain_in_decibels = -200 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Source input added to convolution output. \cf2 \
+\
+\
+		convolution_output_gain_in_decibels = 15 ;\
+		\cf5 // (func)\cf2 \
+\
+\
+\
+\
+		\cf5 //******** IMPULSE RESPONSE: BAND PASS FILTER **************\cf2 \
+		\cf5 // \cf2 \
+\
+		impulse_response_filter_band_low_rolloff_frequency = 200 ;\
+		\cf5 // (func)\cf2 \
+		impulse_response_filter_band_high_rolloff_frequency = 500 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // High boundary of 0 or less defaults to Nyquist. \cf2 \
+\
+		impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+		\cf5 // (func)\cf2 \
+		impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+		\cf5 // (func)\cf2 \
+\
+\
+		\cf5 //******** INPUT SOUND: BAND PASS FILTER **************\cf2 \
+		\cf5 // \cf2 \
+\
+		input_sound_filter_band_low_rolloff_frequency = 500 ;\
+		\cf5 // (func)\cf2 \
+		input_sound_filter_band_high_rolloff_frequency = 1000 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // High boundary of 0 or less defaults to Nyquist. \cf2 \
+\
+		input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+		input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+\
+\
+\
+		\cf5 //******** IMPULSE RESPONSE TEMPORAL SIGNAL SHAPING ***************\cf2 \
+\
+		\cf5 // \cf2 \
+		\cf5 // For shaping, impulse response input signal amplitudes (i.e. time domain),\cf2 \
+		\cf5 // spanning the 0 to -96 dB range, are divided by the dB breakpoint.\cf2 \
+		\cf5 // Amplitudes above the breakpoint are shaped by the upper curve index and\cf2 \
+		\cf5 // amplitudes below are shaped by the lower. \cf2 \
+		\cf5 // The upper amplitudes are mapped into a new range extending from the breakpoint\cf2 \
+		\cf5 // amplitude to the peak shaping amplitude.\cf2 \
+		\cf5 // With the peak amplitude at 0 (default) and an appropriate breakpoint setting, \cf2 \
+		\cf5 // positive upper curve indices can be used to warp the upper values toward the \cf2 \
+		\cf5 // breakpoint amplitude, which should suppress early reflections; conversely, \cf2 \
+		\cf5 // negative indices will warp values toward the peak shaping amplitude, which \cf2 \
+		\cf5 // will accentuate early reflections. \cf2 \
+		\cf5 // Additionally, the peak shaping amplitude may be set to any level. When set below\cf2 \
+		\cf5 // 0dB and above the breakpoint level, upper values will be compressed. \cf2 \
+		\cf5 // Set to levels below the breakpoint amplitude will invert the upper amplitude range\cf2 \
+		\cf5 // to span the range from the breakpoint to the lower peak setting, which will \cf2 \
+		\cf5 // reduce direct and early reflections as it draws out the reverb tail. \cf2 \
+		\cf5 // The lower region functions similarly between base and breakpoint levels, with\cf2 \
+		\cf5 // the sign of indices inverted; that is, negative indices for this region will \cf2 \
+		\cf5 // warp values toward the break point and, thus, amplify the reverberation, and\cf2 \
+		\cf5 // positive indices will warp them toward the base, which will suppress the reverberation\cf2 \
+		\cf5 // tail, depending, of course, on where the base level is set.    \cf2 \
+\
+		impulse_response_shaping_switch__off_0__on_1 = 0 ;\
+		peak_shaping_amplitude_in_db = -0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Set to 0 for off.  \cf2 \
+		upper_shaping_curve_index = -3 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Set to 0 for off.\cf2 \
+		shaping_breakpoint_in_db = -10 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Any value in -96 to 0 range for off.\cf2 \
+		base_shaping_amplitude_in_db = -96 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Any value below breakpoint value for off.\cf2 \
+		lower_shaping_curve_index = -2 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Set to 0 for off.\cf2 \
+\
+\
+\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ********************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1 ;\
+\
+		\cf5 //********** MIXFILES *************************************** \cf2 \
+		\cf5 //  \cf2 \
+		normalization__0__1__2__3 = 2 ;\
+		\cf5 // Use 2, which normalizes relative to the peak channel for multi-channel \cf2 \
+		\cf5 // input files, for most applications. \cf2 \
+\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "roomresponsesequencer"\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -2"\cf2  ++ wall_db_gainscale_factors_file ++  \cf4 " -d"\cf2  ++ minimum_distance_from_origin_to_corners ++ \
+			 \cf4 " -z"\cf2  ++ wall_ir_bpf_low_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -/u"\cf2  ++ use_collapsed_threshold_amplitudes__no_0__yes_1 ++  \cf4 " -Z"\cf2  ++ wall_ir_bpf_high_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -6"\cf2  ++ wall_ir_truncate_duration ++  \cf4 " -/d"\cf2  ++ ro_ir_bpf_low_rolloff_frequency ++ \
+			 \cf4 " -/l"\cf2  ++ direct_sound_gain_in_decibels ++  \cf4 " -P"\cf2  ++ source_dispersion_pattern_rolloff_in_decibels ++ \
+			 \cf4 " -/t"\cf2  ++ source_minimum_distance_from_listener ++  \cf4 " -/p"\cf2  ++ air_absorption_exponent_for_real_space_source ++ \
+			 \cf4 " -/m"\cf2  ++ air_absorption_exponent_for_virtual_space_source ++  \cf4 " -/i"\cf2  ++ reflection_order_ir_envelope_file ++ \
+			 \cf4 " -o"\cf2  ++ speaker_x_y_coordinate_positions_file ++  \cf4 " -/c"\cf2  ++ ro_ir_bpf_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3 ++ \
+			 \cf4 " -/D"\cf2  ++ source_position_radius ++  \cf4 " -C"\cf2  ++ roomresponsesequencer_output_channel ++ \
+			 \cf4 " -/x"\cf2  ++ normalized_sound_path_movement_function__0_to_1 ++  \cf4 " -f"\cf2  ++ polygon_coordinates__synthesized_0__cartesian_file_1__polar_file_2 ++ \
+			 \cf4 " -B"\cf2  ++ room__pre_rotation_positive_x_scale_factor ++  \cf4 " -u"\cf2  ++ lowest_order_reflection ++ \
+			 \cf4 " -N"\cf2  ++ normalization ++  \cf4 " -/g"\cf2  ++ ro_ir_bpf_high_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -a"\cf2  ++ air_absorption_exponent_for_reflections ++  \cf4 " -_"\cf2  ++ roomresponsesequencer_auto_output_sound_file_play__repetitions ++ \
+			 \cf4 " -O"\cf2  ++ source_rotation_in_degrees ++  \cf4 " -/h"\cf2  ++ reflection_order_ir_truncate_duration ++ \
+			 \cf4 " -/k"\cf2  ++ reflected_sound_gain_in_decibels ++  \cf4 " -9"\cf2  ++ reflection_order_impulse_response_sound_file ++ \
+			 \cf4 " -Y"\cf2  ++ room__y_translation_factor ++  \cf4 " -t"\cf2  ++ wall_ir_convolution_mode ++ \
+			 \cf4 " -8"\cf2  ++ reflection_order_impulse_responses__off_0__on_1 ++  \cf4 " -V"\cf2  ++ reflection_order_impulse_response_channel_assignments_file ++ \
+			 \cf4 " -/A"\cf2  ++ output_directory ++  \cf4 " -M"\cf2  ++ room_scale_factor ++  \cf4 " -K"\cf2  ++ wall_ir_sound_file ++ \
+			 \cf4 " -l"\cf2  ++ highest_order_reflection ++  \cf4 " -/y"\cf2  ++ number_of_movement_function_points ++ \
+			 \cf4 " -k"\cf2  ++ speaker_scale_factor ++  \cf4 " -S"\cf2  ++ speaker_configuration__sequence_0__polygon_1 ++ \
+			 \cf4 " -/q"\cf2  ++ source_orientation_mode__to_room_0__to_listener_1 ++  \cf4 " -L"\cf2  ++ listener_x_y_coordinate_positions_file ++ \
+			 \cf4 " -T"\cf2  ++ wall_ir_bpf_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3 ++ \
+			 \cf4 " -y"\cf2  ++ wall_ir_bpf_high_rolloff_frequency ++  \cf4 " -/n"\cf2  ++ reflection_order_impulse_response_decibels_presence_file ++ \
+			 \cf4 " -s"\cf2  ++ output_sound__all_0__direct_1__reflections_2 ++  \cf4 " -j"\cf2  ++ speaker__pre_rotation_positive_y_scale_factor ++ \
+			 \cf4 " -/E"\cf2  ++ source_coordinates_plot_file ++  \cf4 " -/f"\cf2  ++ ro_ir_bpf_low_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -q"\cf2  ++ reflections_time_scaler ++  \cf4 " -/w"\cf2  ++ source_origin_y_coordinate ++ \
+			 \cf4 " -4"\cf2  ++ plot_mode__one_file_0__channel_files_1__channel_and_order_files_2 ++ \
+			 \cf4 " -/j"\cf2  ++ wall_impulse_response_decibels_presence_file ++  \cf4 " -D"\cf2  ++ maximum_distance_from_origin_to_corners ++ \
+			 \cf4 " -U"\cf2  ++ impulse_end_truncation_threshold_in_db ++  \cf4 " -b"\cf2  ++ room__pre_rotation_negative_x_scale_factor ++ \
+			 \cf4 " -x"\cf2  ++ wall_ir_bpf_low_rolloff_frequency ++  \cf4 " -g"\cf2  ++ speaker__y_translation_factor ++ \
+			 \cf4 " -@"\cf2  ++ high_order_attack_duration ++  \cf4 " -/C"\cf2  ++ source_position_angle ++ \
+			 \cf4 " -1"\cf2  ++ wall_ir_channel_assignments_file ++  \cf4 " -I"\cf2  ++ speaker__pre_rotation_negative_y_scale_factor ++ \
+			 \cf4 " -E"\cf2  ++ room__pre_rotation_positive_y_scale_factor ++  \cf4 " -J"\cf2  ++ speaker_rotation_in_degrees ++ \
+			 \cf4 " -/a"\cf2  ++ reflection_order_db_gainscale_factors_file ++  \cf4 " -="\cf2  ++ low_order_release_duration ++ \
+			 \cf4 " -X"\cf2  ++ room__x_translation_factor ++  \cf4 " -7"\cf2  ++ wall_ir_envelope_file ++ \
+			 \cf4 " -R"\cf2  ++ origin_to_corners_angle_uniformity_0_to_1_proportion ++  \cf4 " -F"\cf2  ++ speaker__x_translation_factor ++ \
+			 \cf4 " -/b"\cf2  ++ reflection_order_ir_convolution_mode ++  \cf4 " -/o"\cf2  ++ listener_space_cross_reflections__include_0__exclude_1 ++ \
+			 \cf4 " -m"\cf2  ++ minimumreferencedistanceinfeet ++  \cf4 " -H"\cf2  ++ speaker__pre_rotation_positive_x_scale_factor ++ \
+			 \cf4 " -~"\cf2  ++ low_order_attack_duration ++  \cf4 " -e"\cf2  ++ room__pre_rotation_negative_y_scale_factor ++ \
+			 \cf4 " -0"\cf2  ++ scale_to_pre_envelope_window_sample_peak_amps__off_0__on_1 ++  \cf4 " -A"\cf2  ++ room_rotation_in_degrees ++ \
+			 \cf4 " -:"\cf2  ++ envelope_shape_index ++  \cf4 " -G"\cf2  ++ master_gain_in_decibels ++  \cf4 " -5"\cf2  ++ wall_ir_from_sound_file__off_0__on_1 ++ \
+			 \cf4 " -!"\cf2  ++ high_order_release_duration ++  \cf4 " -/e"\cf2  ++ ro_ir_bpf_high_rolloff_frequency ++ \
+			 \cf4 " -p"\cf2  ++ polygon_reflections_plot_file ++  \cf4 " -3"\cf2  ++ impulse_inclusion_threshold_in_db ++ \
+			 \cf4 " -h"\cf2  ++ speaker__pre_rotation_negative_x_scale_factor ++  \cf4 " -c"\cf2  ++ polygonal_room_coordinates_file ++ \
+			 \cf4 " -Q"\cf2  ++ reflection_order_ir_window_sample_mode__off_0__on_1__on_with_sync_2 ++ \
+			 \cf4 " -r"\cf2  ++ room_synthesis_rotation_in_degrees ++  \cf4 " -/B"\cf2  ++ output_impulse_response_sound_format_template_file ++ \
+			 \cf4 " -/v"\cf2  ++ source_origin_x_coordinate ++  \cf4 " -w"\cf2  ++ number_of_walls ++  \cf4 " -v"\cf2  ++ impulse_end_truncation_release_time_in_seconds\
+			\
+\
+		) ;\
+ \
+\
+\
+		\cf5 // ******** UNIX COMMAND LINE 1 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "irconvolvesequencer "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -P"\cf2  ++ peak_shaping_amplitude_in_db ++  \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -f"\cf2  ++ input_sound_filter_band_high_rolloff_frequency ++ \
+			 \cf4 " -D"\cf2  ++ input_sound_filter_band_low_rolloff_frequency ++  \cf4 " -C"\cf2  ++ irconvolvesequencer_output_channel ++ \
+			 \cf4 " -d"\cf2  ++ add_ring_time__off_0__on_1 ++  \cf4 " -x"\cf2  ++ impulse_response_shaping_switch__off_0__on_1 ++ \
+			 \cf4 " -M"\cf2  ++ convolution_multichannel_output_mode__standard_0__alternate_1 ++ \
+			 \cf4 " -=2"\cf2  ++  \cf4 " -F"\cf2  ++ base_shaping_amplitude_in_db ++  \cf4 " -t"\cf2  ++ impulse_response_filter_band_high_rolloff_frequency ++ \
+			 \cf4 " -G"\cf2  ++ impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -J"\cf2  ++ impulse_channel ++  \cf4 " -Z"\cf2  ++ upper_shaping_curve_index ++  \cf4 " -A"\cf2  ++ source_gain_in_decibels ++ \
+			 \cf4 " -h"\cf2  ++ input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -_"\cf2  ++ irconvolvesequencer_auto_output_sound_file_play__repetitions ++  \cf4 " -H"\cf2  ++ input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -I"\cf2  ++ output_directory ++  \cf4 " -B"\cf2  ++ shaping_breakpoint_in_db ++  \cf4 " -s"\cf2  ++ impulse_response_filter_band_low_rolloff_frequency ++ \
+			 \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++  \cf4 " -r"\cf2  ++ convolution_output_gain_in_decibels ++ \
+			 \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++  \cf4 " -v"\cf2  ++ normalization__0__1__2__3 ++ \
+			 \cf4 " -b"\cf2  ++ begintime ++  \cf4 " -z"\cf2  ++ lower_shaping_curve_index ++  \cf4 " -g"\cf2  ++ impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+irconvolvesequencer_with_roomresponsesequencer.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

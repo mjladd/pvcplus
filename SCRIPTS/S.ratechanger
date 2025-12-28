@@ -1,0 +1,185 @@
+#!/bin/sh
+#******************************************************
+#................ RATECHANGER .........................
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=-0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+
+
+#******************** INPUT ***************************
+
+
+input_file=~/mySound.wav
+
+#........ BEGIN/END TIMES .............................
+
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=1
+# (channels are numbered from 1 to the maximum.)
+# (0 = all channels)
+
+#............ OUTPUT DURATION .........................
+
+output_duration=0
+#
+# Duration of 0. or less triggers synthesis of duration.
+# (See below.)
+
+synthesize_duration__off_0__on_1=0
+#
+# Synthesize an output duration that is synchronous with the 
+# crossing of a boundary and the completion of control 
+# functions. Unset low and high boundaries default to the
+# input sounds begin and end times.
+
+#............ DATA TIME CONTROL .........................
+
+data_time_point_origin=0.
+
+# ** Dynamic Control Via Input and Output Time **
+
+# The following parameters allow for the dynamic control of rate and amplitude
+# as a function of either the current input or output sound time. The respective
+# controls may be used simultaneously, such as in a case in which a pitch
+# correction function is driven according to the input sound (correction needing
+# to be synchronized with the input sound) while a second function is used to apply
+# pitch changes as a function of the output time and a synthesized output duration.
+
+# ** Rate Change Control **
+
+rate_multiplier_as_a_function_of_output_sound_time=1
+rate_multiplier_as_a_function_of_input_sound_time=1
+# Set to 1 for no change. 
+
+pitch_shift_in_semitones_as_a_function_of_output_sound_time=0
+pitch_shift_in_semitones_as_a_function_of_input_sound_time=0
+# Set to 0 for no change. 
+
+#............ GAIN CONTROL .........................
+
+amplitude_envelope_in_dB_as_a_function_of_input_sound_time=0
+amplitude_envelope_in_dB_as_a_function_of_output_sound_time=0
+#
+
+ #
+#............ SINC FUNCTION .........................
+
+sinc_function_truncation_decibel_level=-60
+#
+# The specified level determines the sinc window truncation point
+# using the amount of dB rolloff; lower levels increase fidelity
+# while increasing computation, since they increase the sinc function
+# width, which increases the number of overlapping sinc functions
+# to be scaled and summed. 
+# Range: -10 to -96
+
+sinc_function__use_math_functions_0__lookup_table_1=1
+#
+# Sinc function may be computed using math functions or
+# a pre-determined lookup table and linear interpolation.
+# Table mode is effectively equivalent to math functions, 
+# while offering faster computation.
+
+number_of_lookup_table_values_per_Pi_sine_period=100
+#
+# For setting of the lookup table size according to the
+# number of values per Pi radian.
+# 
+
+#............ DATA BOUNDARIES .........................
+
+low_time_point_boundary=0
+high_time_point_boundary=0
+#
+# Low boundary of 0 or less defaults to 0.
+# High boundary of 0 or less defaults to input file end.
+
+#............ NORMALIZATION .........................
+
+normalization=1
+#
+# 0: Do not normalize. 
+# 1: Normalize channels to input levels.
+# 2: Normalize channels independently.
+# 3: Normalize channels together against channel with peak amplitude.
+# 4: Normalize channels together if any channel exceeds 0 decibels.
+
+#............ RE-SYNTHESIS METHOD .........................
+
+resynthesis_method__sinc_summation_0__rectangular_1__linear_interpolation_2=0
+#
+# Mode 0 is the default standard, being the sole purpose of the routine. 
+# Modes 1 and 2, which produce digital artifacts--aliasing, etc., are provided
+# for demonstration and educational purposes ONLY.
+#
+
+#............ IMPOSED SAMPLE RATE .........................
+
+new_imposed_sample_rate=44100
+
+# New sample rate imposed onto the output sound. 
+# Values of zero or less default to the old sample rate. 
+# To convert the sound file sample rate without changing its sound, 
+# (i.e. to resample the input signal according to a new sample rate),
+# specify, along with a new sample rate (-m), a rate change multiplier that resamples
+# the signal in accord with the new and old sample rates (i.e. for either -r or -R, 
+# specify a value equal to the [old-sample-rate / new-sample-rate] ).
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=ratechanger
+
+PVFLAGS="\
+\
+-C$output_channel \
+-d$output_duration \
+-D$synthesize_duration__off_0__on_1 \
+-O$data_time_point_origin \
+-r$rate_multiplier_as_a_function_of_input_sound_time \
+-R$rate_multiplier_as_a_function_of_output_sound_time \
+-s$pitch_shift_in_semitones_as_a_function_of_input_sound_time \
+-S$pitch_shift_in_semitones_as_a_function_of_output_sound_time \
+\
+-a$amplitude_envelope_in_dB_as_a_function_of_input_sound_time \
+-A$amplitude_envelope_in_dB_as_a_function_of_output_sound_time \
+\
+-B$sinc_function_truncation_decibel_level \
+-t$sinc_function__use_math_functions_0__lookup_table_1 \
+-L$number_of_lookup_table_values_per_Pi_sine_period \
+\
+-b$low_time_point_boundary \
+-e$high_time_point_boundary \
+-n$normalization \
+-m$new_imposed_sample_rate \
+-X$resynthesis_method__sinc_summation_0__rectangular_1__linear_interpolation_2 \
+-_$auto_output_sound_file_play__repetitions \
+"
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+$pvroutine  $PVFLAGS $input_file $output_file
+

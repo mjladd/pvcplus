@@ -1,0 +1,383 @@
+#!/bin/sh
+#******************************************************
+#................... RINGTVFILTER .....................
+#******************************************************
+
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+
+#******************** INPUT ***************************
+
+#............. REVERB FILTER FILE .....................
+# A pvanalysis file. 
+
+REVERB_filter_file=~/pvanalysis
+
+#............. SOUND FILE .............................
+
+#input_file=~/cymbal.crash.au
+#input_file=~/voice.NF.aiff
+#input_file=~/cymbal.crash.aiff
+#input_file=~/guitar.au
+input_file=~/WaterSounds/water10.au
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+# (0 end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=4096
+window_type=16
+windowsize=0
+
+#( Use larger FFT sizes for ring routines.)
+
+frames_per_second=200
+
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1
+
+
+#******************************************************
+#.......... SOURCE PARAMETERS .........................
+#******************************************************
+
+#.................. DECIBELS ..........................
+
+SOURCE_gain_in_decibels=-96
+
+#.................. PITCH .............................
+
+SOURCE_frequency_shift=0
+SOURCE_pitch_transposition_in_semitones=0
+
+#******************************************************
+#.......... REVERB PARAMETERS ........................
+#******************************************************
+
+#...REVERB OUTPUT CONTROLS ** y(n) ***...............
+
+#.................. DECIBELS ..........................
+
+REVERB_gain_in_decibels=0
+
+#.................. PITCH .............................
+
+REVERB_frequency_shift=0
+REVERB_pitch_transposition_in_semitones=0
+P_CHANGE_SELECT__source_only_0__both_source_and_filter_1=0
+#((0) applies pitch changes before feedback filter, (1) after)
+
+
+#-----------------------------------------------------
+#........... OUTPUT EQ .............................. 
+REVERB_OUTPUT_LOW_SHELF_EQ_gain_in_decibels=-0
+REVERB_OUTPUT_LOW_SHELF_EQ_frequency=60
+REVERB_OUTPUT_HIGH_SHELF_EQ_gain_in_decibels=-0
+REVERB_OUTPUT_HIGH_SHELF_EQ_frequency=100
+#-----------------------------------------------------
+
+
+
+#-----------------------------------------------------
+#......... RANDOM  FREQUENCY DEVIATION.................
+REVERB_random_freq_deviation_proportion=0.0
+REVERB_random_deviation_response_time_in_seconds=0
+#-----------------------------------------------------
+
+
+#=====================================================
+
+#...REVERB INPUT CONTROLS ** x(n) ***..................
+
+#........... INPUT THRESHOLD CONTROLS .................
+
+REVERB_threshold_in_dB=-90
+# If the amplitude of source bins lie above the threshold,
+# then they are passed or input in the reverb path. 
+
+#------------------------------------------------------
+#*** REVERB INPUT x(n) ENVELOPE RESPONSE
+
+REVERB_INPUT_envelope_release_time_in_seconds=0
+REVERB_INPUT_envelope_attack_time_in_seconds=0
+
+#-----------------------------------------------------
+#........... INPUT EQ .............................. 
+REVERB_INPUT_LOW_SHELF_EQ_gain_in_decibels=-30
+REVERB_INPUT_LOW_SHELF_EQ_frequency=500
+REVERB_INPUT_HIGH_SHELF_EQ_gain_in_decibels=0
+REVERB_INPUT_HIGH_SHELF_EQ_frequency=2000
+#-----------------------------------------------------
+
+#=====================================================
+#...REVERB FEEDBACK CONTROLS ** y(n-1) ***............
+
+#.................MASTER DECAY TIME..................
+REVERB_decay_time_in_seconds=5
+#( This is a master decay time control.)
+
+#.............FEEDBACK EQ DECAY TIME.................
+REVERB_FEEDBACK_EQ_decay_time_in_seconds=5
+#( This controls the decay into the feedback eq.)
+
+#-----------------------------------------------------
+#........... FEEDBACK_EQ .............................. 
+REVERB_FEEDBACK_LOW_SHELF_EQ_gain_in_decibels=0
+REVERB_FEEDBACK_LOW_SHELF_EQ_frequency=300
+REVERB_FEEDBACK_HIGH_SHELF_EQ_gain_in_decibels=-0
+REVERB_FEEDBACK_HIGH_SHELF_EQ_frequency=2000
+#-----------------------------------------------------
+
+#............BALANCE...................................
+REVERB_FEEDBACK_EQ_signal_balance_gain_limiter_in_dB=0
+#(0 to 96dB, 0 = balancing off (full limiting), 
+#               96 = balance full-on (no limiting)
+
+
+
+#-----------------------------------------------------
+#....................TV FILTER .......................
+#-----------------------------------------------------
+
+
+#............. ANALYSIS CHANNEL(S) ..................
+analysis_channel=0
+
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.................FILTER PLACEMENT...................
+
+REVERB_filter_on_input_0__feedback_1=0
+
+#( Set this to apply the freqresponse to the input x(n), 
+#  or the feedback return y(n-1). When applied to the 
+# return, set the decay time below.)
+
+#..............FILTER DECAY TIME........................
+
+REVERB_FEEDBACK_filter_decay_time_in_seconds=5
+
+#.................. DECIBELS ..........................
+
+REVERB_filter_source_dB=-96
+
+#.................. PITCH .............................
+
+REVERB_filter_transposition_in_semitones=0
+REVERB_filter_shift=-0
+
+#............ SPECTRUM WARPSHAPE ......................
+
+REVERB_filter_spectrum_warpshape=0
+
+
+
+#-----------------------------------------------------
+#................ FILTER TIME.........................
+FILTER_time_point_origin=0
+FILTER_rate_multiplier=1
+
+#........... TIME BOUNDARIES AND SAMPLER LOOP MODE ..............
+
+# The low/high data time boundaries serve as either auto-stop
+# boundaries that terminate synthesis at the crossing of a 
+# data time boundary or as sampler loop points to which can 
+# be added pre-loop and post-loop onset and release segments. 
+
+FILTER_lower_time_boundary=0
+FILTER_upper_time_boundary=-1
+
+# -1 for low defaults to 0.0 and for high to analysis file duration.
+
+Mode__sampler_loop_0__autostop_1=1
+
+# In autostop mode, synthesis terminates with crossing of 
+# a time boundary. In sampler loop mode, time boundaries 
+# function as sampler loop points. 
+
+
+Sampler_Loop_Mode__wrap_0__fold_1__clip_2=0
+
+# In Sampler Loop Mode, all timepoints are constrained to
+# region between boundaries using the specified method.  
+# 0: Wrap time into loop range. (/////)
+# 1: Fold time into loop range. (/\/\/\/\)
+# 2: Clip or limit time to the nearest boundary. (\____)
+
+
+Onset_and_Release_Segment_Mode__off_0__on_1=0
+
+# Setting onset/release mode in Sampler Mode causes looping
+# to be preceded by a pre-loop/onset and a post-loop/release 
+# segment. The data time origin is initialized to 0.0 and 
+# progresses according to data time controls. The first entrance
+# into the loop region triggers loop mode, which is maintained
+# until trigger of the release segment. The release segment
+# progresses from the current loop point to the analysis data
+# end time, conforming to the data time rate control and specified
+# synthesis duration. 
+
+Normalize_Loop_Amplitudes__off_0__on_1=0
+
+# Set to 1, amplitudes in loop range are normalized to peak 
+# amplitude of low/high boundary frames. Onset and release 
+# segments are ramped in and out of loop range gain change 
+# as needed.  
+
+
+Loop_Smooth_Time_in_Seconds=0.0
+
+# Loop junctures for wrapped and folded loops are smoothed
+# with a lowpass filter, the smooth time of which is ramped 
+# up and down before and after the loop juncture points to 
+# smooth any sudden change in amplitude and frequency values.
+
+#......................................................
+
+#............ FILTER SPECTRUM COMPRESSION ..............
+FILTER_spectrum_compression_threshold_in_decibels=-30
+FILTER_spectrum_decibels_of_compression=-0
+
+#******************************************************
+#********** AMPLITUDE STATISTICS ********************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1.0
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=ringtvfilter 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-//$window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-A$Normalize_Loop_Amplitudes__off_0__on_1 \
+\
+-S$SOURCE_gain_in_decibels \
+-f$SOURCE_frequency_shift \
+-p$SOURCE_pitch_transposition_in_semitones \
+-B$P_CHANGE_SELECT__source_only_0__both_source_and_filter_1 \
+\
+-F$REVERB_gain_in_decibels \
+-H$REVERB_frequency_shift \
+-P$REVERB_pitch_transposition_in_semitones \
+-z$REVERB_threshold_in_dB \
+-Z$REVERB_decay_time_in_seconds \
+-j$REVERB_random_freq_deviation_proportion \
+-K$REVERB_random_deviation_response_time_in_seconds \
+\
+-L$REVERB_INPUT_envelope_release_time_in_seconds \
+-l$REVERB_INPUT_envelope_attack_time_in_seconds \
+\
+-T$REVERB_FEEDBACK_EQ_decay_time_in_seconds \
+-E$REVERB_FEEDBACK_EQ_signal_balance_gain_limiter_in_dB \
+\
+-X$REVERB_FEEDBACK_LOW_SHELF_EQ_gain_in_decibels \
+-U$REVERB_FEEDBACK_LOW_SHELF_EQ_frequency \
+-Q$REVERB_FEEDBACK_HIGH_SHELF_EQ_gain_in_decibels \
+-m$REVERB_FEEDBACK_HIGH_SHELF_EQ_frequency \
+\
+-O$REVERB_INPUT_LOW_SHELF_EQ_gain_in_decibels \
+-d$REVERB_INPUT_LOW_SHELF_EQ_frequency \
+-Y$REVERB_INPUT_HIGH_SHELF_EQ_gain_in_decibels \
+-n$REVERB_INPUT_HIGH_SHELF_EQ_frequency \
+\
+-k$REVERB_OUTPUT_LOW_SHELF_EQ_gain_in_decibels \
+-s$REVERB_OUTPUT_LOW_SHELF_EQ_frequency \
+-c$REVERB_OUTPUT_HIGH_SHELF_EQ_gain_in_decibels \
+-G$REVERB_OUTPUT_HIGH_SHELF_EQ_frequency \
+\
+-r$REVERB_FEEDBACK_filter_decay_time_in_seconds \
+-u$REVERB_filter_transposition_in_semitones \
+-V$REVERB_filter_shift \
+-x$REVERB_filter_source_dB \
+-y$REVERB_filter_file \
+-q$REVERB_filter_spectrum_warpshape \
+-o$REVERB_filter_on_input_0__feedback_1 \
+\
+-~$analysis_channel \
+-h$FILTER_time_point_origin \
+-R$FILTER_rate_multiplier \
+-g$FILTER_lower_time_boundary \
+-J$FILTER_upper_time_boundary \
+-/Q$Sampler_Loop_Mode__wrap_0__fold_1__clip_2 \
+-:$Onset_and_Release_Segment_Mode__off_0__on_1 \
+-a$Loop_Smooth_Time_in_Seconds \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+-@$Mode__sampler_loop_0__autostop_1 \
+\
+\
+-W$FILTER_spectrum_compression_threshold_in_decibels \
+-v$FILTER_spectrum_decibels_of_compression \
+-w$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+"
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 

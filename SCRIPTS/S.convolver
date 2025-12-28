@@ -1,0 +1,270 @@
+#!/bin/sh
+#******************************************************
+#................... CONVOLVER ........................
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#......................................................
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+Sound_A_input_sound_file=~/ridecymbal.au
+
+
+#......................................................
+
+Sound_B_input_analysis_file=~/pvanalysis_oboe.B4
+
+
+#........... OUTPUT CHANNEL(S) .......................
+
+Sound_A_input_sound_file_channel_1_to_max__0_all=1
+Sound_B_input_analysis_file_channel_1_to_max__0_all=1
+
+# Channels are numbered from 1 to the maximum.
+# 0 = all channels
+# 
+# 0-0 configurations will match Sound A and Sound B channels.
+# 0 with a single channel will apply single channel to
+# ( all channels of other file) 
+
+#======================================================
+#............ SOUND A BEGIN/END TIMES .................
+
+Sound_A_input_sound_file_begintime=0
+Sound_A_input_sound_file_endtime=0
+# (0 end time defaults to end of file)
+
+#======================================================
+#............. SOUND B TIME ...........................
+
+Sound_B_input_analysis_file_time_point_origin=0
+Sound_B_input_analysis_file_rate_multiplier=0.5 
+
+#( In rate mode, set time_point to initial position.)
+#( In explicit mode, control time_point with a function.)
+#(  Rate_multiplier is nonfunctional in explicit mode.)
+
+#......................................................
+
+Sound_B_input_analysis_file_lower_time_boundary=0.0
+Sound_B_input_analysis_file_upper_time_boundary=-1
+#(upper time < 0 defaults to file duration)
+
+Mode__sampler_loop_0__autostop_1=1
+
+# In autostop mode, synthesis terminates with crossing of 
+# a time boundary. In sampler loop mode, time boundaries 
+# function as sampler loop points. 
+
+
+Sampler_Loop_Mode__wrap_0__fold_1__clip_2=0
+
+# In Sampler Loop Mode, all timepoints are constrained to
+# region between boundaries using the specified method.  
+# 0: Wrap time into loop range. (/////)
+# 1: Fold time into loop range. (/\/\/\/\)
+# 2: Clip or limit time to the nearest boundary. (\____)
+
+Onset_and_Release_Segment_Mode__off_0__on_1=1
+
+# Setting onset/release mode in Sampler Mode causes looping
+# to be preceded by a pre-loop/onset and post-loop/release 
+# segments. The data time origin is initialized to 0.0 and 
+# progresses according to data time controls. The first entrance
+# into the loop region triggers loop mode, which is maintained
+# until trigger of the release segment. The release segment
+# progresses from the current loop point to the analysis data
+# end time, conforming to the data time rate control and specified
+# synthesis duration. 
+
+
+
+#********* FRAME NORMALIZATION ******************************
+
+Frame_Normalization_Decibel_Limit=0
+Normalize_to__Sound_A_0__Sound_B_1=0
+
+
+# Scale the amplitudes of each output frame against either the input-sound 
+# file (A) or the analyzed sound (B). Scaling is produced using a ratio formed
+# from the sum of the respective Sound A or Sound B amplitudes
+# over the sum of the output frame amplitudes limited by the decibel limit. 
+# 0 prevents normalization; increase limit as necessary to as much as 200. 
+
+
+#......................................................
+
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+window_type=16
+windowsize=0
+#(set to 0 to autoset window to 2 * FFT)
+
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1
+
+
+#.................. DECIBELS ..........................
+
+OUTPUT_SPECTRUM_gain_in_decibels=0
+
+#.................. PITCH .............................
+
+OUTPUT_SPECTRUM_frequency_shift=0
+OUTPUT_SPECTRUM_pitch_transposition_in_semitones=0
+
+
+#............ AMPLITUDE RESPONSE SMOOTHING ........... 
+smooth__polar_0__Cartesian_1=0
+
+release_in_seconds=0
+attack_in_seconds=0
+
+#======================================================
+#*** CONVOLUTION PANPOT (-1 to 1) (-1 = A,  1 = B )****
+convolution_panpot_position=0
+
+#.................. DECIBELS ..........................
+
+Sound_A_input_sound_file_gain_in_decibels=-0
+Sound_B_input_analysis_file_gain_in_decibels=-0
+Convolution_gain_in_decibels=0
+
+#............ PANPOT DOMAIN WARP ......................
+
+Sound_A_input_sound_file_panpot_domain_warp=5
+Sound_B_input_analysis_file_panpot_domain_warp=0
+
+#(warp values: 0 and greater)
+
+#(The domain warp allows you to expand the useful
+# convolution range on either side of the full 
+# convolution point at 0 by warping the panpot range on
+# that side.  Use increasingly positive  warp values
+#  to expand the convolution center into the
+# Sound A or B's panpot domain.  )
+
+#======================================================
+
+
+#======================================================
+#****** CONVOLUTION LOW/HIGH SHELF EQ **********
+FILTER_LOW_SHELF_EQ_gain_in_decibels=-0
+FILTER_LOW_SHELF_EQ_frequency=500
+
+FILTER_HIGH_SHELF_EQ_gain_in_decibels=30
+FILTER_HIGH_SHELF_EQ_frequency=2000
+#======================================================
+
+
+#======================================================
+#********** AMPLITUDE STATISTICS ******************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=.25
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# SYNTHESIS
+pvroutine=convolver 
+
+PVFLAGS="\
+\
+-M$windowsize \
+-w$window_type \
+-I$time_expansion_contraction_factor \
+\
+-a$OUTPUT_SPECTRUM_frequency_shift \
+-P$OUTPUT_SPECTRUM_pitch_transposition_in_semitones \
+-A$OUTPUT_SPECTRUM_gain_in_decibels \
+\
+-C$Sound_A_input_sound_file_channel_1_to_max__0_all \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$Sound_A_input_sound_file_begintime \
+-e$Sound_A_input_sound_file_endtime \
+\
+-q$Sound_A_input_sound_file_gain_in_decibels \
+-B$Sound_B_input_analysis_file_gain_in_decibels \
+-Z$Convolution_gain_in_decibels \
+\
+-k$smooth__polar_0__Cartesian_1 \
+-L$release_in_seconds \
+-l$attack_in_seconds \
+-F$Sound_B_input_analysis_file \
+\
+-K$Sound_B_input_analysis_file_channel_1_to_max__0_all \
+-Q$Sound_B_input_analysis_file_time_point_origin \
+-Y$Sound_B_input_analysis_file_rate_multiplier \
+-g$Sound_B_input_analysis_file_lower_time_boundary \
+-G$Sound_B_input_analysis_file_upper_time_boundary \
+-o$Sampler_Loop_Mode__wrap_0__fold_1__clip_2 \
+-r$Onset_and_Release_Segment_Mode__off_0__on_1 \
+\
+-S$convolution_panpot_position \
+-j$Sound_A_input_sound_file_panpot_domain_warp \
+-J$Sound_B_input_analysis_file_panpot_domain_warp \
+\
+-H$FILTER_LOW_SHELF_EQ_gain_in_decibels \
+-m$FILTER_LOW_SHELF_EQ_frequency \
+\
+-X$FILTER_HIGH_SHELF_EQ_gain_in_decibels \
+-R$FILTER_HIGH_SHELF_EQ_frequency \
+\
+-y$Mode__sampler_loop_0__autostop_1 \
+\
+-n$Frame_Normalization_Decibel_Limit \
+-v$Normalize_to__Sound_A_0__Sound_B_1 \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+"
+echo "$pvroutine $PVFLAGS $Sound_A_input_sound_file $output_file"
+
+$pvroutine  $PVFLAGS $Sound_A_input_sound_file $output_file   ; 

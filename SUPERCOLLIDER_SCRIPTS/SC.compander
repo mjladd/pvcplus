@@ -1,0 +1,330 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  compander = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		freqresponse_printout_high_cutoff_frequency, \
+		windowsize, \
+		window_type, \
+		frames_per_second, \
+		high_shelf_eq_gain_in_decibels, \
+		output_channel, \
+		amplitude_statistics_time_interval, \
+		peak_analysis_endtime, \
+		pitch_transposition_in_semitones, \
+		high_shelf_eq_frequency, \
+		peaks_response_smooth_factor_bw__in_frequency_or_octaves, \
+		auto_output_sound_file_play__repetitions, \
+		high_cutoff_frequency, \
+		frequency_shift, \
+		begintime, \
+		smoothed_freqresponse_printout_high_cutoff_frequency, \
+		peak_analysis_begintime, \
+		endtime, \
+		peaks_analysis_file, \
+		octaves_of_rolloff, \
+		fft_length, \
+		decibels_of_compression, \
+		input_file, \
+		print_amplitude_statistics_0_no__1_yes, \
+		gain_in_decibels, \
+		expansion_threshold_in_db, \
+		low_cutoff_frequency, \
+		low_shelf_eq_gain_in_decibels, \
+		decibelsspectrumplotfile, \
+		analysis_method_average_0_peak_1_flag, \
+		oscillator_resynthesis_threshold_in_db, \
+		decibels_of_expansion, \
+		envelope_attack_in_seconds, \
+		envelope_release_in_seconds, \
+		analysis_frames_per_second, \
+		output_file, \
+		rescale_level_in_decibels, \
+		compression_threshold_in_db, \
+		time_expansion_contraction_factor, \
+		low_shelf_eq_frequency\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //..................... COMPANDER ......................\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //******************** ANALYSIS ************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		peaks_analysis_file = \cf4 "/tmp/peaks_analysis_file"\cf2  ;\
+\
+		decibelsspectrumplotfile = \cf4 "/tmp/sp"\cf2  ;\
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		\cf5 //input_file=~/typewriter.aiff\cf2 \
+\
+		input_file = \cf4 "~/Oboe.NF.C5.au"\cf2  ;\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		peak_analysis_begintime = 0 ;\
+		peak_analysis_endtime = -1 ;\
+\
+		\cf5 //......................................................\cf2 \
+\
+		analysis_method_average_0_peak_1_flag = 1 ;\
+		analysis_frames_per_second = 500 ;\
+\
+		freqresponse_printout_high_cutoff_frequency = 2000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //******************* SYNTHESIS ************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = 1 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+		begintime = 0 ;\
+		endtime = 0 ;\
+		\cf5 // (0 end time defaults to end of file)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		fft_length = 2048 ;\
+		window_type = 12 ;\
+		windowsize = 0 ;\
+\
+		frames_per_second = 200 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+\
+		output_channel = 0 ;\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -96 ;\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. TIME ..............................\cf2 \
+\
+		time_expansion_contraction_factor = 1 ;\
+\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		gain_in_decibels = 0 ;\
+\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		frequency_shift = 0 ;\
+		pitch_transposition_in_semitones = -0.0 ;\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //****** COMPRESSION/EXPANSION PARAMETERS **************\cf2 \
+\
+		peaks_response_smooth_factor_bw__in_frequency_or_octaves = 1 ;\
+\
+		\cf5 // Negative values are treated as positive octave bandwidths, \cf2 \
+		\cf5 // otherwise units are in frequency.\cf2 \
+\
+\
+		\cf5 //............. PRINT ...................................\cf2 \
+\
+		smoothed_freqresponse_printout_high_cutoff_frequency = 2000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+\
+\
+		\cf5 //.....COMPANDER FREQUENCY BAND ......................\cf2 \
+\
+		low_cutoff_frequency = 0 ;\
+		high_cutoff_frequency = 20000 ;\
+		octaves_of_rolloff = 1 ;\
+\
+		\cf5 //.......COMPRESSION..................................\cf2 \
+\
+		compression_threshold_in_db = -30 ;\
+		decibels_of_compression = -40 ;\
+\
+\
+		\cf5 //.......EXPANSION .....................................\cf2 \
+\
+		expansion_threshold_in_db = -80 ;\
+		decibels_of_expansion = -0 ;\
+\
+\
+		\cf5 // COMPANDER ENVELOPE RESPONSE TIME  ...................\cf2 \
+\
+		envelope_attack_in_seconds = 0.5 ;\
+		envelope_release_in_seconds = 0.5 ;\
+\
+		\cf5 // Set response times to anywhere from .01 to 2 or more to\cf2 \
+		\cf5 // slow down the response of the compansion envelopes. Fast \cf2 \
+		\cf5 // envelope responses may give you roughness (in companding), \cf2 \
+		\cf5 // or worse, gurgling (in expansion) as the bins oscillate in\cf2 \
+		\cf5 // and out of compansion. \cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*************** LOW/HIGH SHELF EQ *********************\cf2 \
+		low_shelf_eq_gain_in_decibels = -0 ;\
+		low_shelf_eq_frequency = 2000 ;\
+\
+		high_shelf_eq_gain_in_decibels = -0 ;\
+		high_shelf_eq_frequency = 3000 ;\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ******************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1 ;\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "freqresponse"\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -W0"\cf2  ++  \cf4 " -b"\cf2  ++ peak_analysis_begintime ++  \cf4 " -a"\cf2  ++ decibelsspectrumplotfile ++ \
+			 \cf4 " -B1"\cf2  ++  \cf4 " -c"\cf2  ++ analysis_method_average_0_peak_1_flag ++  \cf4 " -C"\cf2  ++ output_channel ++ \
+			 \cf4 " -P"\cf2  ++ freqresponse_printout_high_cutoff_frequency ++  \cf4 " -D"\cf2  ++ analysis_frames_per_second ++ \
+			 \cf4 " -M0"\cf2  ++  \cf4 " -N"\cf2  ++ fft_length ++  \cf4 " -w"\cf2  ++ window_type ++  \cf4 " -e"\cf2  ++ peak_analysis_endtime\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ peaks_analysis_file\
+\
+		) ;\
+ \
+\
+\
+		\cf5 // ******** UNIX COMMAND LINE 1 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "compander "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++  \cf4 " -L"\cf2  ++ envelope_release_in_seconds ++ \
+			 \cf4 " -m"\cf2  ++ low_shelf_eq_frequency ++  \cf4 " -d"\cf2  ++ high_cutoff_frequency ++  \cf4 " -R"\cf2  ++ high_shelf_eq_frequency ++ \
+			 \cf4 " -w"\cf2  ++ window_type ++  \cf4 " -P"\cf2  ++ pitch_transposition_in_semitones ++  \cf4 " -N"\cf2  ++ fft_length ++ \
+			 \cf4 " -M"\cf2  ++ windowsize ++  \cf4 " -q"\cf2  ++ expansion_threshold_in_db ++  \cf4 " -b"\cf2  ++ begintime ++ \
+			 \cf4 " -X"\cf2  ++ high_shelf_eq_gain_in_decibels ++  \cf4 " -c"\cf2  ++ low_cutoff_frequency ++ \
+			 \cf4 " -I"\cf2  ++ time_expansion_contraction_factor ++  \cf4 " -C"\cf2  ++ output_channel ++ \
+			 \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -l"\cf2  ++ envelope_attack_in_seconds ++ \
+			 \cf4 " -S"\cf2  ++ peaks_response_smooth_factor_bw__in_frequency_or_octaves ++  \cf4 " -A"\cf2  ++ gain_in_decibels ++ \
+			 \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -Q"\cf2  ++ decibels_of_expansion ++  \cf4 " -D"\cf2  ++ frames_per_second ++ \
+			 \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++  \cf4 " -="\cf2  ++ rescale_level_in_decibels ++ \
+			 \cf4 " -Z"\cf2  ++ smoothed_freqresponse_printout_high_cutoff_frequency ++  \cf4 " -F"\cf2  ++ peaks_analysis_file ++ \
+			 \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++  \cf4 " -a"\cf2  ++ frequency_shift ++ \
+			 \cf4 " -o"\cf2  ++ compression_threshold_in_db ++  \cf4 " -O"\cf2  ++ decibels_of_compression ++ \
+			 \cf4 " -H"\cf2  ++ low_shelf_eq_gain_in_decibels ++  \cf4 " -f"\cf2  ++ octaves_of_rolloff\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+compander.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

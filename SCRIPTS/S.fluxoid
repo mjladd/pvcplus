@@ -1,0 +1,155 @@
+#!/bin/sh
+#******************************************************
+#...SPECTRAL FLUX TRACKER (NOISE METER) ...............
+#******************************************************
+
+#******************** OUTPUT **************************
+
+spectral_flux_file=/tmp/sf
+
+plot_output__yes_1__no_0=0
+
+#******************** INPUT ***************************
+
+analysis_sndfile=~/mySound.au
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=1024
+window_type=2
+windowsize=0
+
+# (0 sets windowsize to 2 * FFT (or larger))
+
+#........... ANALYSIS CHANNEL(S) .......................
+analysis_channel=1
+
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#......................................................
+
+method_on_multiple_channels__average_0__peak_1=0
+
+#.............   FRAMES ...............................
+
+analysis_frames_per_second=200
+
+#======================================================
+#*************** DETECTION PARAMETERS *****************
+boundary_data_type=0
+#( 0 = frequency )
+#( 1 = octave.pitchclass )
+
+#............... BOUNDARIES ............................
+
+LOW_freq_or_pitch_boundary=0
+HIGH_freq_or_pitch_boundary=22050
+
+#............... WEIGHTING FACTOR .....................
+
+amplitude_weighting__0_off__1_on=0
+
+
+#======================================================
+#*************** OUTPUT FORMAT ************************
+
+
+#................ OUTPUT RATE  ........................
+
+ouput_sample_rate=1000
+#( for non soundfile data types)
+
+#................ OUTPUT FORMAT  ......................
+
+output_data_format=0
+#( 0: 0-1 amplitude )
+#( 1: -96 to -0 decibels )
+#( 2: inverted amplitude (1 - amplitude) )
+#( 3: inverted decibels (0 - decibels + 96.) )
+
+#............... OUTPUT TYPE  .........................
+
+
+output_data_type=0
+#( 0: ascii )
+#( 1: 32-bit floats )
+
+
+#======================================================
+#************ ENVELOPE MODIFICATIONS ******************
+
+#.......... AMPLITUDE RESPONSE ........................
+
+release_time_in_seconds=0
+attack_time_in_seconds=0
+
+#............ COMPRESSOR ..............................
+
+compression_threshold_in_decibels=-0
+decibels_of_compression=-0
+
+#............ GATE ....................................
+
+gate_threshold_in_decibels=-200
+
+#............ WARP ....................................
+
+amplitude_envelope_warp=0
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# ANALYSIS
+
+#
+analysisroutine=fluxoid
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-w$window_type \
+-M$windowsize \
+-D$analysis_frames_per_second \
+\
+-b$begintime \
+-e$endtime \
+\
+-C$analysis_channel \
+\
+-A$amplitude_weighting__0_off__1_on \
+\
+-Q$boundary_data_type \
+-f$LOW_freq_or_pitch_boundary \
+-F$HIGH_freq_or_pitch_boundary \
+-L$release_time_in_seconds \
+-l$attack_time_in_seconds \
+-W$amplitude_envelope_warp \
+-G$decibels_of_compression \
+-T$compression_threshold_in_decibels \
+-S$gate_threshold_in_decibels \
+-r$ouput_sample_rate \
+-g$output_data_type \
+-q$output_data_format \
+\
+-X$method_on_multiple_channels__average_0__peak_1 \
+-p1 \
+-P$plot_output__yes_1__no_0 \
+\
+"
+echo "$analysisroutine $PVFLAGS $analysis_sndfile $spectral_flux_file  "
+
+$analysisroutine $PVFLAGS $analysis_sndfile $spectral_flux_file ;
+

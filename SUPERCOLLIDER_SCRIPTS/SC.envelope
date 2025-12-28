@@ -1,0 +1,233 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue191;\red96\green96\blue96;\red191\green0\blue0;
+}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs48 \cf0 (\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf2 var\cf0  addCommand = \{ \cf2 arg\cf0  command ;\
+	command = command.replace( \cf3 "\\n"\cf0 , \cf3 " "\cf0  ).replace( \cf3 "\\t"\cf0 , \cf3 " "\cf0  ) ;  \
+	commands = commands ++ command ++ \cf3 " \\n"\cf0  ; \
+\} ; \
+\
+\
+\
+\cf2 var\cf0  runCommands = \{\
+	\cf2 var\cf0  homeDirectory ; \
+	homeDirectory =  \cf3 "HOME"\cf0 .getenv ;\
+	commands = commands.replace( \cf3 "~/"\cf0 , homeDirectory ++ \cf3 "/"\cf0  ) ;\
+	commands.replace(  \cf3 "\\n"\cf0 , \cf3 " ;\\n\\n"\cf0  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf2 var\cf0  commands=\cf3 ""\cf0  ;\
+\
+\cf2 var\cf0  envelope = \{ \cf2 arg\cf0  iterations=1 ; \
+\
+	\cf2 var\cf0  temp,\
+		dataString, \
+		commandLines=\cf3 ""\cf0 , \
+		filtered_envelope__0_to_1__cut_proportion, \
+		filtered_envelope_release_time_in_seconds, \
+		attack_time_in_seconds, \
+		filtered_envelope_attack_time_in_seconds, \
+		output_data_type, \
+		ouput_sample_rate, \
+		plot_output__1_yes__0_no, \
+		low_freq_or_pitch_boundary, \
+		release_time_in_seconds, \
+		gate_threshold_in_decibels, \
+		begintime, \
+		output_data_format, \
+		analysis_frames_per_second, \
+		high_freq_or_pitch_boundary, \
+		fft_length, \
+		amplitude_envelope_warp, \
+		windowsize, \
+		analysis_sndfile, \
+		compression_threshold_in_decibels, \
+		analysis_channel, \
+		method_on_multiple_channels__average_0__peak_1, \
+		envelope_file, \
+		endtime, \
+		boundary_data_type, \
+		window_type, \
+		decibels_of_compression\
+	; \
+		\cf4 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf0 \
+\
+	\cf2 var\cf0  setRoutineVariables = \{\cf2 arg\cf0  iteration=0 ;  \
+\
+ 		\cf4 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf0 \
+		\cf4 //******************************************************\cf0 \
+		\cf4 //............ ENVELOPE EXTRACTOR ......................\cf0 \
+		\cf4 //******************************************************\cf0 \
+\
+		\cf4 //******************** OUTPUT **************************\cf0 \
+\
+		envelope_file = \cf3 "/tmp/ef"\cf0  ;\
+\
+		plot_output__1_yes__0_no = 0 ;\
+\
+		\cf4 //******************** INPUT ***************************\cf0 \
+\
+		analysis_sndfile = \cf3 "~/HumanSounds/BabyCoo.aif"\cf0  ;\
+\
+\
+		\cf4 //........ BEGIN/END TIMES .............................\cf0 \
+\
+		begintime = 0 ;\
+		endtime = 0 ;\
+\
+		\cf4 //======================================================\cf0 \
+		\cf4 //*** ANALYSIS PARAMETERS ******************************\cf0 \
+\
+		fft_length = 256 ;\
+		window_type = 2 ;\
+		windowsize = 0 ;\
+		\cf4 // (0 sets windowsize to 2 * FFT (or larger))\cf0 \
+\
+		\cf4 //........... ANALYSIS CHANNEL(S) .......................\cf0 \
+		analysis_channel = 1 ;\
+\
+		\cf4 // (channels are numbered from 1-maximum)\cf0 \
+		\cf4 // (0 = all channels)\cf0 \
+\
+		\cf4 //......................................................\cf0 \
+\
+		method_on_multiple_channels__average_0__peak_1 = 1 ;\
+\
+		\cf4 //.............   FRAMES ...............................\cf0 \
+\
+		analysis_frames_per_second = 1000 ;\
+\
+		\cf4 //======================================================\cf0 \
+		\cf4 //*************** DETECTION PARAMETERS *****************\cf0 \
+		boundary_data_type = 0 ;\
+		\cf4 //( 0 = frequency )\cf0 \
+		\cf4 //( 1 = octave.pitchclass )\cf0 \
+\
+		\cf4 //............... BOUNDARIES ............................\cf0 \
+\
+		low_freq_or_pitch_boundary = 0 ;\
+		high_freq_or_pitch_boundary = 22000 ;\
+\
+		\cf4 //...........FILTERED ENVELOPE ..........................\cf0 \
+		\cf4 // This envelope is cut from the original before smoothing\cf0 \
+		\cf4 // and compression/gating. \cf0 \
+\
+		filtered_envelope_attack_time_in_seconds = 0.0 ;\
+		filtered_envelope_release_time_in_seconds = 0.0 ;\
+\
+		filtered_envelope__0_to_1__cut_proportion = 0 ;\
+		\cf4 //( 0 = off )\cf0 \
+\
+\
+		\cf4 //................ OUTPUT RATE  ........................\cf0 \
+\
+		ouput_sample_rate = 1000 ;\
+		\cf4 //( for non soundfile data types)\cf0 \
+\
+		\cf4 //................ OUTPUT FORMAT  ......................\cf0 \
+\
+		output_data_format = 0 ;\
+		\cf4 //( 0: 0-1 amplitude )\cf0 \
+		\cf4 //( 1: -96 to -0 decibels )\cf0 \
+		\cf4 //( 2: inverted amplitude (1 - amplitude) )\cf0 \
+		\cf4 //( 3: inverted decibels (0 - decibels + 96.) )\cf0 \
+\
+		\cf4 //............... OUTPUT TYPE  .........................\cf0 \
+\
+\
+		output_data_type = 1 ;\
+		\cf4 //( 0: ascii )\cf0 \
+		\cf4 //( 1: 32-bit floats )\cf0 \
+\
+		\cf4 //======================================================\cf0 \
+		\cf4 //************ ENVELOPE MODIFICATIONS ******************\cf0 \
+\
+		\cf4 //.......... AMPLITUDE RESPONSE ........................\cf0 \
+\
+		attack_time_in_seconds = 0.0 ;\
+		release_time_in_seconds = 0.0 ;\
+\
+		\cf4 //............ COMPRESSOR ..............................\cf0 \
+\
+		compression_threshold_in_decibels = -0 ;\
+		decibels_of_compression = -90 ;\
+\
+		\cf4 //............ GATE ....................................\cf0 \
+\
+		gate_threshold_in_decibels = -90 ;\
+\
+		\cf4 //............ WARP ....................................\cf0 \
+\
+		amplitude_envelope_warp = 0 ;\
+\
+		\cf4 //======================================================\cf0 \
+		\cf4 //========= SCRATCH SPACE ==============================\cf0 \
+		\cf4 //======================================================\cf0 \
+\
+\
+		\cf4 //====================================================\cf0 \
+ 		\cf4 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf0 \
+\
+	\} ;\
+	\cf4 //*********************************************************************************************************\cf0 \
+	\cf4 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf0 \
+	\cf4 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf0 \
+	\cf4 //*********************************************************************************************************\cf0 \
+\
+	iterations.do(\{\cf2 arg\cf0  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf4 // ******** UNIX COMMAND LINE 0 ***********\cf0 \
+		addCommand.value(\
+\
+					\cf4 // * ROUTINE * \cf0 \
+			\cf3 "envelope"\cf0  ++ \cf3 " "\cf0  ++\
+\
+				\cf4 // * FLAGS * \cf0 \
+			 \cf3 " -T"\cf0  ++ compression_threshold_in_decibels ++  \cf3 " -G"\cf0  ++ decibels_of_compression ++ \
+			 \cf3 " -C"\cf0  ++ analysis_channel ++  \cf3 " -l"\cf0  ++ attack_time_in_seconds ++  \cf3 " -S"\cf0  ++ gate_threshold_in_decibels ++ \
+			 \cf3 " -N"\cf0  ++ fft_length ++  \cf3 " -D"\cf0  ++ analysis_frames_per_second ++  \cf3 " -p1"\cf0  ++ \
+			 \cf3 " -W"\cf0  ++ amplitude_envelope_warp ++  \cf3 " -e"\cf0  ++ endtime ++  \cf3 " -j"\cf0  ++ filtered_envelope_attack_time_in_seconds ++ \
+			 \cf3 " -Q"\cf0  ++ boundary_data_type ++  \cf3 " -P"\cf0  ++ plot_output__1_yes__0_no ++  \cf3 " -r"\cf0  ++ ouput_sample_rate ++ \
+			 \cf3 " -w"\cf0  ++ window_type ++  \cf3 " -F"\cf0  ++ high_freq_or_pitch_boundary ++  \cf3 " -k"\cf0  ++ filtered_envelope_release_time_in_seconds ++ \
+			 \cf3 " -L"\cf0  ++ release_time_in_seconds ++  \cf3 " -X"\cf0  ++ method_on_multiple_channels__average_0__peak_1 ++ \
+			 \cf3 " -f"\cf0  ++ low_freq_or_pitch_boundary ++  \cf3 " -b"\cf0  ++ begintime ++  \cf3 " -m"\cf0  ++ filtered_envelope__0_to_1__cut_proportion ++ \
+			 \cf3 " -g"\cf0  ++ output_data_type ++  \cf3 " -q"\cf0  ++ output_data_format ++  \cf3 " -M"\cf0  ++ windowsize\
+\
+				\cf4 // * INPUT/OUTPUT FILES * \cf0 \
+			 ++  \cf3 " "\cf0   ++ analysis_sndfile ++ \cf3 "  "\cf0  ++  \cf3 " "\cf0   ++ envelope_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf4 /////////////////////////////////////////////////////////////////////////////////////\cf0 \
+\cf4 //         ---------- FUNCTION CALLS  ----------            \cf0 \
+\cf4 /////////////////////////////////////////////////////////////////////////////////////\cf0 \
+\
+\
+\cf4 // *** CLEAR SCREEN ***\cf0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf2 Document\cf0 .listener.string=\cf3 ""\cf0 ; \
+\
+envelope.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf3 "..........DONE!"\cf0  \
+)\
+}

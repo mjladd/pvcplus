@@ -1,0 +1,473 @@
+#!/bin/sh
+#******************************************************
+# **** FILTER WITH CHORDAL FREQ RESPONSE SYNTHESIS ****
+#******************************************************
+
+
+#------------------------------------------------------
+#******** CHORDRESPONSEMAKER ROUTINE ******************
+#------------------------------------------------------
+
+#****** FREQUENCY RESPONSE OUTPUT FILE ******************
+
+freqresponsefile=~/freqresponsefile
+
+#************ SPECTRUM PLOT FILE **********************
+
+DecibelsSpectrumPlotFile=~/spectrumPlotFile
+
+
+#............. SYNTHESIS PARAMETERS ................... 
+
+#............RESPONSE TYPE ............................ 
+
+bandpass_0__bandreject_1=0
+
+#...... WINDOW AND ACCUMULATION ....................... 
+
+WINDOW_TYPE__triangle_0__rectangle_1=0
+
+SPECTRUM_ACCUMULATION_METHOD_peak_0__or__sum_1=0
+
+#...................................................... 
+data_file=/tmp/shift1_file
+
+#...................................................... 
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=2000
+# ( 0 = off )
+
+
+#..............DATA FILE FORMAT........................ 
+# DATA FILE FORMAT: sextuples
+# 1)  frequency/octave.pitchclass 
+#	(Values of 12 or less are treated as octave.pitchclass.)
+# 2)  number of partials (0 = all below Nyquist)
+# 3)  partial bandwidth
+#	Bandwidths <= 1 are interpreted as proportions of the fundamental frequency. 
+#	Bandwidths > 1 are interpreted as frequencies. 
+# 4)  dB of fundamental 
+# 5)  partial spacing as proportion of fundamental
+# 6)  (+ or -) decibels rolloff per octave of partials
+#...................................................... 
+
+# An "m" (for mute) at the beginning of a data set will comment it out. 
+# A "!" (for solo)  at the beginning of a data set will mute all other data sets.
+# More than one data set may be set to solo at a time. 
+
+# Text/data between curly braces -- "{ }" -- is cut before input, thus allowing comments.  
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+echo \
+\
+7.05	    0	  1.0  -0  1  -0  \
+\
+> /tmp/shift1_file ; 
+
+
+#------------------------------------------------------
+#********** FILTDEVIATOR ROUTINE  **************************
+#------------------------------------------------------
+
+#**************** OUTPUT SOUND FILE **********************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#*************** INPUT SOUND FILE ***************************
+
+input_file=~/Oboe.NF.C5.au
+
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+# (0 end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=4096
+window_type=2
+windowsize=0
+
+frames_per_second=200
+
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=0
+
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-80
+
+
+#.................. TIME ..............................
+
+MACRO_output_time_expansion_contraction_factor=1
+
+#======================================================
+#********** SOURCE OUTPUT SETTINGS ********************
+
+#.................. DECIBELS ..........................
+
+SOURCE_gain_in_dB=-100
+
+
+#.................. PITCH .............................
+
+SOURCE_frequency_shift=0
+SOURCE_pitch_transposition_in_semitones=0
+
+
+
+#.................. DELAY TIME ........................
+
+SOURCE_delay_time=0
+
+
+
+
+#=====================================================
+#***************** FILTER ****************************
+
+FILTER_FREQUENCY_RESPONSE_type=0
+#( 0 = pass )
+#( 1 = reject (invert response)  )
+
+#.................. DECIBELS ..........................
+
+FILTER_FREQUENCY_RESPONSE_dB_floor=-0
+
+
+#.................. PITCH .............................
+
+FILTER_FREQUENCY_RESPONSE_frequency_shift=0
+FILTER_FREQUENCY_RESPONSE_transposition_in_semitones=0
+
+
+#................. WARP ...............................
+
+FILTER_FREQUENCY_RESPONSE_amplitude_warpshape_index=0
+
+
+#("-" values compress the dynamic range of the response,  and
+# "+" values expand it. (0=no warp) )
+
+#=====================================================
+#* FILTER FREQUENCY RESPONSE LOW/HIGH SHELF EQ (pre-processing)**
+
+FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_gain_in_decibels=-0
+FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_frequency=200
+
+FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_gain_in_decibels=0
+FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_frequency=2000
+
+
+#********* FILTER OUTPUT MODIFICATIONS *****************
+
+#.................. DECIBELS ..........................
+
+FILTER_OUTPUT_gain_in_dB=-0
+
+#.................. PITCH .............................
+
+FILTER_OUTPUT_frequency_shift=0
+FILTER_OUTPUT_pitch_transposition_in_semitones=0
+#/tmp/pt
+
+
+#............ AMPLITUDE RESPONSE ......................
+
+FILTER_OUTPUT_release_time_in_seconds=0.
+FILTER_OUTPUT_attack_time_in_seconds=0.
+
+
+#=====================================================
+#************* AMPLITUDE DEVIATION *******************
+
+FILTER_OUTPUT_random_amplitude_deviation__off_0__on_1=0
+FILTER_OUTPUT_random_amplitude_deviation_response_time_in_seconds=0.2
+FILTER_OUTPUT_randomize_in__passband__0__stopband_1=0
+
+
+#( Passband randomize mode adds a random modulation to
+#  the amplitude passing at the level between the floor
+#  and the filter response level for the bin. 
+#  Stopband mode adds random amplitudes in the region
+#  above the response, returning in randomized form the
+#  amp that the response cuts away. )
+
+
+#=====================================================
+#************* FREQUENCY DEVIATION *******************
+
+#................. WARP ...............................
+FILTER_FREQUENCY_RESPONSE_frequency_range_warpshape_index=0
+# Redistribution of frequency deviation range values 
+# according to index.
+# "+" values warp response towards base,  and
+# "-" values towards the peak. (0=no warp)
+
+FILTER_OUTPUT_freq_deviation__responsemode_0__randommode_1__filemode=0
+
+
+FILTER_OUTPUT_frequency_deviation_response_time_in_seconds=0.0
+
+#  0 = Response mode: In response mode,  the filter response 
+#        is used to determine frequency deviation between 
+#        boundaries. 
+#  1 = Randommode: In random mode the base and peak form 
+#        boundaries for a random function. The function,  
+#        smoothed by the response time, is fitted into 
+#        the boundaries to produce the resulting deviation 
+#        from the bin's original frequency. The deviation 
+#        is then attenuated by using the normalized 
+#        frequency response for the bin as a gain control. 
+#  File mode: In file mode,  a function file is used in 
+#		place of a random function. Give a file in place 
+#		of a mode code number.
+
+FILTER_OUTPUT_peak_pitch_deviation_in_semitones=0
+FILTER_OUTPUT_base_pitch_deviation_in_semitones=0
+
+FILTER_OUTPUT_peak_frequency_shift=0
+FILTER_OUTPUT_base_frequency_shift=0
+
+
+#................DEVIATION CONTROL .................... 
+
+FILTER_OUTPUT_master_frequency_deviation=1
+
+
+#( 0 = no deviation,  1 = full deviation )
+
+#=====================================================
+#************* TIME DELAY ****************************
+
+FILTER_OUTPUT_random_time_delay_deviation__off_0__on_1=0
+FILTER_OUTPUT_random_time_delay_deviation_response_time_in_seconds=0.5
+# .1 to .3 good for diffusion without noise
+
+FILTER_FREQUENCY_RESPONSE_time_range_warpshape_index=0
+# Redistribution of time delays according to index.
+# "+" values warp response towards base,  and
+# "-" values towards the peak. (0=no warp)
+
+FILTER_OUTPUT_peak_time_delay_in_seconds=0
+FILTER_OUTPUT_base_time_delay_in_seconds=0
+
+FILTER_OUTPUT_master_time_delay_control=1
+
+#=====================================================
+#************* FEEDBACK DECAY TIME *******************
+FILTER_FREQUENCY_RESPONSE_decay_time_warpshape_index=0
+
+FILTER_OUTPUT_peak_decay_time_in_seconds=0
+FILTER_OUTPUT_base_decay_time_in_seconds=0
+
+
+
+
+FILTER_OUTPUT_master_decay_time_control=1
+
+#***********************************************************
+
+Function_Delay_Time_Scaler=0
+# Setting this parameter to a value of 1 scales the delayed
+# start time of control functions to their full, respective delay time;
+# values less than 1 scale the start time by the specified proportion.
+# A value of 0 causes all functions to start at the beginning, thus
+# canceling their respective delays. Scaler can be modulated
+# continuously with a function. 
+
+
+
+
+#=====================================================
+#********* FRAME NORMALIZATION ***********************
+
+Frame_Normalization_Decibel_Limit=0
+Normalize_to__Input_Sound_0__Filter_1=0
+
+
+# Scale the amplitudes of each output frame against either the changing 
+# input-source or constant filter. Scaling is produced using a ratio 
+# formed from the sum of the respective input-source or filter amplitudes
+# over the sum of the output frame amplitudes limited by the decibel limit. 
+# 0 prevents normalization; increase limit as necessary. 
+
+
+
+
+#********** AMPLITUDE STATISTICS ********************* 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1.0
+
+#.............. PRINT ................................ 
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=8000
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# FREQ REPSONSE SYNTHESIS
+synthesis_routine=chordresponsemaker
+
+PVFLAGS="\
+\
+-N$FFT_length \
+\
+-F$data_file \
+-f$input_file \
+-D$WINDOW_TYPE__triangle_0__rectangle_1 \
+-s$SPECTRUM_ACCUMULATION_METHOD_peak_0__or__sum_1 \
+-i$bandpass_0__bandreject_1 \
+\
+-a$DecibelsSpectrumPlotFile \
+\
+-v$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+-i$bandpass_0__bandreject_1 \
+"
+
+echo "$synthesis_routine $PVFLAGS  $freqresponsefile"
+
+$synthesis_routine  $PVFLAGS  $freqresponsefile   ; 
+
+if test $? -eq 0
+then
+
+#====================================================
+# SYNTHESIS
+pvroutine=filtdeviator 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$MACRO_output_time_expansion_contraction_factor \
+\
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+-a$FILTER_OUTPUT_frequency_shift \
+-P$FILTER_OUTPUT_pitch_transposition_in_semitones \
+-A$FILTER_OUTPUT_gain_in_dB \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-h$SOURCE_gain_in_dB \
+-r$SOURCE_frequency_shift \
+-s$SOURCE_delay_time \
+-y$SOURCE_pitch_transposition_in_semitones \
+\
+-b$begintime \
+-e$endtime \
+\
+-F$freqresponsefile \
+-G$FILTER_FREQUENCY_RESPONSE_type \
+-Z$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+-T$FILTER_FREQUENCY_RESPONSE_transposition_in_semitones \
+-V$FILTER_FREQUENCY_RESPONSE_frequency_shift \
+\
+\
+-S$FILTER_FREQUENCY_RESPONSE_dB_floor \
+-W$FILTER_FREQUENCY_RESPONSE_amplitude_warpshape_index \
+\
+-L$FILTER_OUTPUT_release_time_in_seconds \
+-l$FILTER_OUTPUT_attack_time_in_seconds \
+\
+-H$FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_gain_in_decibels \
+-m$FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_frequency \
+\
+-X$FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_gain_in_decibels \
+-R$FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_frequency \
+\
+-k$FILTER_OUTPUT_base_pitch_deviation_in_semitones \
+-K$FILTER_OUTPUT_peak_pitch_deviation_in_semitones \
+\
+-E$FILTER_OUTPUT_freq_deviation__responsemode_0__randommode_1__filemode \
+-Q$FILTER_OUTPUT_frequency_deviation_response_time_in_seconds \
+\
+-c$FILTER_OUTPUT_random_amplitude_deviation__off_0__on_1 \
+-d$FILTER_OUTPUT_random_amplitude_deviation_response_time_in_seconds \
+-f$FILTER_OUTPUT_randomize_in__passband__0__stopband_1 \
+\
+-u$FILTER_OUTPUT_base_frequency_shift \
+-U$FILTER_OUTPUT_peak_frequency_shift \
+\
+-v$FILTER_FREQUENCY_RESPONSE_frequency_range_warpshape_index \
+-O$FILTER_OUTPUT_master_frequency_deviation \
+\
+-o$FILTER_FREQUENCY_RESPONSE_time_range_warpshape_index \
+\
+-Y$FILTER_OUTPUT_random_time_delay_deviation__off_0__on_1 \
+-z$FILTER_OUTPUT_random_time_delay_deviation_response_time_in_seconds \
+\
+-J$FILTER_OUTPUT_peak_time_delay_in_seconds \
+-j$FILTER_OUTPUT_base_time_delay_in_seconds \
+-q$FILTER_OUTPUT_master_time_delay_control \
+\
+\
+-~$FILTER_FREQUENCY_RESPONSE_decay_time_warpshape_index \
+-/$FILTER_OUTPUT_peak_decay_time_in_seconds \
+-:$FILTER_OUTPUT_base_decay_time_in_seconds \
+-B$FILTER_OUTPUT_master_decay_time_control \
+\
+-n$Frame_Normalization_Decibel_Limit \
+-x$Normalize_to__Input_Sound_0__Filter_1 \
+\
+-@$Function_Delay_Time_Scaler \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+"
+
+
+echo "$pvroutine $PVFLAGS $input_file $output_file"
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 
+
+
+fi

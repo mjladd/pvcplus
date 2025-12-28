@@ -1,0 +1,165 @@
+#!/bin/sh
+#******************************************************
+#*** FREQRESPONSE ANALYSIS ****************
+#******************************************************
+#------------------------------------------------------
+#******************** ANALYSIS ************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+Freq_Response_Data_File=~/Freq_Response_Data_File
+
+Formants_Data_File=~/Formants_Data_File
+Formants_ASCII_Data_File=~/Formants_ASCII_Data_File
+
+#**************** PLOT FILES **************************
+
+Spectrum_DB_Plot_File=~/sp
+Formants_Bar_Plot_File=~/bp
+
+#******************** INPUT ***************************
+
+analysis_sndfile=~/Oboe.NF.C5.au
+
+
+#........ BEGIN/END TIMES .............................
+
+analysis_begintime=0
+analysis_endtime=0
+
+#........... ANALYSIS CHANNEL(S) .......................
+
+analysis_channel=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#...................................................... 
+
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=4096
+window_type=2
+
+analysis_frames_per_second=200
+
+
+
+#********** FORMANT ANALYSIS **************************
+
+ANALYSIS_METHOD_Average_0__Peak_1=0
+
+Amplitude_Weighted_Average__Off_0__On_1=0
+#
+# Amplitude weighting biases the final average spectrum toward 
+# frames with greater overall amplitude. The weighted average spectrum 
+# and peak spectra can be very similar. 
+
+Formant_Selection_Threshold__0_to_1=1.0
+# Using the difference between analyzed peak and average amps for
+# windowed frequency regions, an amplitude variation range, in dB, 
+# is set and used to select formants; the 0 to 1 threshold control is 
+# mapped into the range and used to select/reject spectral peaks as formants. 
+# 0 = all peaks, 1 = few. 
+# Effective threshold can vary depending on input. Try .4 to .8
+
+formant_peak_amplitude_threshold_in_dB=-60.
+# Formants in the normalized formant range are selected depending
+# on whether their peak amplitude is above threshold. 
+
+
+Formant_Analysis_low_frequency_limit=20
+Formant_Analysis_high_frequency_limit=20000
+
+
+#********* FORMANT NORMALIZATION -- SPECTRUM COMPANDING **
+
+Normalize_Spectrum_to_Formant_Peaks__off_0__on_1=0
+#
+# If on, formant peaks in the spectrum are normalized to 1.0
+# with bins between formants scaled by a gain interpolated 
+# between the adjoining formant normalization gains according to 
+# the bin's respective position between them. Normalization of
+# peaks equalizes formant amplitude differences, allowing
+# more source energy to pass (producing a brighter output) while
+# not losing the resonant characteristics of the filter response. 
+
+Warp_Index_for_Spectral_Expansion_or_Compression=0
+#
+# 0: compression or expansion.
+# Values > 0: expand dynamic range between formants; try 0 to 30.
+# Values < 0: compress dynamic range; try 0 to -30.  
+#
+# A non-zero warp index reshapes the distribution of amplitudes of bins
+# lying between formants. Positive warp indices reshape distribution 
+# towards lower amplitudes, thus expanding the mid-formant dynamic range;
+# expansion increases with higher values; negative indices do the reverse, 
+# compressing the range. Compression/expansion is greatest at the midpoint
+# between formants and decreasingly less to none in approach of the formant.
+   
+#------------------------------------------------------
+#********ANALYSIS LOW/HIGH SHELF EQ *******************
+
+ANALYSIS_LOW_SHELF_EQ_gain_in_decibels=-0
+ANALYSIS_LOW_SHELF_EQ_frequency=300
+
+ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels=0
+ANALYSIS_HIGH_SHELF_EQ_frequency=1000
+
+#------------------------------------------------------
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=20000
+# ( 0 = off )
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# ANALYSIS
+
+pvanalysisroutine=freqresponse
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-w$window_type \
+-M0 \
+-D$analysis_frames_per_second \
+\
+-b$analysis_begintime \
+-e$analysis_endtime \
+\
+-c$ANALYSIS_METHOD_Average_0__Peak_1 \
+\
+-p$Normalize_Spectrum_to_Formant_Peaks__off_0__on_1 \
+-E$Warp_Index_for_Spectral_Expansion_or_Compression \
+\
+-F$Formants_Data_File \
+-i$Formants_ASCII_Data_File \
+\
+-W$Amplitude_Weighted_Average__Off_0__On_1 \
+\
+-L$Formant_Analysis_low_frequency_limit \
+-j$Formant_Analysis_high_frequency_limit \
+\
+-g$Formant_Selection_Threshold__0_to_1 \
+-A$formant_peak_amplitude_threshold_in_dB \
+\
+\
+-H$ANALYSIS_LOW_SHELF_EQ_gain_in_decibels \
+-m$ANALYSIS_LOW_SHELF_EQ_frequency \
+\
+-X$ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels \
+-R$ANALYSIS_HIGH_SHELF_EQ_frequency \
+\
+-P$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+\
+-o$Formants_Bar_Plot_File \
+-a$Spectrum_DB_Plot_File \
+\
+-C$analysis_channel \
+"
+
+echo "$pvanalysisroutine $PVFLAGS $analysis_sndfile $Freq_Response_Data_File  "
+
+$pvanalysisroutine $PVFLAGS $analysis_sndfile $Freq_Response_Data_File ;

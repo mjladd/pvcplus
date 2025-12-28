@@ -1,0 +1,663 @@
+#!/bin/sh
+#
+# Formantsmapper shifts a set of formants identified with
+# the input source sound to the nearest formants of a target spectrum. 
+# The position and amplitude of formants are supplied to formantsmapper 
+# through analysis files prepared beforehand using freqresponse. 
+# The following script performs these three steps: 
+# 1. freqresponse analysis of source 
+# 2. freqresponse analysis of target 
+# 3. formantsmapper interpolation
+
+#******************************************************
+#*** SOURCE FREQRESPONSE/FORMANT ANALYSIS *************
+#******************************************************
+#------------------------------------------------------
+#******************** ANALYSIS ************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+SOURCE_freqresponsefile=~/source_freqresponsefile
+SOURCE_formantsOutputFile=~/s_fof
+SOURCE_Formants_ASCII_Data_File=~/s_afof
+
+#**************** PLOT FILES **************************
+
+SOURCE_DecibelsSpectrumPlotFile=~/s_spf
+SOURCE_formantsBarPlotFile=~/s_fbpf
+
+#**************** SOURCE INPUT SOUND FILE *************
+
+
+SOURCE_analysis_sndfile=~/Oboe.NF.G5.au
+
+#........ BEGIN/END TIMES .............................
+
+SOURCE_analysis_begintime=0
+SOURCE_analysis_endtime=0
+
+#........... ANALYSIS CHANNEL(S) .......................
+
+SOURCE_analysis_channel=1
+# Channels are numbered from 1-maximum.
+# 0 = all channels.
+
+#...................................................... 
+
+#*** ANALYSIS PARAMETERS ******************************
+
+SOURCE_window_type=8
+SOURCE_analysis_frames_per_second=200
+
+
+#********** FORMANT ANALYSIS **************************
+SOURCE_ANALYSIS_METHOD_Average_0__Peak_1=1
+
+SOURCE_Amplitude_Weighted_Average__Off_0__On_1=0
+#
+# Amplitude weighting biases the final average spectrum toward 
+# frames with greater overall amplitude. The weighted average spectrum 
+# and peak spectra can be very similar. 
+
+
+
+SOURCE_Formant_Selection_Threshold__0_to_1=0.5
+#
+# Using the difference between analyzed peak and average amps for
+# windowed frequency regions, an amplitude variation range, in dB, 
+# is set and used to select formants; the 0 to 1 threshold control is 
+# mapped into the range and used to select/reject spectral peaks as formants. 
+# 0 = all peaks, 1 = few. 
+# Effective threshold can vary depending on input. Try .4 to .8
+
+SOURCE_formant_peak_amplitude_threshold_in_dB=-90.
+# Formants in the normalized formant range are selected or rejected based
+# on whether their peak amplitude meets the threshold. 
+
+
+
+
+SOURCE_Formant_Analysis_low_frequency_limit=100
+SOURCE_Formant_Analysis_high_frequency_limit=10000
+
+
+#------------------------------------------------------
+#********ANALYSIS LOW/HIGH SHELF EQ *******************
+
+SOURCE_ANALYSIS_LOW_SHELF_EQ_gain_in_decibels=-0
+SOURCE_ANALYSIS_LOW_SHELF_EQ_frequency=300
+
+SOURCE_ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels=0
+SOURCE_ANALYSIS_HIGH_SHELF_EQ_frequency=1000
+
+#------------------------------------------------------
+
+SOURCE_FREQRESPONSE_PRINTOUT_high_cutoff_frequency=500
+# ( 0 = off )
+
+
+#******************************************************
+#*** TARGET FREQRESPONSE/FORMANT ANALYSIS *************
+#******************************************************
+#------------------------------------------------------
+#******************** ANALYSIS ************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+TARGET_freqresponsefile=~/target_freqresponsefile
+TARGET_formantsOutputFile=~/t_fof
+TARGET_Formants_ASCII_Data_File=~/t_afof
+
+
+#**************** PLOT FILES **************************
+
+TARGET_DecibelsSpectrumPlotFile=~/t_spf
+TARGET_formantsBarPlotFile=~/t_fbpf
+
+
+#****** TARGET INPUT SOUND FILE *****************
+
+TARGET_analysis_sndfile=~/ridecymbal.NF.aiff
+
+
+#........ BEGIN/END TIMES .............................
+
+TARGET_analysis_begintime=0
+TARGET_analysis_endtime=0
+
+#........... ANALYSIS CHANNEL(S) .......................
+
+TARGET_analysis_channel=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#...................................................... 
+
+#*** ANALYSIS PARAMETERS ******************************
+
+TARGET_window_type=8
+TARGET_analysis_frames_per_second=200
+
+
+
+#********** FORMANT ANALYSIS **************************
+TARGET_ANALYSIS_METHOD_Average_0__Peak_1=0
+
+TARGET_Amplitude_Weighted_Average__Off_0__On_1=0
+#
+# Amplitude weighting biases the final average spectrum toward 
+# frames with greater overall amplitude. The weighted average spectrum 
+# and peak spectra can be very similar. 
+
+
+
+TARGET_Formant_Selection_Threshold__0_to_1=0.5
+#
+# Using the difference between analyzed peak and average amps for
+# windowed frequency regions, an amplitude variation range, in dB, 
+# is set and used to select formants; the 0 to 1 threshold control is 
+# mapped into the range and used to select/reject spectral peaks as formants. 
+# 0 = all peaks, 1 = few. 
+# Effective threshold can vary depending on input. Try .4 to .8
+
+TARGET_formant_peak_amplitude_threshold_in_dB=-90.
+#
+# Formants in the normalized formant range are selected or rejected based
+# on whether their peak amplitude meets the threshold. 
+
+
+
+
+TARGET_Formant_Analysis_low_frequency_limit=100
+TARGET_Formant_Analysis_high_frequency_limit=10000
+
+
+#------------------------------------------------------
+#********ANALYSIS LOW/HIGH SHELF EQ *******************
+
+TARGET_ANALYSIS_LOW_SHELF_EQ_gain_in_decibels=-0
+TARGET_ANALYSIS_LOW_SHELF_EQ_frequency=500
+
+TARGET_ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels=0
+TARGET_ANALYSIS_HIGH_SHELF_EQ_frequency=4000
+
+#------------------------------------------------------
+
+TARGET_FREQRESPONSE_PRINTOUT_high_cutoff_frequency=500
+# ( 0 = off )
+
+
+
+
+#******************************************************
+#............... FORMANTS MAPPER ......................
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#
+# -2: interactive:  Play once, then prompts for more.
+# -1: interactive:  Prompt for each play of file.
+#  0: off
+#  1 or greater: Auto-repeat for specified repetitions.
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#
+# -96 to 0 dB.
+# Set to 1 to rescale to peak of input file.
+# Set to 2 to bypass rescale.
+
+#******************** INPUT ***************************
+ 
+input_file=$SOURCE_analysis_sndfile 
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+
+# (End time of 0 or less defaults to end of file.)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+FFT_length=4096
+# Powers of two (512, 1024, 2048, 4096...)
+# Larger values increase bins, adding frequency resolution while
+# decreasing time resolution; smaller values effect the opposite.   
+# Start with 1024. 
+
+SYNTHESIS_window_type=8
+
+# hamming(0),  rectangular(1) Blackman(2), Bartlett(3)
+# Kaiser(4-12) for corresponding alpha values:
+# alpha = 4: sidelobe of -30dB, narrow center lobe
+# alpha = 8: sidelobe of -58dB, medium center lobe
+# alpha = 12: sidelobe of -90dB, wide center lobe
+
+windowsize=0
+# (0 sets windowsize to 2 * FFT (or larger))
+
+frames_per_second=200
+#(see time expansion note)
+ 
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=1
+# Channels are numbered from 1 to the maximum.
+# 0 = all channels.
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+# Try -60 to -70 unless dropouts become audible.
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1.0
+# Adjust frames_per_second in proportion to keep a 
+#  constant output of about 200 frames per second; 
+# i.e. if expansion = 2, double the frames to 400.
+#.................. DECIBELS ..........................
+
+gain_in_decibels=-0
+
+
+#.................. PITCH .............................
+
+frequency_shift_in_Hz=0
+# (Frequency shift is added to all bin frequencies.) 
+pitch_transposition_in_semitones=0
+
+#............ AMPLITUDE RESPONSE ......................
+
+release_time_in_seconds=0
+attack_time_in_seconds=0
+
+#........... FORMANTS ANALYSIS FILES ..................
+
+sourceFormantsFile=$SOURCE_formantsOutputFile
+targetFormantsFile=$TARGET_formantsOutputFile
+
+#*******************************************************
+#..... SOURCE FORMANTS MODIFICATIONS ...........
+
+Pre_Synthesis_Formant_Bandwidth_Extension_Factor=0
+#
+# The fixed bandwidth of formants, measured in bins, that is used in re-synthesis is
+# increased by the specified proportion up to the stop-bands of the 
+# formants above and below. A proportion of 0 will omit all
+# side bins, leaving only the central bin. Values greater than 1. increase the
+# number of included bins. Set to 1. (no change) to bypass.
+
+
+#*******************************************************
+# RESIDUE BINS
+
+Residue_Bins__0_off__1_on=0
+Residue_Bins_Gain_in_decibels=0
+
+#*******************************************************
+# RESYNTHESIS BANKS A AND B
+
+bank_A_0__banks_A_and_B_1=0
+
+# Bank A
+bank_A_frequency_interpolation=/tmp/nn
+bank_A_amplitude_interpolation=/tmp/nn
+# Warning: See amplitude_interpolation_gain_limit_in_dB below.
+bank_A_gain_in_decibels=0
+bank_A_decibel_rolloff_per_semitone=0
+
+gen4 -L1000 0 0 0  1 1   > /tmp/nn
+
+
+bank_A_pitch_transposition_in_semitones=0
+#
+# The frequencies and amplitudes of the identified source formant bins
+# are interpolated from their source values to the identified target
+# values according to the respective 0-1 interpolation value or function.
+# In addition, the overall gain of the bank is controlled by value or
+# function.  
+
+# Bank B
+bank_B_frequency_interpolation=0
+bank_B_amplitude_interpolation=0
+#
+# WARNING: See amplitude_interpolation_gain_limit_in_dB below.
+
+bank_B_gain_in_decibels=0
+bank_B_decibel_rolloff_per_semitone=0
+bank_B_pitch_transposition_in_semitones=0
+
+
+amplitude_interpolation_gain_limit_in_dB=0
+#
+# The parameter above limits the amount of gain that both
+# banks may apply to any formant when interpolating the amplitude of one
+# into the other. When interpolating weak source spectra
+# into strong target spectra, limiting is necessary as it prevents 
+# excessive gain of high, weak noise formants. 0dB prevents any gain; greater
+# values allow gain up to the amount specified. 
+
+Interpolation_path_diffusion_warp_magnitude=0
+#
+# Formant interpolation trajectories can be independently warped through
+# the path diffusion control. Magnitudes greater than 0 expand the +/- 
+# range from which formants randomly select a warp index for shaping their
+# otherwise linear interpolation path. A magnitude of zero causes all formants
+# to follow the same linear path. 
+
+
+
+
+#********************************************************
+#********************************************************
+#..... SOURCE: FILTER OUT SPECTRUM FORMANTS ...........
+Source_formants_decibel_inclusion_threshold=-500
+Source_formants_low_frequency_boundary=100
+Source_formants_high_frequency_boundary=20000
+
+# Formants with amplitude less than 
+# the threshold or with center frequencies outside the low/high boundaries   
+# are omitted. Boundaries of 0 or less revert to 0 Hz or the Nyquist frequency 
+# for low/high respectively. 
+
+#********************************************************
+# . . . . . . SOURCE FORMANTS EXTENSION . . . . . . . . 
+Sources_add_partials_to_formants__off_0__on_1=0
+
+Sources_formant_extension_decibel_threshold=-30
+#
+# Only formants whose amplitudes are greater than or equal to the threshold
+# are extended through added partials.
+
+Sources_peak_extension_partial=0
+# Highest partial for extended formants. 
+# 0 = all below Nyquist frequency.
+
+Sources_add_upper_octaves_to_extension_partials__off_0__on_1=0
+#
+# Extend added partials through addition of their upper octaves.
+
+
+
+
+#********************************************************
+#********************************************************
+#..... TARGET: FILTER OUT SPECTRUM FORMANTS
+Target_formants_transposition_in_semitones=0
+
+
+Target_formants_decibel_inclusion_threshold=-500
+Target_formants_low_frequency_boundary=200
+Target_formants_high_frequency_boundary=10000
+#
+# Following transposition to a fixed (pre-synthesis) position, formants with amplitude less than 
+# the threshold or center frequencies outside the low/high boundaries   
+# are omitted. Boundaries of 0 or less revert to 0 Hz or Nyquist frequency for
+# low/high respectively. 
+
+#********************************************************
+# . . . . . . TARGET FORMANTS EXTENSION . . . . . . . . 
+Targets_add_partials_to_formants__off_0__on_1=0
+
+Targets_formant_extension_decibel_threshold=-20
+#
+# Only remaining formants whose amplitudes are greater than or equal to the threshold
+# are extended through added partials.
+
+Targets_peak_extension_partial=0
+# Highest partial for extended formants. 
+# 0 = all below Nyquist frequency.
+
+Targets_add_upper_octaves_to_extension_partials__off_0__on_1=0
+#
+# Extend added partials through addition of their upper octaves.
+
+#*******************************************************
+# COMMON SOURCE/TARGET PARAMETERS
+
+added_formants_partial_dB_rolloff_per_partial=-6
+# The dB amount by which the amplitude of extended partial formants rolls
+# off as a function of the partial number. 
+
+
+#======================================================
+#*************** LOW/HIGH SHELF EQ *********************
+
+LOW_SHELF_EQ_gain_in_decibels=0
+LOW_SHELF_EQ_frequency=2000
+
+HIGH_SHELF_EQ_gain_in_decibels=-0
+HIGH_SHELF_EQ_frequency=5000
+
+#********** AMPLITUDE STATISTICS ********************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# SOURCE ANALYSIS
+
+pvanalysisroutine=freqresponse
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-w$SOURCE_window_type \
+-M0 \
+-D$SOURCE_analysis_frames_per_second \
+\
+-b$SOURCE_analysis_begintime \
+-e$SOURCE_analysis_endtime \
+\
+-c$SOURCE_ANALYSIS_METHOD_Average_0__Peak_1 \
+-W$SOURCE_Amplitude_Weighted_Average__Off_0__On_1 \
+\
+\
+-F$SOURCE_formantsOutputFile \
+-i$SOURCE_Formants_ASCII_Data_File \
+\
+\
+-L$SOURCE_Formant_Analysis_low_frequency_limit \
+-j$SOURCE_Formant_Analysis_high_frequency_limit \
+\
+-g$SOURCE_Formant_Selection_Threshold__0_to_1 \
+-o$SOURCE_formantsBarPlotFile \
+\
+-A$SOURCE_formant_peak_amplitude_threshold_in_dB \
+\
+-H$SOURCE_ANALYSIS_LOW_SHELF_EQ_gain_in_decibels \
+-m$SOURCE_ANALYSIS_LOW_SHELF_EQ_frequency \
+\
+-X$SOURCE_ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels \
+-R$SOURCE_ANALYSIS_HIGH_SHELF_EQ_frequency \
+\
+-P$SOURCE_FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+\
+-a$SOURCE_DecibelsSpectrumPlotFile \
+\
+-C$SOURCE_analysis_channel \
+"
+
+echo "$pvanalysisroutine $PVFLAGS $SOURCE_analysis_sndfile $SOURCE_freqresponsefile  "
+
+$pvanalysisroutine $PVFLAGS $SOURCE_analysis_sndfile $SOURCE_freqresponsefile ;
+
+
+if test $? -eq 0
+then
+
+
+#=============================================================
+# TARGET ANALYSIS
+
+pvanalysisroutine=freqresponse
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-w$TARGET_window_type \
+-M0 \
+-D$TARGET_analysis_frames_per_second \
+\
+-b$TARGET_analysis_begintime \
+-e$TARGET_analysis_endtime \
+\
+-c$TARGET_ANALYSIS_METHOD_Average_0__Peak_1 \
+-W$TARGET_Amplitude_Weighted_Average__Off_0__On_1 \
+\
+\
+-F$TARGET_formantsOutputFile \
+-i$TARGET_Formants_ASCII_Data_File \
+\
+\
+-L$TARGET_Formant_Analysis_low_frequency_limit \
+-j$TARGET_Formant_Analysis_high_frequency_limit \
+\
+-g$TARGET_Formant_Selection_Threshold__0_to_1 \
+-o$TARGET_formantsBarPlotFile \
+\
+-A$TARGET_formant_peak_amplitude_threshold_in_dB \
+\
+-H$TARGET_ANALYSIS_LOW_SHELF_EQ_gain_in_decibels \
+-m$TARGET_ANALYSIS_LOW_SHELF_EQ_frequency \
+\
+-X$TARGET_ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels \
+-R$TARGET_ANALYSIS_HIGH_SHELF_EQ_frequency \
+\
+-P$TARGET_FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+\
+-a$TARGET_DecibelsSpectrumPlotFile \
+\
+-C$TARGET_analysis_channel \
+"
+
+echo "$pvanalysisroutine $PVFLAGS $TARGET_analysis_sndfile $TARGET_freqresponsefile  "
+
+$pvanalysisroutine $PVFLAGS $TARGET_analysis_sndfile $TARGET_freqresponsefile ;
+
+fi
+
+if test $? -eq 0
+then
+
+
+#=============================================================
+# FORMANTS MAPPER
+
+pvroutine=formantsmapper 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$SYNTHESIS_window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-a$frequency_shift_in_Hz \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+\
+-H$LOW_SHELF_EQ_gain_in_decibels \
+-m$LOW_SHELF_EQ_frequency \
+\
+-X$HIGH_SHELF_EQ_gain_in_decibels \
+-R$HIGH_SHELF_EQ_frequency \
+\
+-L$release_time_in_seconds \
+-l$attack_time_in_seconds \
+\
+\
+-E$sourceFormantsFile \
+-g$targetFormantsFile \
+\
+-c$Targets_add_partials_to_formants__off_0__on_1 \
+\
+-K$Target_formants_decibel_inclusion_threshold \
+-o$Target_formants_low_frequency_boundary \
+-O$Target_formants_high_frequency_boundary \
+-T$Target_formants_transposition_in_semitones \
+-d$Targets_formant_extension_decibel_threshold \
+\
+-z$Source_formants_low_frequency_boundary \
+-Z$Source_formants_high_frequency_boundary \
+-@$Source_formants_decibel_inclusion_threshold \
+\
+-j$Targets_peak_extension_partial \
+-k$Targets_add_upper_octaves_to_extension_partials__off_0__on_1 \
+\
+-n$Sources_add_partials_to_formants__off_0__on_1 \
+-U$Sources_formant_extension_decibel_threshold \
+-V$Sources_peak_extension_partial \
+-y$Sources_add_upper_octaves_to_extension_partials__off_0__on_1 \
+-Y$added_formants_partial_dB_rolloff_per_partial \
+\
+-~$amplitude_interpolation_gain_limit_in_dB \
+\
+-/$bank_A_0__banks_A_and_B_1 \
+\
+-r$bank_A_frequency_interpolation \
+-v$bank_A_amplitude_interpolation \
+-G$bank_A_gain_in_decibels \
+-h$bank_A_decibel_rolloff_per_semitone \
+-f$bank_A_pitch_transposition_in_semitones \
+\
+-x$Residue_Bins__0_off__1_on \
+-s$Residue_Bins_Gain_in_decibels \
+\
+-:$bank_B_frequency_interpolation \
+-J$bank_B_amplitude_interpolation \
+-F$bank_B_gain_in_decibels \
+-B$bank_B_decibel_rolloff_per_semitone \
+-W$bank_B_pitch_transposition_in_semitones \
+\
+-u$Interpolation_path_diffusion_warp_magnitude \
+-S$Pre_Synthesis_Formant_Bandwidth_Extension_Factor \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+"
+
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+$pvroutine  $PVFLAGS $input_file $output_file
+
+fi

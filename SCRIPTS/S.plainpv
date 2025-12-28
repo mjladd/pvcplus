@@ -1,0 +1,188 @@
+#!/bin/sh
+#******************************************************
+#.................... PLAINPV .........................
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ../32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=2
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+ 
+input_file=~/Oboe.G5.N.au
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+
+# (End time of 0 or less defaults to end of file.)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+FFT_length=2048
+# Powers of two (512, 1024, 2048, 4096...)
+# Larger values increase bins, adding frequency resolution while
+# decreasing time resolution; smaller values effect the opposite.   
+# Start with 1024. 
+
+window_type=1
+
+# hamming(0),  rectangular(1) Blackman(2), Bartlett(3)
+# Kaiser(4-12) for corresponding alpha values:
+# alpha = 4: sidelobe of -30dB, narrow center lobe
+# alpha = 8: sidelobe of -58dB, medium center lobe
+# alpha = 12: sidelobe of -90dB, wide center lobe
+
+windowsize=0
+# (0 sets windowsize to 2 * FFT (or larger))
+
+frames_per_second=400
+#(see time expansion note)
+ 
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=0
+# (channels are numbered from 1 to the maximum.)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+#( Try -60 to -70 unless dropouts become audible. )
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=2
+# Adjust frames_per_second in proportion to keep a 
+#   constant output of about 200 frames per second; 
+# i.e. if expansion = 2, double the frames to 400.
+#.................. DECIBELS ..........................
+
+gain_in_decibels=0
+
+
+
+#.................. PITCH .............................
+
+frequency_shift_in_Hz=0
+# (Frequency shift is added to all bin frequencies.) 
+pitch_transposition_in_semitones=0
+
+
+
+#............ AMPLITUDE RESPONSE ......................
+
+release_time_in_seconds=0
+attack_time_in_seconds=0
+
+
+#............ SPECTRUM WARPSHAPE ......................
+spectrum_warpshape_index=0
+
+#............ BRICKWALL FILTER ........................
+
+FILTER_TYPE=0
+
+#( 0 = bandpass )
+#( 1 = bandreject )
+
+#...................................................... 
+
+BRICKWALL_FILTER_window_low_frequency=0
+BRICKWALL_FILTER_window_high_frequency=-1
+# (-1 selects respective lowest or highest frequency)
+
+#======================================================
+#*************** LOW/HIGH SHELF EQ *********************
+
+LOW_SHELF_EQ_gain_in_decibels=-0
+LOW_SHELF_EQ_frequency=500
+
+HIGH_SHELF_EQ_gain_in_decibels=-0
+HIGH_SHELF_EQ_frequency=5000
+
+#********** AMPLITUDE STATISTICS ********************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=plainpv 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-a$frequency_shift_in_Hz \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-H$LOW_SHELF_EQ_gain_in_decibels \
+-m$LOW_SHELF_EQ_frequency \
+\
+-X$HIGH_SHELF_EQ_gain_in_decibels \
+-R$HIGH_SHELF_EQ_frequency \
+\
+-L$release_time_in_seconds \
+-l$attack_time_in_seconds \
+\
+-W$spectrum_warpshape_index \
+\
+-T$FILTER_TYPE \
+-f$BRICKWALL_FILTER_window_low_frequency \
+-F$BRICKWALL_FILTER_window_high_frequency \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+"
+
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+$pvroutine  $PVFLAGS $input_file $output_file

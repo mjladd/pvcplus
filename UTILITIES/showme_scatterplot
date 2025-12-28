@@ -1,0 +1,31 @@
+if test $# -eq 0
+then
+        echo " "
+	echo "showme_scatterplot <ASCII file of XY pairs, one per line>"
+	echo "	"
+	echo "    Where are the files?"
+	echo " "
+	echo " "
+
+  	    
+else
+   while test $# -gt 0
+   do
+     if test -s $1
+     then
+	 # FILE EXISTS
+         echo PLOTTED FILE: $1 
+
+          echo "set title \"$1\" ; set grid; plot '$1' using 1:2 w dots ; pause -1" > \
+         	   /tmp/gnuplot_commands.$USER
+    
+          gnuplot /tmp/gnuplot_commands.$USER
+          rm  /tmp/gnuplot_commands.$USER  
+     else
+         echo "***************** FILE --> $1 <-- NOT FOUND. ****************"
+         echo ""
+     fi    
+     shift
+  done
+fi
+

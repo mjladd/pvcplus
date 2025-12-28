@@ -1,0 +1,33 @@
+if test $# -eq 0
+then
+        echo " "
+	echo "showmeb <ASCII or binary float function file>"
+	echo "(plots boxes)"
+	echo "	"
+	echo "    Where are the files?"
+	echo " "
+	echo " "
+
+  	    
+else
+   while test $# -gt 0
+   do
+     if test -s $1
+     then
+	 # FILE EXISTS
+          reshape -A1  $1 > /tmp/$USER ;
+         echo PLOTTED FILE: $1 
+
+          echo "set title \"$1\" ; set grid; plot \"/tmp/$USER\" title \"\" w boxes; pause -1" > \
+         	   /tmp/gnuplot_commands.$USER
+    
+          gnuplot /tmp/gnuplot_commands.$USER
+          rm  /tmp/gnuplot_commands.$USER  /tmp/$USER  
+     else
+         echo "***************** FILE --> $1 <-- NOT FOUND. ****************"
+         echo ""
+     fi    
+     shift
+  done
+fi
+

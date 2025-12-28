@@ -1,0 +1,280 @@
+#!/bin/sh
+#******************************************************
+#................ HARMONIZER ..........................
+#******************************************************
+# Using a user-designed data file specifying 
+# frequency bands, transpositions, and amplitude levels, 
+# harmonizer builds a new bank of resynthesis bins for synthesis  
+# of the output sound. The specified frequency bands need not 
+# be exclusive, i.e. they can overlap. Macro controls are 
+# available for manipulation of the harmonized bins as a 
+# group. The source sound may be added and manipulated
+# independently. 
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+
+#******************** INPUT ***************************
+
+input_file=~/ridecymbal.NF.aiff
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+# (0 end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=4096
+# Powers of two (512, 1024, 2048, 4096...)
+# Larger values increase bins, adding frequency resolution while
+# decreasing time resolution; smaller values effect the opposite.   
+# Start with 1024. 
+
+window_type=8
+
+# hamming(0),  rectangular(1) Blackman(2), Bartlett(3)
+# Kaiser(4-12) for corresponding alpha values:
+# alpha = 4 -> sidelobe of -30dB, narrow center lobe
+# alpha = 8 -> sidelobe of -58dB, medium center lobe
+# alpha = 4 -> sidelobe of -90dB, wide center lobe
+
+windowsize=0
+# (0 sets windowsize to 2 * FFT)
+
+frames_per_second=200
+
+#........... OUTPUT CHANNEL(S) .......................
+
+output_channel=1
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-80
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1
+
+#.................. DECIBELS ..........................
+
+MASTER_gain_in_decibels=-0
+
+
+#********** SOURCE ************************************
+
+#.................. DECIBELS ..........................
+
+SOURCE_gain_in_dB=-0
+
+#.................. PITCH .............................
+
+SOURCE_frequency_shift=0
+SOURCE_pitch_transposition_in_semitones=0
+
+
+SOURCE_delay_time=0
+
+
+#********** HARMONIZER ********************************
+#.................. DECIBELS ..........................
+
+HARMONIZER_gain_in_dB=-0
+
+#.................. PITCH .............................
+
+HARMONIZER_frequency_shift=0
+HARMONIZER_pitch_transposition_in_semitones=0
+
+
+
+#............ SPECTRUM WARPSHAPE ......................
+HARMONIZER_spectrum_warpshape_index=0
+
+#********* AMPLITUDE STATISTICS **********************
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1.0
+
+#================ DATA FILE: =========================
+
+HARMONIZER_data_file=~/harm_data_file
+
+#................. SHIFT METHOD ....................... 
+HARMONIZER_shift_method=0
+#( 0 = frequency multiplier )
+#( 1 = frequency adder )
+#( 2 = semitones of transposition )
+
+#=====================================================
+
+#*************** DATA FILE FORMAT ********************
+# (1) shift factor (see shift method format)
+# (2) low  boundary pitch or frequency 
+# (3) high  boundary pitch or frequency 
+# (4) center pitch or frequency
+# (5) peak dB
+# (6) stop-band or edge dB (relative to peak)
+# (7) dB response Q index: 
+#	0 = linear, values > 0: sharp/narrow, values < 0: smooth/wide   
+# (8) delay time
+#*****************************************************
+
+# An "m" (for mute) at the beginning of a data set will comment it out. 
+# A "!" (for solo)  at the beginning of a data set will mute all other data sets.
+# More than one data set may be set to solo at a time. 
+
+# Text/data between curly braces -- "{ }" -- is cut before input, thus allowing comments.  
+
+#======================================================
+#**** SCALERS AND SHIFTERS FOR DATA SETUP 
+#======================================================
+# The following controls allow macro modification of 
+# values in particular parameters. 
+#
+# Scalers are multipliers, shifts are adders. 
+# Thus, multipliers of 1 and shifts of 0 produce
+# no change to parameter values. Negative values 
+# are allowed. Scaling is always first, followed by 
+# shifts. 
+
+# PARAMETER: 1
+HARMONIZER_DATA__Shift_Factor_Scaler=1
+HARMONIZER_DATA__Shift_Factor_Shifter=0
+
+# PARAMETERS: 2-4 RESULTING BOUNDARY AND CENTER FREQUENCIES
+HARMONIZER_DATA__Resulting_Boundary_and_Center_Frequencies_Scaler=1.
+HARMONIZER_DATA__Resulting_Boundary_and_Center_Frequencies_Shifter=0
+
+# PARAMETER:5 ** PEAK DECIBELS
+HARMONIZER_DATA__Peak_Decibels_Scaler=0
+
+# PARAMETER:6 ** STOPBAND DECIBELS
+HARMONIZER_DATA__Stopband_Decibels_Scaler=1
+HARMONIZER_DATA__Stopband_Decibels_Shifter=-0
+
+# PARAMETER:7 ** Q-INDEX
+HARMONIZER_DATA__Q_Index_Shifter=0
+
+
+# PARAMETER:8 ** DELAY
+HARMONIZER_DATA__Delay_Time_Scaler=1.0
+HARMONIZER_DATA__Delay_Time_Shifter=0.
+
+
+#======================================================
+#*** AMPLITUDE AND FREQUENCY INTERPOLATION CONTROLS **
+#======================================================
+# 0: original source values
+# 1: target values
+# 0-1: interpolation between, by constant or function
+
+HARMONIZER_Amplitude_Interpolation_Control=1
+
+HARMONIZER_Frequency_Interpolation_Control=1
+
+HARMONIZER_Time_Interpolation_Control=1
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+#[1. shift ][2. low     ][3. high    ][4. center ][5. peak ][6. stopband][7. Q index][8. delay ] 
+#[  factor ][   boundary][   boundary][          ][   dB   ][   dB      ][          ][   time  ] 
+
+echo \
+\
+1.25   500	          20000      	 750     -0.000       -30.000      5       0.1       \
+\
+> ~/harm_data_file ; 
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=harmonizer 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-A$MASTER_gain_in_decibels \
+\
+-G$SOURCE_gain_in_dB \
+-a$SOURCE_frequency_shift \
+-P$SOURCE_pitch_transposition_in_semitones \
+-g$SOURCE_delay_time \
+\
+-W$HARMONIZER_spectrum_warpshape_index \
+\
+-z$HARMONIZER_shift_method \
+\
+-m$HARMONIZER_gain_in_dB \
+-q$HARMONIZER_frequency_shift \
+-X$HARMONIZER_pitch_transposition_in_semitones \
+-F$HARMONIZER_data_file \
+\
+-Y$HARMONIZER_DATA__Shift_Factor_Scaler \
+-@$HARMONIZER_DATA__Shift_Factor_Shifter \
+\
+-U$HARMONIZER_DATA__Resulting_Boundary_and_Center_Frequencies_Scaler \
+-y$HARMONIZER_DATA__Resulting_Boundary_and_Center_Frequencies_Shifter \
+\
+-o$HARMONIZER_DATA__Peak_Decibels_Scaler \
+-O$HARMONIZER_DATA__Stopband_Decibels_Scaler \
+-r$HARMONIZER_DATA__Q_Index_Shifter \
+-Q$HARMONIZER_DATA__Stopband_Decibels_Shifter \
+-j$HARMONIZER_DATA__Delay_Time_Scaler \
+-n$HARMONIZER_DATA__Delay_Time_Shifter \
+\
+-J$HARMONIZER_Amplitude_Interpolation_Control \
+-K$HARMONIZER_Frequency_Interpolation_Control \
+-Z$HARMONIZER_Time_Interpolation_Control \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+"
+echo "$pvroutine $PVFLAGS  $input_file $output_file"
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 

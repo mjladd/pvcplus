@@ -1,0 +1,266 @@
+#!/bin/sh
+#******************************************************
+#..................... COMPANDER ......................
+#******************************************************
+
+#------------------------------------------------------
+#******************** ANALYSIS ************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+peaks_analysis_file=/tmp/peaks_analysis_file
+
+DecibelsSpectrumPlotFile=/tmp/sp
+
+#******************** INPUT ***************************
+
+#input_file=~/typewriter.aiff
+
+input_file=~/Oboe.NF.C5.au
+
+#........ BEGIN/END TIMES .............................
+
+peak_analysis_begintime=0
+peak_analysis_endtime=-1
+
+#......................................................
+
+ANALYSIS_METHOD_average_0_peak_1_flag=1
+ANALYSIS_frames_per_second=500
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=2000
+# ( 0 = off )
+
+
+
+#------------------------------------------------------
+#******************* SYNTHESIS ************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=1
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+
+#........ BEGIN/END TIMES .............................
+begintime=0
+endtime=0
+# (0 end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=2048
+window_type=12
+windowsize=0
+
+frames_per_second=200
+
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+
+#........... OUTPUT CHANNEL(S) .......................
+
+output_channel=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1
+
+
+#.................. DECIBELS ..........................
+
+gain_in_decibels=0
+
+
+#.................. PITCH .............................
+
+frequency_shift=0
+pitch_transposition_in_semitones=-0.
+
+
+#======================================================
+#****** COMPRESSION/EXPANSION PARAMETERS **************
+
+peaks_response_smooth_factor_BW__in_frequency_or_octaves=1
+
+# Negative values are treated as positive octave bandwidths, 
+# otherwise units are in frequency.
+
+
+#............. PRINT ...................................
+
+SMOOTHED_FREQRESPONSE_PRINTOUT_high_cutoff_frequency=2000
+# ( 0 = off )
+
+
+
+#.....COMPANDER FREQUENCY BAND ......................
+
+low_cutoff_frequency=0
+high_cutoff_frequency=20000
+octaves_of_rolloff=1
+
+#.......COMPRESSION..................................
+
+COMPRESSION_threshold_in_dB=-30
+decibels_of_compression=-40
+
+
+#.......EXPANSION .....................................
+
+EXPANSION_threshold_in_dB=-80
+decibels_of_expansion=-0
+
+
+# COMPANDER ENVELOPE RESPONSE TIME  ...................
+
+envelope_attack_in_seconds=.5
+envelope_release_in_seconds=.5
+
+# Set response times to anywhere from .01 to 2 or more to
+# slow down the response of the compansion envelopes. Fast 
+# envelope responses may give you roughness (in companding), 
+# or worse, gurgling (in expansion) as the bins oscillate in
+# and out of compansion. 
+
+#======================================================
+#*************** LOW/HIGH SHELF EQ *********************
+LOW_SHELF_EQ_gain_in_decibels=-0
+LOW_SHELF_EQ_frequency=2000
+
+HIGH_SHELF_EQ_gain_in_decibels=-0
+HIGH_SHELF_EQ_frequency=3000
+
+#********** AMPLITUDE STATISTICS ******************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# ANALYSIS
+pvanalysisroutine=freqresponse
+
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-w$window_type \
+-M0 \
+-D$ANALYSIS_frames_per_second \
+\
+-b$peak_analysis_begintime \
+-e$peak_analysis_endtime \
+\
+-c$ANALYSIS_METHOD_average_0_peak_1_flag \
+\
+-P$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+\
+-C$output_channel \
+-a$DecibelsSpectrumPlotFile \
+\
+\
+-B1 \
+-W0 \
+\
+"
+echo "\n$pvanalysisroutine $PVFLAGS $input_file $peaks_analysis_file"
+
+$pvanalysisroutine $PVFLAGS $input_file $peaks_analysis_file ;
+
+#exit ;
+#====================================================
+# SYNTHESIS
+pvroutine=compander 
+
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-a$frequency_shift \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-F$peaks_analysis_file \
+-S$peaks_response_smooth_factor_BW__in_frequency_or_octaves \
+-Z$SMOOTHED_FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+\
+-o$COMPRESSION_threshold_in_dB \
+-O$decibels_of_compression \
+-q$EXPANSION_threshold_in_dB \
+-Q$decibels_of_expansion \
+\
+-c$low_cutoff_frequency \
+-d$high_cutoff_frequency \
+-f$octaves_of_rolloff \
+\
+\
+-L$envelope_release_in_seconds \
+-l$envelope_attack_in_seconds \
+\
+-H$LOW_SHELF_EQ_gain_in_decibels \
+-m$LOW_SHELF_EQ_frequency \
+\
+-X$HIGH_SHELF_EQ_gain_in_decibels \
+-R$HIGH_SHELF_EQ_frequency \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+"
+echo "$pvroutine $PVFLAGS $input_file $output_file"
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 

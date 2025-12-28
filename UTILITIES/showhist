@@ -1,0 +1,26 @@
+if test $# -eq 0
+then
+        echo " "
+	echo "showhist [x y ASCII pairs, one pair per line.] "
+	echo " "
+	echo " "
+	echo "Where are the files?"
+	echo " "
+	echo " "
+	    
+else
+   while test $# -gt 0
+   do
+
+
+	cp  $1 /tmp/"$USER" ;
+
+	echo "set title \"$1\" ; set grid; plot \"/tmp/"$USER"\" title \"\" w boxerrorbars ; pause -1" > /tmp/gnuplot_commands
+
+	gnuplot "/tmp/gnuplot_commands"
+ 
+	rm  /tmp/gnuplot_commands  /tmp/"$USER"  
+
+        shift
+   done
+fi

@@ -1,0 +1,32 @@
+if test $# -eq 0
+then
+        echo " "
+	echo "showme_XYsegments <ASCII file of XY pairs, one per line with blank lines between segments.>"
+	echo "           "
+	echo " "
+	echo "    Where are the files?"
+	echo " "
+	echo " "
+
+  	    
+else
+   while test $# -gt 0
+   do
+     if test -s $1
+     then
+	 # FILE EXISTS
+         echo PLOTTED FILE: $1 
+
+          echo "set title \"$1\" ; set grid; plot \"$1\" title \"\" w lines" > \
+         	   /tmp/gnuplot_commands.$USER
+    
+          gnuplot /tmp/gnuplot_commands.$USER
+          rm  /tmp/gnuplot_commands.$USER  
+     else
+         echo "***************** FILE --> $1 <-- NOT FOUND. ****************"
+         echo ""
+     fi    
+     shift
+  done
+fi
+

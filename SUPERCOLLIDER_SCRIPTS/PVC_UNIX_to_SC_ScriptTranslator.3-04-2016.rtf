@@ -1,0 +1,624 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fnil\fcharset0 LucidaGrande;\f1\fswiss\fcharset0 Helvetica;\f2\fnil\fcharset0 Monaco;
+\f3\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;\red0\green115\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs46 \cf2 (\
+\cf3 var\cf2  scriptsDirectory, shellScript, superColliderDirectory, inputFile, outputFile, lp=\cf4 "("\cf2 , rp=\cf4 ")"\cf2 , lcb = \cf4 "\{"\cf2 , rcb = \cf4 "\}"\cf2  ;  \
+\
+\cf3 var\cf2 	openFiles = \{\
+	\cf3 var\cf2  outputFileScriptName ; \
+	inputFile = \cf3 File\cf2 .new( scriptsDirectory ++ shellScript, \cf4 "r"\cf2 ) ; \
+\
+	if( superColliderDirectory.isNil, \{\
+		superColliderDirectory = scriptsDirectory ; \
+	\}); \
+\
+	outputFileScriptName = superColliderDirectory ++ shellScript.replace( \cf4 "S."\cf2 ,  \cf4 "SC."\cf2  ) ; \
+	outputFile = \cf3 File\cf2 .new( outputFileScriptName, \cf4 "w"\cf2  ) ; \
+\
+\} ;\
+\
+\cf3 var\cf2  closeFiles = \{\
+\
+	a = rp ++ \cf4 "\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	inputFile.close ; outputFile.close ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  compileScript = \{ \
+	\
+	\cf3 var\cf2  line, commandLines, routinesAndFiles, pvFlags,\
+		thisPvFlags, thisFlagDictionary, fileLines, \
+		lastLineOfUserSection, command, theseVariables, \
+		unixCommandCollect=\cf4 ""\cf2  ; \
+	\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
+
+\f1 \cf2 	
+\f0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf2 	\
+	fileLines = \cf3 List\cf2 .new ; \
+	\cf5 // GET COMMAND LINES\cf2 \
+	commandLines = \cf3 List\cf2 .new ; \
+	while( \{ (line = inputFile.getLine(1024)).notNil \}, \{\
+		if(  ( line[0] != $\\# ) && ( line.contains( \cf4 "="\cf2  ) ) && (line[0] != $- ), \{\
+			for( 0, line.indexOf( $\\= ) - 1, \{\cf3 arg\cf2  k; \
+				line[ k ] = line[ k ].toLower ; \
+			\}); \
+			t = \cf3 false\cf2  ; line = line.split( $= ) ; \
+			line[ 1 ].do(\{\cf3 arg\cf2  c; t = c.isAlpha || t  \}); \
+			if( t, \{ \
+				\cf5 // STRING OR VARIABLE USING $\cf2 \
+				if( line[1].includes( $\\$ ),\{\
+					line =  line[0] ++ \cf4 "="\cf2  ++ line[1].replace( \cf4 "$"\cf2 , \cf4 ""\cf2  ).toLower ; \
+				\},\{ \
+					\cf5 // STRING\cf2 \
+					line =  line[0] ++ \cf4 "="\cf2  ++ \cf4 "\\""\cf2  ++ line[1] ++ \cf4 "\\""\cf2  ; \
+				\}); \
+			\},\{\
+				\cf5 // NUMBER\cf2 \
+				line =  line[0] ++ \cf4 "="\cf2  ++  line[1]  ; \
+			\}); \
+		\}); \
+		if(  line[0] == $- , \{\
+			line = \cf3 String\cf2 .fill( line.size, \{\cf3 arg\cf2  i; \
+				if( i > 2, \{ \
+					line[ i ].toLower\
+				\},\{\
+					line[ i ] ; \
+				\});  \
+			\}); \
+		\}); \
+	\
+		\
+\cf5 //		line.postln ; \cf2 \
+		fileLines.add( line ); \
+	\}); \
+\
+\
+		\
+	fileLines.do(\{\cf3 arg\cf2  line ; \
+		if( line.contains( \cf4 "routine"\cf2 ) && line.contains( \cf4 "echo"\cf2  ) && line.contains( \cf4 "PVFLAGS"\cf2  ), \{\
+			line = line.replace( \cf4 "echo"\cf2 ,\cf4 ""\cf2  ).replace( \cf4 " "\cf2 , \cf4 ""\cf2  ).replace( \cf4 "\\""\cf2 , \cf4 ""\cf2  ).replace( \cf4 ";"\cf2 , \cf4 ""\cf2  ).replace( \cf4 "\\\\n", "" ) ; // "\cf2 \
+			line = line.copyRange( 1, line.lastIndex ).split( $\\$ ) ; \
+			line = \cf3 Array\cf2 .fill( line.size, \{\cf3 arg\cf2  i; \
+				\cf3 String\cf2 .fill( line[ i ].size, \{\cf3 arg\cf2  k ; \
+					line[ i ][ k ].toLower ; \
+				\}); \
+			\}); \
+			commandLines.add( line );  \
+		\}); \
+	\}); \
+	\
+	\
+	\cf5 // GET ROUTINES AND FILES\cf2 \
+	routinesAndFiles = \cf3 Array\cf2 .new( commandLines.size ) ; \
+	commandLines.do(\{\cf3 arg\cf2  commandLine ; \
+		a = \cf3 Array\cf2 .fill( commandLine.size, \{  0 \}) ; \
+		commandLine.do(\{\cf3 arg\cf2  field, index ; \
+			if( field != \cf4 "pvflags
+\f2 \cf4 "\cf2 , \{\
+				
+\f0 fileLines.do(\{\cf3 arg\cf2  line ; \
+					if( line.contains(  field  ++ \cf4 "="\cf2    ) && ( line[0] != $# ), \{\
+						z = line.copyRange(  line.indexOf( $\\= ) + 1, line.lastIndex ); \
+						a[ index ] = field -> z ; \
+					\}); \
+				\});\
+			\});  	\
+		\}); \
+		b = \cf3 List\cf2 .new ; \
+		a.do(\{\cf3 arg\cf2  item; if( item.class == \cf3 Association\cf2 , \{ b.add( item ) \} ) \}) ; \
+		routinesAndFiles.add( b.asArray ) \
+	\}); \
+	\
+\cf5 //	("ROUTINES AND FILES:" ++ routinesAndFiles).postln ; \cf2 \
+	\
+	\
+	\
+	\cf5 // GET PVFLAGS FOR ROUTINES\cf2 \
+	pvFlags = \cf3 Array\cf2 .new( commandLines.size ) ; \
+	\
+	\cf5 // MAKE PVFLAGS STRING FOR EACH COMMAND\cf2 \
+	thisPvFlags = \cf3 String\cf2 .new( 8192 ) ; \
+	fileLines.do(\{\cf3 arg\cf2  line ;  \
+		if( line.contains( \cf4 "pvflags="\cf2 ), \{\
+			thisPvFlags = \cf4 "\\\\"\cf2  ;  \
+		\},\{\
+			if( thisPvFlags != \cf4 ""\cf2 , \{\
+				if( line.contains(\cf4 "\\""\cf2 ), \{\
+					pvFlags.add( thisPvFlags ); thisPvFlags = \cf4 ""\cf2  ; \
+				\},\{\
+					thisPvFlags = thisPvFlags ++ line ; \
+				\}); \
+			\}); \
+		\}); \
+	\}); 	\
+	\
+\cf5 //pvFlags.do(\{arg flags; \cf2 \
+\cf5 //	"FLAGS".postln ; \cf2 \
+\cf5 //	"@".post ; flags.post ; "@".postln ; \cf2 \
+\cf5 //\}); \cf2 \
+	\
+	pvFlags.do(\{\cf3 arg\cf2  flags, i ; \
+		\cf5 // REPLACE BACKSLASH LINE CONTINUANT WITH SLASH.\cf2 \
+		flags = flags.replace( \cf4 " "\cf2 , \cf4 ""\cf2 ).tr( $\\\\, $. ) ; \
+\cf5 //("flags: " ++ flags).postln ; \cf2 \
+		\cf5 // REPLACE ALL MULTIPLE SLASHES WITH SINGLE ONE.\cf2 \
+		while( \{flags.contains( \cf4 ".."\cf2 ) \},\{ flags = flags.replace( \cf4 ".."\cf2 , \cf4 "."\cf2  ) \}); \
+\cf5 //("flags: " ++ flags).postln ; \cf2 \
+		\cf5 // MAKE ARRAY OF FLAG-LINES WITH SPLIT.\cf2 \
+		flags = flags.split( $. ) ; \
+\cf5 //("flags: " ++ flags).postln ; \cf2 \
+		\cf5 // REMOVE THE FIRST AND LAST ARRAY ELEMENTS IF THEY CONTAIN QUOTE.\cf2 \
+		if( flags[0].contains( \cf4 "\\""\cf2  ), \{ flags.removeAt( 0 ) \}) ; \
+		if( flags[ flags.lastIndex ].contains( \cf4 "\\""\cf2  ), \{ flags.removeAt(  flags.lastIndex ) \}) ; \
+		\cf5 // PUT FLAGS INTO DICTIONARY WITH PRE-"$" AS KEY, AND POST "$" AS VALUE.\cf2 \
+		thisFlagDictionary = \cf3 IdentityDictionary\cf2 .new ;  \
+		flags.do(\{\cf3 arg\cf2  flag ;\
+			\cf5 // SPLIT FLAG FROM VARIABLE\cf2 \
+			z = flag.split( $\\$ );\
+	\cf5 //("z: " ++ z).postln ; \cf2 \
+			\cf5 // IF NO VARIABLE (I.E. DIRECT SETTING OF FLAG) AND HENCE NO SPLIT, \cf2 \
+			\cf5 // THEN ADD nil VALUE TO ARRAY AS VALUE.\cf2 \
+			if( z.size == 1, \{\
+				z = [ z[ 0 ], \cf4 " "\cf2  ] ; 	\
+			\}); \
+			if( z[0][0] == $-, \{\
+	\cf5 //("z[0]: " ++ z[0] ++ "           z[1]: " ++ z[1]).postln ; \cf2 \
+				thisFlagDictionary.add( z[0].asSymbol -> z[1] ) ; \
+			\}); \
+		\}); \
+	\cf5 //("thisFlagDictionary: " ++ thisFlagDictionary).postln ; \cf2 \
+		pvFlags	[ i ] = thisFlagDictionary ; \
+	\}); \
+	\
+\cf5 //pvFlags.do(\{arg d; \cf2 \
+\cf5 //	d.postln ; \cf2 \
+\cf5 //\}); \cf2 \
+	\
+	\
+	\cf4 ""\cf2 ; \
+	\
+	\cf4 ""\cf2  ; \
+	\
+	\cf5 // GLOBAL VARIABLES AND FUNCTIONS\cf2 \
+	\cf5 // FUNCTION NAME\cf2 \
+	\
+	a = \cf4 "var commands=\\"\\" ;\\n\\n"\cf2  ; a.post ; outputFile.write( a ) ;  \
+	\
+	\
+	\
+	\
+	a = \cf4 "var "\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = shellScript.replace( \cf4 "S."\cf2 , \cf4 ""\cf2  )  ++ \cf4 " = "\cf2  ++ lcb ++ \cf4 " arg iterations=1 ; \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	\cf5 // DECLARE FUNCTION VARIABLES\cf2 \
+	a = \cf4 "\\n\\tvar temp,\\n\\t\\tdataString, \\n\\t\\tcommandLines=\\"\\""\cf2  ; a.post ; outputFile.write( a ) ; \
+	\
+	\cf5 // PRINT ROUTINE, FILE, AND FLAG VARIABLES IN VARIABLE-SETTING INTERNAL FUNCTION.\cf2 \
+	\cf5 // USE SET TO NOT DOUBLE PRINT VARIABLES USED FOR MULTIPLE ROUTINES.\cf2 \
+	theseVariables = \cf3 List\cf2 .new ; \
+\
+	routinesAndFiles.do(\{\cf3 arg\cf2  routineAndFiles ; \
+\
+		if( routineAndFiles.size >= 2, \{\
+			for( 1, routineAndFiles.lastIndex, \{\cf3 arg\cf2  i ; \
+					theseVariables.add( routineAndFiles[ i ].key ) ; \
+			\}); \
+		\}); \
+	\}); \
+	\
+	pvFlags.do(\{\cf3 arg\cf2  thisFlagDictionary, i ;  \
+		thisFlagDictionary.do(\{\cf3 arg\cf2  assoc ; \
+			if( (assoc != \cf4 " "\cf2 ), \{ \
+				theseVariables.add( assoc ) ; \
+			\}); \
+		\}); \
+	\}); \
+	\
+	\cf5 // PRINT OUT VARIABLES\cf2 \
+	theseVariables.asSet.do(\{\cf3 arg\cf2  variable ; \
+		a = \cf4 ", \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+		a = \cf4 "\\t\\t"\cf2  ; a.post ; outputFile.write( a ) ; \
+		a = variable ; a.post ; outputFile.write( a ) ;\
+	\}); \
+	\
+	\
+	\
+	\
+	a = \cf4 "\\n\\t; \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	\
+	\cf5 //("\\n\\thomeDirectory = \\"HOME\\".getenv ; \\n").postln ; \cf2 \
+	\
+	\cf5 // FIND "
+\f2\fs40 \cf5 OFFICE USE ONLY" LINE\cf2 \
+	fileLines.do(\{\cf3 arg\cf2  line, i; \
+	
+\f0\fs46 	if( line.contains( \cf4 "
+\f2\fs40 \cf4 OFFICE USE ONLY"\cf2  
+\f0\fs46 ), \{\
+			lastLineOfUserSection = i - 1 ; \
+		\}); \
+	
+\f2\fs40 \});  
+\f0\fs46 \
+	\
+	\cf5 // INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES \cf2 \
+	a = \cf4 "\\t\\t// *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\n\\tvar setRoutineVariables = "\cf2  ++ lcb ++ \cf4 "arg iteration=0 ;  \\n\\n"\cf2  ; a.post ; outputFile.write( a ) ;\
+	a = (\cf4 " \\t\\t//"\cf2  ++ \cf3 String\cf2 .fill( 75, \{\cf3 Char\cf2 .bullet\} ) ++ \cf4 "\\n"\cf2  ) ; a.post ; outputFile.write( a ) ; \
+	\
+	fileLines.copyRange(1, lastLineOfUserSection ).do(\{\cf3 arg\cf2  line; \
+	\
+		\cf5 // WRITE COMMAND FROM UNIX COMMAND COLLECTOR IF NOT EMPTY AND\cf2 \
+		\cf5 // NEXT LINE IS VARIABLE ASSIGNMENT OR COMMENT.\cf2 \
+		if( (line[0] == $#) || (line.contains( \cf4 "="\cf2  )), \{\
+	\
+			\cf5 // DUMP UNIX COMMAND\cf2 \
+			if( unixCommandCollect.isEmpty.not, \{\
+				a = (\cf4 "\\n\\t\\taddCommand.value"\cf2  ++ lp ++ \cf4 "\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+				a = (\cf4 "\\t\\t\\t\\""\cf2  ++ unixCommandCollect ++ \cf4 "\\"\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+				a = (\cf4 "\\t\\t"\cf2  ++ rp ++ \cf4 " ;\\n\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+				unixCommandCollect = \cf4 ""\cf2  ; \
+			\}); 		\
+		\}); \
+	\
+			\
+		if( line[0] == $#, \{\
+			\cf5 // COMMENT LINES "#"\cf2 \
+			if( line.findAll( lp ).size < line.findAll( rp ).size, \{\
+				\cf5 // \cf2 \
+				i = line.findAll( rp )[0] ; \cf5 // \cf2 \
+				if( line[i - 1].isSpace.not && (i != line.lastIndex) && (line.copyRange( i, line.lastIndex ).replace( \cf4 " "\cf2 , \cf4 ""\cf2  ) != rp ), \{\
+					line[ 	\cf5 // \cf2 \
+						line.findAll( rp )[0] 		] = $\\: ;\
+				\}); \
+			\}); \
+			line = \cf4 "\\t\\t//"\cf2  ++ line.copyRange( 1, line.lastIndex ) ; \
+			while( \{ (l = line.findAll( lp ).size) != (r = line.findAll( rp ).size) \},\{\
+				if( l > r, \{\
+					t = line.split( lp[0] ) ; line = \cf4 ""\cf2  ;  \
+					t.size.do(\{\cf3 arg\cf2  i; \
+						if ( (i != 0) && (i != t.lastIndex ), \{\
+							line = line ++ lp ; \
+						\}); \
+						line = line ++ t[ i ] ; \
+					\});  \
+				\},\{\
+					t = line.split( rp[0] ) ; line = \cf4 ""\cf2  ;  \
+					t.size.do(\{\cf3 arg\cf2  i; \
+						if ( (i != (t.lastIndex - 1) ) && (i != t.lastIndex ), \{\
+							line = line ++ rp ; \
+						\}); \
+						line = line ++ t[ i ] ; \
+					\});  \
+				\}); \
+			\
+			\}); \
+			a = line ++ \cf4 "\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+		\},\{		\
+			\cf5 // NON-COMMENT LINES\cf2 \
+			if( line.contains( \cf4 "="\cf2  ), \{\
+				\cf5 // VARIABLE SETTING\cf2 \
+				line = line.replace( \cf4 " "\cf2 , \cf4 ""\cf2  ) ; \
+				line = line.split( $= ) ; \
+				if( line[1][0] == $., \{  line[1] = \cf4 "0"\cf2  ++ line[1] \}) ; \
+				if( line[1].last == $., \{  line[1] = line[1] ++ \cf4 "0"\cf2  \}) ; \
+				a = ( \cf4 "\\t\\t"\cf2  ++ line[0] ++ \cf4 " = "\cf2  ++ line[1] ++  \cf4 " ;\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; 		\},\{\
+				if( line.replace( \cf4 " "\cf2 , \cf4 ""\cf2  ).isEmpty.not, \{\
+					unixCommandCollect = unixCommandCollect ++ line.replace( \cf4 "\\\\"\cf2 , \cf4 " \\n\\t\\t\\t"\cf2  ) ;  \
+	\
+					if( line.contains( \cf4 ">"\cf2 ) && (line.replace( \cf4 " "\cf2 , \cf4 ""\cf2 ).split( $> ).last.isEmpty.not), \{						a = (\cf4 "\\n\\t\\taddCommand.value(\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+						a = (\cf4 "\\t\\t\\t\\""\cf2  ++ unixCommandCollect ++ \cf4 "\\"\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+						a = (\cf4 "\\t\\t) ;\\n"\cf2 ) ; a.post ;  outputFile.write( a ) ; \
+							unixCommandCollect = \cf4 ""\cf2  ; \
+					\}); 		\
+				\},\{\
+					a = \cf4 "\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+				\}); \
+			\}); \
+		\}); \
+	\
+	\
+	\cf5 //	if( line.contains( "pvflags="), \{\cf2 \
+	\cf5 //		thisPvFlags = "\\\\" ;  \cf2 \
+	\cf5 //	\},\{\cf2 \
+	\cf5 //		if( thisPvFlags != "", \{\cf2 \
+	\cf5 //			if( line.contains("\\""), \{\cf2 \
+	\cf5 //				pvFlags.add( thisPvFlags ); thisPvFlags = "" ; \cf2 \
+	\cf5 //			\},\{\cf2 \
+	\cf5 //				thisPvFlags = thisPvFlags ++ line ; \cf2 \
+	\cf5 //			\}); \cf2 \
+	\cf5 //		\}); \cf2 \
+	\cf5 //	\}); \cf2 \
+	\
+	\
+		\
+	\
+	\}); \
+	\
+	\
+	a = (\cf4 " \\t\\t//"\cf2  ++ \cf3 String\cf2 .fill( 54, \{\cf3 Char\cf2 .bullet\} ) ++ \cf4 "\\n"\cf2  ) ; a.post ; outputFile.write( a ) ; \
+	\
+	\
+	a = \cf4 "\\n\\t"\cf2  ++ rcb ++ \cf4 " ;\\n"\cf2  ; a.post ; outputFile.write( a ) ; 	\
+	\
+	a = \cf4 "\\t
+\f1\fs40 \cf4 //*********************************************************************************************************
+\f0\fs46 \cf4 \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\t//
+\f1\fs40 \cf4 ************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************
+\f0\fs46 \cf4 \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\t//
+\f1\fs40 \cf4 ************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************
+\f0\fs46 \cf4 \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\t
+\f1\fs40 \cf4 //*********************************************************************************************************
+\f0\fs46 \cf4 \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\titerations.do"\cf2  ++ lp ++ lcb ++ \cf4 "arg n; \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = (\cf4 "\\t\\t
+\f2\fs40 \cf4 setRoutineVariables
+\f0\fs46 \cf4 .value"\cf2  ++ lp ++ \cf4 " iteration: n "\cf2  ++ rp ++ \cf4 " ; \\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+	\cf5 // MAKE EACH UNIX COMMAND\cf2 \
+		routinesAndFiles.do(\{\cf3 arg\cf2  thisRoutineAndFiles, k ; \
+			command = \cf4 ""\cf2  ; \
+			a = (\cf4 "\\n\\t\\t// ******** UNIX COMMAND LINE "\cf2  ++ k ++ \cf4 " ***********\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+			a = (\cf4 "\\t\\taddCommand.value(\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+			\
+			a = \cf4 "\\n\\t\\t\\t\\t\\t// * ROUTINE * \\n"\cf2  ; a.post ; outputFile.write( a ) ;  \
+			command = command ++ thisRoutineAndFiles[0].value ++ (\cf4 " ++ \\" \\" ++"\cf2 ) ; \
+			a = (\cf4 "\\t\\t\\t"\cf2  ++ command ++ \cf4 "\\n"\cf2  ) ; a.post ; outputFile.write( a ) ; \
+			command = \cf4 ""\cf2  ; \
+			\
+			a = \cf4 "\\n\\t\\t\\t\\t// * FLAGS * \\n"\cf2  ; a.post ; outputFile.write( a ) ;\
+			pvFlags[ k ].keys.do(\{\cf3 arg\cf2  key, j ; \
+				command = command ++ (\cf4 " \\" "\cf2 ) ++ key.asSymbol ++ (\cf4 "\\" ++ "\cf2 )  ++  \
+				if( pvFlags[ k ][ key ] == \cf4 " "\cf2 , \{\
+					\cf4 ""\cf2 \
+				\},\{\
+					if( j < (pvFlags[ k ].keys.size - 1), \{\
+						 pvFlags[ k ][ key ] ++ (\cf4 " ++ "\cf2 ) ;\
+					\},\{\
+						 pvFlags[ k ][ key ] ;\
+					\}); \
+				\}) ; \
+				if( command.size >= 75 , \{\
+					a = (\cf4 "\\t\\t\\t"\cf2  ++ command ++ \cf4 "\\n"\cf2  ) ; a.post ; outputFile.write( a ) ; \
+					command = \cf4 ""\cf2  ; \
+				\});  \
+			\}); \
+			if( command.size > 0, \{\
+				a = (\cf4 "\\t\\t\\t"\cf2  ++ command ++ \cf4 "\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+				command = \cf4 ""\cf2  ;\
+			\}); \
+	\
+	\cf5 //("thisRoutineAndFiles: " ++ thisRoutineAndFiles).postln ; \cf2 \
+			\
+\
+			if( thisRoutineAndFiles.size >= 2, \{\
+\
+				a = \cf4 "\\n\\t\\t\\t\\t// * INPUT/OUTPUT FILES * \\n"\cf2  ; a.post ; outputFile.write( a ) ;\
+\
+				command = command ++ (\cf4 " ++ "\cf2 ) ;\
+				for( 1, thisRoutineAndFiles.lastIndex, \{\cf3 arg\cf2  m; \
+					command = command ++ (\cf4 " \\" \\"  ++ "\cf2 ) ++ thisRoutineAndFiles[m].key ; \
+					if( m < thisRoutineAndFiles.lastIndex, \{\
+						command = command ++ (\cf4 " ++ \\"  \\" ++ "\cf2 ) ; \
+					\}); \
+				\}) ; \
+			\}); \
+			\
+			a = (\cf4 "\\t\\t\\t"\cf2  ++ command ++ \cf4 "\\n"\cf2 ) ; a.post ; outputFile.write( a ) ;\
+			a = (\cf4 "\\n\\t\\t) ;\\n \\n"\cf2  ) ; a.post ; outputFile.write( a ) ;\
+			a = \cf4 "\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+		\}); \
+		\
+		\cf5 // ADD ROUTINE TO STRING OF UNIX COMMANDS\cf2 \
+		a = \cf4 "\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\t"\cf2  ++ rcb ++ rp ++ \cf4 " ;\\n"\cf2  ; a.post ; outputFile.write( a ) ;  \
+	\
+	\cf5 //"\\tcommandLines.
+\f2\fs40 \cf5 runInTerminal ; ".postln
+\f0\fs46 \cf5  ;\cf2 \
+	\
+	\
+	a = rcb ++ \cf4 " ;\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	\
+	\
+\cf5 //	
+\f2\fs40 \cf5 "var add_PVC_Directory_to_PATH = \{ arg  pvcDirectory=\\"/usr/local/bin\\" ; ".postln ; \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf5 //		"\\tvar currentPATH ; ".postln ;  \cf2 \
+\cf5 //		"\\tcurrentPATH = (\\"PATH\\").getenv ; ".postln ;\cf2 \
+\cf5 //		"\\tif( currentPATH.contains( pvcDirectory ).not, \{".postln ; \cf2 \
+\cf5 //			"\\t\\t(\\"PATH\\").setenv( (\\"PATH\\").getenv ++ \\":\\" ++ pvcDirectory ) ; ".postln ; \cf2 \
+\cf5 //		"\\t\}); ".postln ;  \cf2 \
+\cf5 //	//	"\\t(\\"PATH\\").getenv.postln  ; ".postln ; \cf2 \
+\cf5 //	"\} ;".postln ; \cf2 \
+	
+\f0\fs46 \
+	\
+	\
+	a = \cf4 "\\n\\n\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	\
+	a = \cf4 "/////////////////////////////////////////////////////////////////////////////////////\\n"\cf2  ; a.post ; outputFile.write( a )
+\f1  ; 
+\f0 \
+	a = \cf4 "//         ---------- FUNCTION CALLS  ----------            \\n"\cf2  ; a.post ; outputFile.write( a )
+\f1  ; 
+\f0 \
+	a = \cf4 "/////////////////////////////////////////////////////////////////////////////////////\\n"\cf2  ; a.post ; outputFile.write( a )
+\f1  ; 
+\f0 \
+\
+	a = 
+\f1 \cf4 "\\n\\n// *** CLEAR SCREEN ***\\n"\cf2  ; 
+\f0 a.post ; outputFile.write( a )
+\f1  ; \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
+\cf2 	a = \cf4 "Document.listener.string=\\"\\"; \\n\\n"\cf2  ; 
+\f0 a.post ; outputFile.write( a )
+\f1  ; 
+\f2\fs42  
+\f1\fs46 \
+	
+\f0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf2 	\
+\cf5 //	"// *** ADD THE PVC DIRECTORY TO THE SUPERCOLLIDER PATH. ***".postln ;   \cf2 \
+\cf5 //	( "add_PVC_Directory_to_PATH.value( pvc
+\f2\fs42 Directory: \\"/usr/local/bin\\" ) ; \\n").postln ;
+\f0\fs46 \cf2 \
+	\
+	\
+	a = ( shellScript.replace( \cf4 "S."\cf2 , \cf4 ""\cf2  ) ++ \cf4 ".value( 
+\f2\fs42 \cf4 iterations: 1 ) ; \\n"\cf2 ) ; 
+\f0\fs46 a.post ; outputFile.write( a )
+\f2\fs42  ;
+\f0\fs46 \
+	\
+	a = \cf4 "\\n"\cf2  ; a.post ; outputFile.write( a )
+\f2\fs42  ;
+\f0\fs46 \
+\
+	\
+	a = (\cf4 "runCommands.value ;\\n\\n\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+	\
+	\
+	a = (\cf4 "\\"..........DONE!\\" \\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+	\
+	\
+	\cf4 ""\cf2  ; \
+	\
+\} ; \
+\
+\
+\cf5 // MAKE ADD AND RUN COMMANDS FUNCTIONS\cf2 \
+\
+\cf3 var\cf2  makeCommandFunctions = \{\
+\
+\
+	a = (lp ++ \cf4 "\\n"\cf2 ) ; a.post ; outputFile.write( a ) ; \
+\
+		\cf5 // addCommand\cf2 \
+	a = \cf4 "\\nvar addCommand = "\cf2  ++ lcb ++ \cf4 " arg command ;\\n"\cf2  ; a.post ; outputFile.write( a ) ;  \
+	a =\cf4 "\\tcommand = command.replace"\cf2  ++ lp ++ \cf4 " \\"\\\\n\\"\cf2 , \\\cf4 " \\" "\cf2  ++ rp ++ \cf4 ".replace"\cf2  ++ lp ++ \cf4 " \\"\\\\t\\"\cf2 , \\\cf4 " \\" "\cf2  ++ rp ++ \cf4 " ;  \\n"\cf2  ; \
+			a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\tcommands = commands ++ command ++ \\" \\\\n\\"\cf2  ; \cf6 \\n\cf4 " ; a.post ; outputFile.write( a ) ;\
+\
+	a = rcb ++ "\cf2  ; \cf6 \\n\\n\cf4 " ; a.post ; outputFile.write( a ) ;  \
+\
+		//  runCommand\
+	a = "\cf6 \\n\\nvar\cf2  runCommands = \cf4 " ++ lcb ++ "\cf6 \\n\cf4 " ; a.post ; outputFile.write( a ) ; \
+	a = "\cf6 \\tvar\cf2  homeDirectory ; \cf6 \\n\cf4 " ; a.post ; outputFile.write( a ) ;\
+	a = "\cf6 \\thomeDirectory\cf2  =  \\\cf4 "HOME\\".getenv ;\\n"\cf2  ; a.post ; outputFile.write( a ) ;\
+	a = \cf4 "\\tcommands = commands.replace( \\"~/\\", homeDirectory ++ \\"/\\" ) ;\\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\tcommands.replace(  \\"\\\\n\\"\cf2 , \\\cf4 " ;\\\\n\\\\n\\" ).postln  ; \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = \cf4 "\\tcommands.runInTerminal ; \\n"\cf2  ; a.post ; outputFile.write( a ) ; \
+	a = rcb ++ \cf4 " ; \\n\\n"\cf2  ; a.post ; outputFile.write( a ) ;  \
+\
+\} ; \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf5 // CLEAR SCREEN\cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; 
+\f2\fs42  
+\f1\fs46 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0 \cf2 \
+\
+\cf5 // PVCplus1.04_12-02-2011\cf2 \
+\cf5 //
+\fs40 PVC.4.0.OSX-10.5_7-09-2011
+\fs46 \cf2 \
+\
+scriptsDirectory =  \cf4 "
+\f3\fs40 \cf4 \CocoaLigature0 /Users/koonce/
+\fs38 \cf4 PVCplus.Beta.Public.Distribution.5-1-2017
+\fs40 \cf4 /SCRIPTS/
+\f0 \CocoaLigature1 "\cf2  ; \
+
+\fs46 superColliderDirectory = \cf4 "
+\f3\fs40 \cf4 \CocoaLigature0 /Users/koonce/
+\fs38 \cf4 PVCplus.Beta.Public.Distribution.5-1-2017
+\fs40 \cf4 /
+\f0 \CocoaLigature1 SUPERCOLLIDER_SCRIPTS/
+\fs46 \cf4 "\cf2  ; \
+\
+[\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f3\fs40 \cf5 \CocoaLigature0 //"S.irconvolvesequencer_with_roomresponsesequencer",\cf2 \
+\cf5 //"S.irconvolvesequencer",\cf2 \
+\cf5 //"S.roomresponsesequencer",\cf2 \
+\cf5 //"S.centroid",\cf2 \
+\cf4 \
+\cf5 //"S.channelmix",\cf2 \
+\cf5 //"S.chordmapperplus",\cf2 \
+\cf5 //"S.compander",\cf2 \
+\cf5 //"S.convolver",\cf2 \
+\cf5 //\cf2 \
+\cf5 //"S.delayfilter_with_groupdelaymaker",\cf2 \
+\cf5 //"S.envelope",\cf2 \
+\cf5 //"S.filtdeviator_with_analysis",\cf2 \
+\cf5 //"S.filtdeviator_with_breakpoint_synthesis",\cf2 \
+\cf5 \
+//"S.filtdeviator_with_chord_synthesis",\cf2 \
+\cf5 //"S.filter_with_analysis",\cf2 \
+\cf5 //"S.filter_with_breakpoint_synthesis",\cf2 \
+\cf5 //"S.filter_with_chord_synthesis",\cf2 \
+\cf5 //"S.fluxoid",\cf2 \
+\cf5 //\cf2 \
+\cf5 "S.formantsmapper",\cf2 \
+\cf5 //"S.freqresponse",\cf2 \
+\cf5 //"S.harmonizer",\cf2 \
+\cf5 //"S.impulseresponse",\cf2 \
+\cf5 //"S.inharmonator",\cf2 \
+\cf5 \
+//"S.irconvolver",\cf2 \
+\cf5 //"S.noisefilter",\cf2 \
+\cf5 //"S.peakformant",\cf2 \
+\cf5 //"S.pitchtracker",\cf2 \
+\cf5 //\cf2 \
+\cf5 //"S.plainpv",\cf2 \
+\cf5 //"S.pvanalysis",\cf2 \
+\cf5 //"S.ratechanger",\cf2 \
+\cf5 //"S.ring",\cf2 \
+\cf5 \
+//"S.ringfilter_with_analysis",\cf2 \
+\cf5 //"S.ringfilter_with_breakpoint_synthesis",\cf2 \
+\cf5 //"S.ringfilter_with_chord_synthesis",\cf2 \
+\cf5 //"S.ringtvfilter",\cf2 \
+\cf5 //\cf2 \
+\cf5 //"S.roomresponsemaker",\cf2 \
+\cf5 //"S.specflattracker",\cf2 \
+\cf5 //"S.spectralextractor",\cf2 \
+\cf5 //"S.spectwarper",\cf2 \
+\cf5 //"S.tvfiltdeviator",\cf2 \
+\cf5 //"S.tvfilter",\cf2 \
+\cf5 //"S.twarp"\cf2 \
+\cf5 //
+\f0\fs46 \cf2 \CocoaLigature1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf5 //	\cf2 \
+].do(\{\cf3 arg\cf2  script ; \
+	shellScript = script ; 	\
+(\cf4 "shellScript: "\cf2  ++ shellScript).postln ; \
+	openFiles.value ; \
+	makeCommandFunctions.value ; \
+	compileScript.value ;  \
+	closeFiles.value ; \
+ \
+\}); \
+\
+)\
+}

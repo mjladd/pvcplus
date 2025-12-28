@@ -1,0 +1,62 @@
+#!/bin/sh
+#******************************************************
+#*** IMPULSERESPONSE ANALYSIS ****************
+#******************************************************
+#------------------------------------------------------
+#******************** ANALYSIS ************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+Impulse_Response_Data_File=/tmp/impulseResponseDataFile
+
+#**************** PLOT FILES **************************
+
+Spectrum_DB_Plot_File=~/sp
+
+#******************** INPUT ***************************
+
+analysis_sndfile=~/audioImpulseFile.wav
+
+#........ BEGIN/END TIMES .............................
+
+analysis_begintime=0
+analysis_endtime=0.
+
+#........... ANALYSIS CHANNEL(S) .......................
+
+analysis_channel=0
+# (channels are numbered from 1-maximum)
+
+#...................................................... 
+
+#*** ANALYSIS PARAMETERS ******************************
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=0
+# ( 0 = off )
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# ANALYSIS
+
+pvanalysisroutine=impulseresponse
+
+
+PVFLAGS="\
+\
+-b$analysis_begintime \
+-e$analysis_endtime \
+\
+\
+-P$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+\
+-a$Spectrum_DB_Plot_File \
+\
+-C$analysis_channel \
+"
+
+echo "$pvanalysisroutine $PVFLAGS $analysis_sndfile $Impulse_Response_Data_File  "
+
+$pvanalysisroutine $PVFLAGS $analysis_sndfile $Impulse_Response_Data_File ;

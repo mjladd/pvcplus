@@ -1,0 +1,358 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  harmonizer = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		input_file, \
+		amplitude_statistics_time_interval, \
+		harmonizer_data__delay_time_scaler, \
+		harmonizer_spectrum_warpshape_index, \
+		auto_output_sound_file_play__repetitions, \
+		begintime, \
+		master_gain_in_decibels, \
+		oscillator_resynthesis_threshold_in_db, \
+		endtime, \
+		harmonizer_gain_in_db, \
+		window_type, \
+		source_frequency_shift, \
+		harmonizer_frequency_interpolation_control, \
+		source_delay_time, \
+		harmonizer_data_file, \
+		harmonizer_pitch_transposition_in_semitones, \
+		output_file, \
+		harmonizer_time_interpolation_control, \
+		windowsize, \
+		harmonizer_data__delay_time_shifter, \
+		harmonizer_data__peak_decibels_scaler, \
+		source_gain_in_db, \
+		harmonizer_data__shift_factor_shifter, \
+		rescale_level_in_decibels, \
+		harmonizer_data__q_index_shifter, \
+		harmonizer_shift_method, \
+		harmonizer_data__stopband_decibels_scaler, \
+		source_pitch_transposition_in_semitones, \
+		harmonizer_data__shift_factor_scaler, \
+		print_amplitude_statistics_0_no__1_yes, \
+		time_expansion_contraction_factor, \
+		fft_length, \
+		harmonizer_amplitude_interpolation_control, \
+		frames_per_second, \
+		output_channel, \
+		harmonizer_data__resulting_boundary_and_center_frequencies_scaler, \
+		harmonizer_frequency_shift, \
+		harmonizer_data__resulting_boundary_and_center_frequencies_shifter, \
+		harmonizer_data__stopband_decibels_shifter\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //................ HARMONIZER ..........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 // Using a user-designed data file specifying \cf2 \
+		\cf5 // frequency bands, transpositions, and amplitude levels, \cf2 \
+		\cf5 // harmonizer builds a new bank of resynthesis bins for synthesis  \cf2 \
+		\cf5 // of the output sound. The specified frequency bands need not \cf2 \
+		\cf5 // be exclusive, i.e. they can overlap. Macro controls are \cf2 \
+		\cf5 // available for manipulation of the harmonized bins as a \cf2 \
+		\cf5 // group. The source sound may be added and manipulated\cf2 \
+		\cf5 // independently. \cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = -0 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		input_file = \cf4 "~/ridecymbal.NF.aiff"\cf2  ;\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		begintime = 0 ;\
+		endtime = 0 ;\
+		\cf5 // (0 end time defaults to end of file)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		fft_length = 4096 ;\
+		\cf5 // Powers of two (512, 1024, 2048, 4096...)\cf2 \
+		\cf5 // Larger values increase bins, adding frequency resolution while\cf2 \
+		\cf5 // decreasing time resolution; smaller values effect the opposite.   \cf2 \
+		\cf5 // Start with 1024. \cf2 \
+\
+		window_type = 8 ;\
+\
+		\cf5 // hamming(0),  rectangular(1) Blackman(2), Bartlett(3)\cf2 \
+		\cf5 // Kaiser(4-12) for corresponding alpha values:\cf2 \
+		\cf5 // alpha = 4 -> sidelobe of -30dB, narrow center lobe\cf2 \
+		\cf5 // alpha = 8 -> sidelobe of -58dB, medium center lobe\cf2 \
+		\cf5 // alpha = 4 -> sidelobe of -90dB, wide center lobe\cf2 \
+\
+		windowsize = 0 ;\
+		\cf5 // (0 sets windowsize to 2 * FFT)\cf2 \
+\
+		frames_per_second = 200 ;\
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+\
+		output_channel = 1 ;\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -80 ;\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. TIME ..............................\cf2 \
+\
+		time_expansion_contraction_factor = 1 ;\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		master_gain_in_decibels = -0 ;\
+\
+\
+		\cf5 //********** SOURCE ************************************\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		source_gain_in_db = -0 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		source_frequency_shift = 0 ;\
+		source_pitch_transposition_in_semitones = 0 ;\
+\
+\
+		source_delay_time = 0 ;\
+\
+\
+		\cf5 //********** HARMONIZER ********************************\cf2 \
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		harmonizer_gain_in_db = -0 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		harmonizer_frequency_shift = 0 ;\
+		harmonizer_pitch_transposition_in_semitones = 0 ;\
+\
+\
+\
+		\cf5 //............ SPECTRUM WARPSHAPE ......................\cf2 \
+		harmonizer_spectrum_warpshape_index = 0 ;\
+\
+		\cf5 //********* AMPLITUDE STATISTICS **********************\cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1.0 ;\
+\
+		\cf5 //================ DATA FILE: =========================\cf2 \
+\
+		harmonizer_data_file = \cf4 "~/harm_data_file"\cf2  ;\
+\
+		\cf5 //................. SHIFT METHOD ....................... \cf2 \
+		harmonizer_shift_method = 0 ;\
+		\cf5 //( 0 = frequency multiplier )\cf2 \
+		\cf5 //( 1 = frequency adder )\cf2 \
+		\cf5 //( 2 = semitones of transposition )\cf2 \
+\
+		\cf5 //=====================================================\cf2 \
+\
+		\cf5 //*************** DATA FILE FORMAT ********************\cf2 \
+		\cf5 // (1) shift factor (see shift method format)\cf2 \
+		\cf5 // (2) low  boundary pitch or frequency \cf2 \
+		\cf5 // (3) high  boundary pitch or frequency \cf2 \
+		\cf5 // (4) center pitch or frequency\cf2 \
+		\cf5 // (5) peak dB\cf2 \
+		\cf5 // (6) stop-band or edge dB (relative to peak)\cf2 \
+		\cf5 // (7) dB response Q index: \cf2 \
+		\cf5 //	0 = linear, values > 0: sharp/narrow, values < 0: smooth/wide   \cf2 \
+		\cf5 // (8) delay time\cf2 \
+		\cf5 //*****************************************************\cf2 \
+\
+		\cf5 // An "m" (for mute) at the beginning of a data set will comment it out. \cf2 \
+		\cf5 // A "!" (for solo)  at the beginning of a data set will mute all other data sets.\cf2 \
+		\cf5 // More than one data set may be set to solo at a time. \cf2 \
+\
+		\cf5 // Text/data between curly braces -- "\{ \}" -- is cut before input, thus allowing comments.  \cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //**** SCALERS AND SHIFTERS FOR DATA SETUP \cf2 \
+		\cf5 //======================================================\cf2 \
+		\cf5 // The following controls allow macro modification of \cf2 \
+		\cf5 // values in particular parameters. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Scalers are multipliers, shifts are adders. \cf2 \
+		\cf5 // Thus, multipliers of 1 and shifts of 0 produce\cf2 \
+		\cf5 // no change to parameter values. Negative values \cf2 \
+		\cf5 // are allowed. Scaling is always first, followed by \cf2 \
+		\cf5 // shifts. \cf2 \
+\
+		\cf5 // PARAMETER: 1\cf2 \
+		harmonizer_data__shift_factor_scaler = 1 ;\
+		harmonizer_data__shift_factor_shifter = 0 ;\
+\
+		\cf5 // PARAMETERS: 2-4 RESULTING BOUNDARY AND CENTER FREQUENCIES\cf2 \
+		harmonizer_data__resulting_boundary_and_center_frequencies_scaler = 1.0 ;\
+		harmonizer_data__resulting_boundary_and_center_frequencies_shifter = 0 ;\
+\
+		\cf5 // PARAMETER:5 ** PEAK DECIBELS\cf2 \
+		harmonizer_data__peak_decibels_scaler = 0 ;\
+\
+		\cf5 // PARAMETER:6 ** STOPBAND DECIBELS\cf2 \
+		harmonizer_data__stopband_decibels_scaler = 1 ;\
+		harmonizer_data__stopband_decibels_shifter = -0 ;\
+\
+		\cf5 // PARAMETER:7 ** Q-INDEX\cf2 \
+		harmonizer_data__q_index_shifter = 0 ;\
+\
+\
+		\cf5 // PARAMETER:8 ** DELAY\cf2 \
+		harmonizer_data__delay_time_scaler = 1.0 ;\
+		harmonizer_data__delay_time_shifter = 0.0 ;\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** AMPLITUDE AND FREQUENCY INTERPOLATION CONTROLS **\cf2 \
+		\cf5 //======================================================\cf2 \
+		\cf5 // 0: original source values\cf2 \
+		\cf5 // 1: target values\cf2 \
+		\cf5 // 0-1: interpolation between, by constant or function\cf2 \
+\
+		harmonizer_amplitude_interpolation_control = 1 ;\
+\
+		harmonizer_frequency_interpolation_control = 1 ;\
+\
+		harmonizer_time_interpolation_control = 1 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+		\cf5 //[1. shift ][2. low     ][3. high    ][4. center ][5. peak ][6. stopband][7. Q index][8. delay ] \cf2 \
+		\cf5 //[  factor ][   boundary][   boundary][          ][   dB   ][   dB      ][          ][   time  ] \cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			 \
+			1.25   500	          20000      	 750     -0.000       -30.000      5       0.1        \
+			 \
+			> ~/harm_data_file ; "\cf2 \
+		) ;\
+\
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "harmonizer "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -Y"\cf2  ++ harmonizer_data__shift_factor_scaler ++  \cf4 " -U"\cf2  ++ harmonizer_data__resulting_boundary_and_center_frequencies_scaler ++ \
+			 \cf4 " -m"\cf2  ++ harmonizer_gain_in_db ++  \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++ \
+			 \cf4 " -j"\cf2  ++ harmonizer_data__delay_time_scaler ++  \cf4 " -q"\cf2  ++ harmonizer_frequency_shift ++ \
+			 \cf4 " -b"\cf2  ++ begintime ++  \cf4 " -r"\cf2  ++ harmonizer_data__q_index_shifter ++  \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++ \
+			 \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++  \cf4 " -I"\cf2  ++ time_expansion_contraction_factor ++ \
+			 \cf4 " -P"\cf2  ++ source_pitch_transposition_in_semitones ++  \cf4 " -o"\cf2  ++ harmonizer_data__peak_decibels_scaler ++ \
+			 \cf4 " -X"\cf2  ++ harmonizer_pitch_transposition_in_semitones ++  \cf4 " -M"\cf2  ++ windowsize ++ \
+			 \cf4 " -K"\cf2  ++ harmonizer_frequency_interpolation_control ++  \cf4 " -Q"\cf2  ++ harmonizer_data__stopband_decibels_shifter ++ \
+			 \cf4 " -z"\cf2  ++ harmonizer_shift_method ++  \cf4 " -n"\cf2  ++ harmonizer_data__delay_time_shifter ++ \
+			 \cf4 " -Z"\cf2  ++ harmonizer_time_interpolation_control ++  \cf4 " -y"\cf2  ++ harmonizer_data__resulting_boundary_and_center_frequencies_shifter ++ \
+			 \cf4 " -O"\cf2  ++ harmonizer_data__stopband_decibels_scaler ++  \cf4 " -F"\cf2  ++ harmonizer_data_file ++ \
+			 \cf4 " -G"\cf2  ++ source_gain_in_db ++  \cf4 " -@"\cf2  ++ harmonizer_data__shift_factor_shifter ++ \
+			 \cf4 " -N"\cf2  ++ fft_length ++  \cf4 " -W"\cf2  ++ harmonizer_spectrum_warpshape_index ++  \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++ \
+			 \cf4 " -w"\cf2  ++ window_type ++  \cf4 " -a"\cf2  ++ source_frequency_shift ++  \cf4 " -="\cf2  ++ rescale_level_in_decibels ++ \
+			 \cf4 " -D"\cf2  ++ frames_per_second ++  \cf4 " -g"\cf2  ++ source_delay_time ++  \cf4 " -C"\cf2  ++ output_channel ++ \
+			 \cf4 " -J"\cf2  ++ harmonizer_amplitude_interpolation_control ++  \cf4 " -A"\cf2  ++ master_gain_in_decibels\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+harmonizer.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

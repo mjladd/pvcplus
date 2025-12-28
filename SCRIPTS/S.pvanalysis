@@ -1,0 +1,123 @@
+#!/bin/sh
+#******************************************************
+#... PHASE VOCODER ANALYSIS ...........................
+#******************************************************
+
+#******************** OUTPUT **************************
+
+analysis_outputfile=~/pvanalysis
+
+
+#******************** INPUT ***************************
+analysis_sndfile=~/ridecymbal.NF.aiff
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+
+# (0 or less end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+FFT_length=2048
+# Powers of two (512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072 ...)
+# Larger values increase bins, adding frequency resolution while
+# decreasing time resolution; smaller values effect the opposite.   
+# Start with 1024. 
+
+window_type=16
+
+# hamming(0),  rectangular(1) Blackman(2), Bartlett(3)
+# Kaiser(4-12) for corresponding alpha values:
+# alpha = 4: sidelobe of -30dB, narrow center lobe
+# alpha = 8: sidelobe of -58dB, medium center lobe
+# alpha = 4: sidelobe of -90dB, wide center lobe
+
+windowsize=0
+
+#.......... ANALYSIS CHANNEL(S) .......................
+
+analysis_channel_1_to_max=0
+
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#******************************************************
+
+analysis_frames_per_second=200
+
+
+#======================================================
+#************* MODIFICATIONS **************************
+#======================================================
+
+#.................. DECIBELS ..........................
+
+gain_in_decibels=0
+
+#********ANALYSIS LOW/HIGH SHELF EQ *******************
+
+ANALYSIS_LOW_SHELF_EQ_gain_in_decibels=-0
+ANALYSIS_LOW_SHELF_EQ_frequency=300
+
+ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels=0
+ANALYSIS_HIGH_SHELF_EQ_frequency=600
+
+#................. WARP ...............................
+
+spectrum_warpshape_index=0
+#(warps every frame relative to its peak)
+
+#.............. PRINT ................................ 
+
+print_average_spectrum=0
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# ANALYSIS
+
+pvanalysisroutine=pvanalysis
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$analysis_frames_per_second \
+\
+-A$gain_in_decibels \
+\
+-b$begintime \
+-e$endtime \
+\
+-C$analysis_channel_1_to_max \
+\
+-H$ANALYSIS_LOW_SHELF_EQ_gain_in_decibels \
+-m$ANALYSIS_LOW_SHELF_EQ_frequency \
+\
+-X$ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels \
+-R$ANALYSIS_HIGH_SHELF_EQ_frequency \
+\
+-W$spectrum_warpshape_index \
+\
+\
+-p1 \
+-P$print_average_spectrum \
+\
+"
+echo "$pvanalysisroutine $PVFLAGS $analysis_sndfile $analysis_outputfile  "
+
+$pvanalysisroutine $PVFLAGS $analysis_sndfile $analysis_outputfile ;
+
+ 
+#====================================================

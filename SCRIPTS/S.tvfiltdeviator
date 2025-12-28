@@ -1,0 +1,329 @@
+#!/bin/sh
+#******************************************************
+#* ANALYSIS DRIVEN,TIME-VARYING PHASE VOCODER FILTERING
+#******************************************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+
+input_sound_file=/~/ridecymbal.NF.aiff
+
+input_analysis_file=~/pvanalysis
+ 
+#******** BEGIN/END TIMES *****************************
+# (0 end time defaults to end of file)
+
+begintime=0
+endtime=0
+
+#*** ANALYSIS PARAMETERS ******************************
+FFT_length=4096
+windowsize=0
+
+frames_per_second=1000
+time_expansion_contraction_factor=1
+
+#**** OUTPUT CHANNEL(S) *******************************
+resynthesis_channel_1_to_max__0_all=1
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****** DYNAMIC PARAMETERS ****************************
+gain_in_decibels=0
+frequency_shift=-0
+pitch_transposition_in_semitones=-0
+P_CHANGE_SELECT__source_only_0__both_source_and_filter_1=0
+#((0) applies pitch changes before filtering, (1) after)
+
+#************ENVELOPE RESPONSE **********************
+release_time_in_seconds=0
+attack_time_in_seconds=0
+
+
+#********
+#************* FILTER *******************************
+#********
+#**** ANALYSIS CHANNEL(S) **
+analysis_channel_1_to_max__0_all=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+
+FILTER_type__pass_0__rejectmode_1__rejectmode_2=1
+#(type 1 inverts response to 0dB
+# type 2 inverts response to frame peak)
+
+FILTER_transposition_in_semitones=0
+
+FILTER_shift=0
+FILTER_source_dB_floor=-0
+
+FILTER_spectrum_warpshape_index=0
+
+
+#************* FILTER TIME **************************
+FILTER_time_point_origin=0
+FILTER_rate_multiplier=1.0
+
+
+FILTER_lower_time_boundary=0
+FILTER_upper_time_boundary=-1
+
+# -1 for low defaults to 0.0 and for high to analysis file duration.
+
+Mode__sampler_loop_0__autostop_1=1
+
+# In autostop mode, synthesis terminates with crossing of 
+# a time boundary. In sampler loop mode, time boundaries 
+# function as sampler loop points. 
+
+Sampler_Loop_Mode__wrap_0__fold_1__clip_2=1
+
+# In Sampler Loop Mode, all timepoints are constrained to
+# region between boundaries using the specified method.  
+# 0: Wrap time into loop range. (/////)
+# 1: Fold time into loop range. (/\/\/\/\)
+# 2: Clip or limit time to the nearest boundary. (\____)
+
+Onset_and_Release_Segment_Mode__off_0__on_1=0
+
+# Setting onset/release mode in Sampler Mode causes looping
+# to be preceded by a pre-loop/onset and post-loop/release 
+# segments. The data time origin is initialized to 0.0 and 
+# progresses according to data time controls. The first entrance
+# into the loop region triggers loop mode, which is maintained
+# until trigger of the release segment. The release segment
+# progresses from the current loop point to the analysis data
+# end time, conforming to the data time rate control and specified
+# synthesis duration. 
+
+Normalize_Loop_Amplitudes__off_0__on_1=0
+
+# When set to 1, amplitudes in loop range are normalized to peak 
+# amplitude of low/high boundary frames. Onset and release 
+# segments are ramped in and out of loop range gain change 
+# as needed.  
+
+Loop_Smooth_Time_in_Seconds=0.0
+
+# Loop junctures for wrapped and folded loops are smoothed
+# with a lowpass filter, the smooth time of which is ramped 
+# up and down before and after the loop juncture points to 
+# smooth any sudden change in amplitude and frequency values.
+
+
+
+#=====================================================
+#****************** MODIFICATIONS *********************
+#=====================================================
+
+#   PROCESSING SEQUENCE:
+#	COMPRESSION => REJECTION => FILTER WARPING => EQ => OCTAVE Q SMOOTH =>
+#	ATTACK/RELEASE => (OUTPUT FOR FILTERING AND FREQ AND TIME DEVIATION) => 
+#	FREQ AND TIME DELAY WARPING => (OUTPUT FOR USE IN AMP, FREQ, AND TIME DOMAINS)
+
+#***** FILTER ENVELOPE RESPONSE **********************
+FILTER_attack_time_in_seconds=0
+FILTER_release_time_in_seconds=0
+
+#********** FILTER SPECTRUM COMPRESSION **************
+FILTER_spectrum_compression_threshold_in_decibels=-0
+FILTER_spectrum_decibels_of_compression=-0
+
+
+#******* FILTER LOW/HIGH SHELF EQ (pre-processing)***
+FILTER_LOW_SHELF_EQ_gain_in_decibels=-0
+FILTER_LOW_SHELF_EQ_frequency=50
+
+FILTER_HIGH_SHELF_EQ_gain_in_decibels=-0
+FILTER_HIGH_SHELF_EQ_frequency=60
+
+
+#******* FILTER RESPONSE SMOOTHING ******************
+peaks_response_smooth_factor_BW__in_frequency_or_octaves=0
+
+# Negative values are treated as positive octave bandwidths, 
+# otherwise units are in frequency.
+
+
+
+#=====================================================
+#************* FREQUENCY DEVIATION *******************
+
+#................. WARP ...............................
+
+FILTER_response_frequency_warpshape_index=0
+
+#("+" values warps the deviation towards base,  and
+# "-" values warps it towards the peak. (0=no warp) )
+
+#.................. PITCH .............................
+
+freq_deviation__responsemode_0__randommode_1__filemode=0
+
+frequency_deviation_response_time_in_seconds=0.0
+
+# (0 = Response mode: In response mode,  the fIlter response 
+#        is used to determine frequency deviation between 
+#        boundaries. 
+#  1 = Randommode: In random mode the base and peak form 
+#        boundaries for a random function. The function,  
+#        smoothed by the response time, is fitted into 
+#        the boundaries to produce the resulting deviation 
+#        from the bin's original frequency. The deviation 
+#        is then attenuated by using the normalized 
+#        frequency response for the bin as a gain control. 
+#  File mode: In file mode,  a function file,  smoothed by 
+#        the response time, is used in place of a random 
+#        function. Give a file in place of a mode code number.)
+
+peak_pitch_deviation_in_semitones=0
+base_pitch_deviation_in_semitones=0
+
+#...................................................... 
+
+peak_frequency_shift=0
+base_frequency_shift=0
+
+#................DEVIATION CONTROL .................... 
+
+master_frequency_deviation=1
+#( 0 = no deviation,  1 = full deviation )
+
+#=====================================================
+#************* TIME DELAY ****************************
+
+FILTER_FREQUENCY_RESPONSE_time_range_warpshape_index=0
+# Redistribution of time delays according to index.
+# "+" values warp response towards base,  and
+# "-" values towards the peak. (0=no warp)
+
+FILTER_OUTPUT_peak_time_delay_in_seconds=0
+FILTER_OUTPUT_base_time_delay_in_seconds=0
+
+FILTER_OUTPUT_master_time_delay_control=1
+
+
+
+#********** AMPLITUDE STATISTICS ******************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# SYNTHESIS
+pvroutine=tvfiltdeviator 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-a$frequency_shift \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+-B$P_CHANGE_SELECT__source_only_0__both_source_and_filter_1 \
+\
+-C$resynthesis_channel_1_to_max__0_all \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+\
+-b$begintime \
+-e$endtime \
+\
+-F$input_analysis_file \
+-K$analysis_channel_1_to_max__0_all \
+-q$FILTER_type__pass_0__rejectmode_1__rejectmode_2 \
+\
+-Q$FILTER_time_point_origin \
+-Y$FILTER_rate_multiplier \
+-g$FILTER_lower_time_boundary \
+-G$FILTER_upper_time_boundary \
+\
+-x$Sampler_Loop_Mode__wrap_0__fold_1__clip_2 \
+-v$Onset_and_Release_Segment_Mode__off_0__on_1 \
+\
+-u$Normalize_Loop_Amplitudes__off_0__on_1 \
+-~$Loop_Smooth_Time_in_Seconds \
+\
+-T$FILTER_transposition_in_semitones \
+-V$FILTER_shift \
+\
+-Z$FILTER_release_time_in_seconds \
+-z$FILTER_attack_time_in_seconds \
+\
+-L$release_time_in_seconds \
+-l$attack_time_in_seconds \
+\
+-W$FILTER_spectrum_warpshape_index \
+-S$FILTER_source_dB_floor \
+\
+-E$FILTER_spectrum_compression_threshold_in_decibels \
+-c$FILTER_spectrum_decibels_of_compression \
+\
+-H$FILTER_LOW_SHELF_EQ_gain_in_decibels \
+-m$FILTER_LOW_SHELF_EQ_frequency \
+\
+-X$FILTER_HIGH_SHELF_EQ_gain_in_decibels \
+-R$FILTER_HIGH_SHELF_EQ_frequency \
+\
+\
+-h$base_pitch_deviation_in_semitones \
+-j$peak_pitch_deviation_in_semitones \
+\
+-U$freq_deviation__responsemode_0__randommode_1__filemode \
+-y$frequency_deviation_response_time_in_seconds \
+\
+-J$base_frequency_shift \
+-k$peak_frequency_shift \
+\
+-n$FILTER_response_frequency_warpshape_index \
+-O$master_frequency_deviation \
+\
+-//$FILTER_FREQUENCY_RESPONSE_time_range_warpshape_index \
+-:$FILTER_OUTPUT_peak_time_delay_in_seconds \
+-/a$FILTER_OUTPUT_base_time_delay_in_seconds \
+-@$FILTER_OUTPUT_master_time_delay_control \
+\
+\
+-f$peaks_response_smooth_factor_BW__in_frequency_or_octaves \
+\
+-d$Mode__sampler_loop_0__autostop_1 \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+"
+echo "$pvroutine $PVFLAGS $input_sound_file $output_file"
+
+$pvroutine  $PVFLAGS $input_sound_file $output_file   ; 

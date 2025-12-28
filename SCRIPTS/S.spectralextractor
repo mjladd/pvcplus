@@ -1,0 +1,176 @@
+#!/bin/sh
+#******************************************************
+#********** SPECTRAL EXTACTOR *************************
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=1
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+
+input_file=~/ridecymbal.au
+
+#******** BEGIN/END TIMES *****************************
+# (-1 end time defaults to end of file)
+begintime=0
+endtime=0
+
+#*** ANALYSIS PARAMETERS ******************************
+FFT_length=1024
+# Suggested settings below are based on a 1024 FFT.
+# BEWARE: Other lengths will behave quite differently!
+window_type=12
+windowsize=0
+
+frames_per_second=200
+#( Suggestions below based on 200 frames per second)
+
+time_expansion_contraction_factor=1
+
+#**** OUTPUT CHANNEL(S) *******************************
+resynthesis_channel_1_to_max__0_all=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****** DYNAMIC PARAMETERS ****************************
+frequency_shift=0
+gain_in_decibels=0
+pitch_transposition_in_semitones=0
+
+#************ NOISE OR PITCH ***************************
+
+EXTRACT_periodic_0__noise_1=0
+
+#************ COMPLEMENT SPECTRUM ***************************
+
+COMPLEMENT_SPECTRUM_proportion=0
+
+
+#  A value of 1 produces the inversion of the current 
+#  compression/expansion settings given above. A value of 
+#  0 produces no change to the settings. Values in-between 
+#  0 and 1 interpolate between no change and the
+#  inverted noise/pitch spectrum. 
+#
+#  For example, if the settings above produced an (expanded) spectrum 
+#  highlighting the resonant parts of the sound, then a value 
+#  of 1  would produce its (compressed) complement of residual-noise 
+#  components. A function moving from 0-1 would create a crossfade 
+#  the original settings to their inversion or complement.
+
+FREQ_CHANGE_THRESHOLD_in_Hz=22
+# For periodic, try 6-10; for noise, try 10 or greater.
+
+
+THRESHOLD_ACCUMULATOR_response_time=0.1
+# Use 0 to 0.2
+# In each bin, an average frequency is continuously accumulated 
+# using a lowpass filter. This parameter controls the speed 
+# at which this average responds to change.
+
+#*********** AMPLITUDE CHANGE RESPONSE TIME *****************
+amplitude_change_response_time_in_seconds=0.05
+
+# Try anything from .1 to 1.; .4 for periodic. 
+# Use to smooth the turning on and off of components.
+
+#************ SPECTRUM WARPSHAPE ****************************
+spectrum_warpshape_index=0
+
+#********* FRAME NORMALIZATION ******************************
+
+Frame_Normalization_Decibel_Limit=0
+# Scale the amplitudes of each output frame against the input frame
+# using a scaling ratio formed from the sum of the input frame amplitudes
+# over the sum of the output frame amplitudes limited by the decibel limit. 
+# Use 96 or less as needed; 0 prevents normalization. 
+
+#******** LOW/HIGH SHELF EQ ****
+LOW_SHELF_EQ_gain_in_decibels=-0
+LOW_SHELF_EQ_frequency=500
+
+HIGH_SHELF_EQ_gain_in_decibels=0
+HIGH_SHELF_EQ_frequency=4000
+
+#********** AMPLITUDE STATISTICS ********************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1.0
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=spectralextractor 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-a$frequency_shift \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+\
+-C$resynthesis_channel_1_to_max__0_all \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-H$LOW_SHELF_EQ_gain_in_decibels \
+-m$LOW_SHELF_EQ_frequency \
+\
+-X$HIGH_SHELF_EQ_gain_in_decibels \
+-R$HIGH_SHELF_EQ_frequency \
+\
+-L$amplitude_change_response_time_in_seconds \
+\
+-W$spectrum_warpshape_index \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+-c$COMPLEMENT_SPECTRUM_proportion \
+-E$Frame_Normalization_Decibel_Limit \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-Q$FREQ_CHANGE_THRESHOLD_in_Hz \
+-g$THRESHOLD_ACCUMULATOR_response_time \
+\
+-q$EXTRACT_periodic_0__noise_1 \
+\
+"
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 

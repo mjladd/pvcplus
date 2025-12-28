@@ -1,0 +1,38 @@
+if test $# -lt 2
+then
+        echo " "
+	echo "showformants [low-x high-x low-y high-y] [32-bit function files from formantanalyzer] "
+	echo " "
+	echo " "
+	echo "example:"
+	echo " "
+	echo "      showformants 0 1 2 6 /tmp/x-y_pairs_file"
+	echo " "
+	echo " "
+	echo "Where are the files?"
+	    
+else
+    x1=$1
+    x2=$2
+    y1=$3
+    y2=$4
+    
+
+    shift
+    shift
+    shift
+    shift
+   while test $# -gt 0
+   do
+
+
+
+	echo " set grid; plot [$x1:$x2] [$y1:$y2] \"$1\" with points ; pause -1" > /tmp/gnuplot_commands
+
+	gnuplot "/tmp/gnuplot_commands"
+ 
+	rm  /tmp/gnuplot_commands 
+
+        shift
+   done
+fi

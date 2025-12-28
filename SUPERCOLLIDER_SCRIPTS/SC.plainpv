@@ -1,0 +1,260 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  plainpv = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		high_shelf_eq_frequency, \
+		pitch_transposition_in_semitones, \
+		time_expansion_contraction_factor, \
+		auto_output_sound_file_play__repetitions, \
+		frames_per_second, \
+		low_shelf_eq_gain_in_decibels, \
+		amplitude_statistics_time_interval, \
+		filter_type, \
+		windowsize, \
+		oscillator_resynthesis_threshold_in_db, \
+		print_amplitude_statistics_0_no__1_yes, \
+		frequency_shift_in_hz, \
+		release_time_in_seconds, \
+		input_file, \
+		high_shelf_eq_gain_in_decibels, \
+		begintime, \
+		low_shelf_eq_frequency, \
+		window_type, \
+		endtime, \
+		spectrum_warpshape_index, \
+		fft_length, \
+		output_channel, \
+		gain_in_decibels, \
+		brickwall_filter_window_low_frequency, \
+		attack_time_in_seconds, \
+		rescale_level_in_decibels, \
+		output_file, \
+		brickwall_filter_window_high_frequency\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //.................... PLAINPV .........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ../32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = 2 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+\
+		input_file = \cf4 "~/Oboe.G5.N.au"\cf2  ;\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		begintime = 0 ;\
+		endtime = 0 ;\
+\
+		\cf5 // (End time of 0 or less defaults to end of file.)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+		fft_length = 2048 ;\
+		\cf5 // Powers of two (512, 1024, 2048, 4096...)\cf2 \
+		\cf5 // Larger values increase bins, adding frequency resolution while\cf2 \
+		\cf5 // decreasing time resolution; smaller values effect the opposite.   \cf2 \
+		\cf5 // Start with 1024. \cf2 \
+\
+		window_type = 1 ;\
+\
+		\cf5 // hamming(0),  rectangular(1) Blackman(2), Bartlett(3)\cf2 \
+		\cf5 // Kaiser(4-12) for corresponding alpha values:\cf2 \
+		\cf5 // alpha = 4: sidelobe of -30dB, narrow center lobe\cf2 \
+		\cf5 // alpha = 8: sidelobe of -58dB, medium center lobe\cf2 \
+		\cf5 // alpha = 12: sidelobe of -90dB, wide center lobe\cf2 \
+\
+		windowsize = 0 ;\
+		\cf5 // (0 sets windowsize to 2 * FFT (or larger))\cf2 \
+\
+		frames_per_second = 400 ;\
+		\cf5 //(see time expansion note)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+		output_channel = 0 ;\
+		\cf5 // (channels are numbered from 1 to the maximum.)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -96 ;\
+		\cf5 //( Try -60 to -70 unless dropouts become audible. )\cf2 \
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. TIME ..............................\cf2 \
+\
+		time_expansion_contraction_factor = 2 ;\
+		\cf5 // Adjust frames_per_second in proportion to keep a \cf2 \
+		\cf5 //   constant output of about 200 frames per second; \cf2 \
+		\cf5 // i.e. if expansion = 2, double the frames to 400.\cf2 \
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		gain_in_decibels = 0 ;\
+\
+\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		frequency_shift_in_hz = 0 ;\
+		\cf5 // (Frequency shift is added to all bin frequencies.) \cf2 \
+		pitch_transposition_in_semitones = 0 ;\
+\
+\
+\
+		\cf5 //............ AMPLITUDE RESPONSE ......................\cf2 \
+\
+		release_time_in_seconds = 0 ;\
+		attack_time_in_seconds = 0 ;\
+\
+\
+		\cf5 //............ SPECTRUM WARPSHAPE ......................\cf2 \
+		spectrum_warpshape_index = 0 ;\
+\
+		\cf5 //............ BRICKWALL FILTER ........................\cf2 \
+\
+		filter_type = 0 ;\
+\
+		\cf5 //( 0 = bandpass )\cf2 \
+		\cf5 //( 1 = bandreject )\cf2 \
+\
+		\cf5 //...................................................... \cf2 \
+\
+		brickwall_filter_window_low_frequency = 0 ;\
+		brickwall_filter_window_high_frequency = -1 ;\
+		\cf5 // (-1 selects respective lowest or highest frequency)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*************** LOW/HIGH SHELF EQ *********************\cf2 \
+\
+		low_shelf_eq_gain_in_decibels = -0 ;\
+		low_shelf_eq_frequency = 500 ;\
+\
+		high_shelf_eq_gain_in_decibels = -0 ;\
+		high_shelf_eq_frequency = 5000 ;\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ********************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "plainpv "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -A"\cf2  ++ gain_in_decibels ++  \cf4 " -w"\cf2  ++ window_type ++  \cf4 " -C"\cf2  ++ output_channel ++ \
+			 \cf4 " -b"\cf2  ++ begintime ++  \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++ \
+			 \cf4 " -="\cf2  ++ rescale_level_in_decibels ++  \cf4 " -l"\cf2  ++ attack_time_in_seconds ++ \
+			 \cf4 " -m"\cf2  ++ low_shelf_eq_frequency ++  \cf4 " -L"\cf2  ++ release_time_in_seconds ++  \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++ \
+			 \cf4 " -R"\cf2  ++ high_shelf_eq_frequency ++  \cf4 " -F"\cf2  ++ brickwall_filter_window_high_frequency ++ \
+			 \cf4 " -T"\cf2  ++ filter_type ++  \cf4 " -H"\cf2  ++ low_shelf_eq_gain_in_decibels ++  \cf4 " -I"\cf2  ++ time_expansion_contraction_factor ++ \
+			 \cf4 " -N"\cf2  ++ fft_length ++  \cf4 " -W"\cf2  ++ spectrum_warpshape_index ++  \cf4 " -D"\cf2  ++ frames_per_second ++ \
+			 \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -f"\cf2  ++ brickwall_filter_window_low_frequency ++ \
+			 \cf4 " -P"\cf2  ++ pitch_transposition_in_semitones ++  \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++ \
+			 \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -a"\cf2  ++ frequency_shift_in_hz ++  \cf4 " -M"\cf2  ++ windowsize ++ \
+			 \cf4 " -X"\cf2  ++ high_shelf_eq_gain_in_decibels\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+plainpv.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

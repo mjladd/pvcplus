@@ -1,0 +1,317 @@
+#!/bin/sh
+#******************************************************
+#IMPULSE RESPONSE MAKER
+#******************************************************
+
+Impulse_Response_Data_File=~/Impulse_Response_Data_File
+
+#**************** PLOT FILES **************************
+
+Spectrum_DB_Plot_File=/Users/koonce/sp
+
+
+#******************** INPUT ***************************
+
+analysis_sndfile=/tmp/impulseResponse.au
+
+
+#........ BEGIN/END TIMES .............................
+
+analysis_begintime=0
+analysis_endtime=0
+
+#........... ANALYSIS CHANNEL(S) .......................
+
+analysis_channel=0
+# Channels are numbered from 1-maximum; 0 equals all channels.
+#
+
+#........... AMPLITUDE NORMALIZATION .......................
+
+amplitude_normalization_level_in_dB=-0
+
+normalization__off_0__channels_independently_1__against_peak_channel_2=0
+# Use 2, which normalizes relative to the peak channel for multi-channel 
+# input files, for most applications. 
+
+#...................................................... 
+
+
+add_ring_time__off_0__on_1=0
+#
+# If sound end seems cutoff, then add this; in most situations, this should be on.
+
+
+#*** ANALYSIS PARAMETERS ******************************
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=0
+# ( 0 = off )
+
+
+
+#******************************************************
+#........... IR CONVOLVER (USING FAST CONVOLUTION)
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+
+#cp ~/output.32bit.BLANK.au $output_file
+
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=1
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+input_file=~/violin.A5.au
+
+#======================================================
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=1
+# (channels are numbered from 1 to the maximum.)
+# (0 = all channels)
+
+convolution_multichannel_output_mode__standard_0__alternate_1=1
+#
+# *Standard-output-mode* matches the input audio file channels 
+# specified above (either one or all) with the channels of the 
+# impulse analysis file, loop assigning the (one or more) 
+# impulse channels to the input audio channels, as needed. 
+#
+# *Alternate-output-mode* offers the step-saving option of
+# convolving a single specified input channel or monophonic 
+# audio file with all the channels of the impulse analysis file 
+# into a multi-channel output file of the same number of channels.
+# The selected channel is through the output channel parameter 
+# (see above), which *must* be selected (i.e. cannot be 0). 
+#
+# Impulse analysis channels may be initially limited/selected by  
+# specifying one or more channels in the impulse response 
+# analysis stage (see beginning of script) or by selecting one 
+# channel from the resulting impulse analysis file (see below), 
+# for subsequent use in irconvolver.
+#
+
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+# IMPULSE FREQ RESPONSE FILE
+#impulse_frequency_response_file=~/Impulse_Response_Data_File
+
+impulse_channel=0
+# Channels are numbered from 1 to the maximum.
+# 0 = all channels
+# Impulse channels will be loop-assigned when input
+# channels exceed impulse channels.
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=0
+
+# (End time of 0 or less defaults to end of file.)
+
+
+deconvolution_0__convolution_1=1
+# To be useful, the deconvolve feature requires additional features
+# to manage the spurious noise incurred from the spectral division. 
+
+
+ 
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+
+
+
+#****************** MODIFICATIONS *********************
+
+#.................. DECIBELS ..........................
+
+SOURCE_gain_in_decibels=-200
+# Source input added to convolution output. 
+
+
+Convolution_input_gain_in_decibels=0
+
+
+Convolution_output_gain_in_decibels=-0
+
+
+
+
+#******** IMPULSE RESPONSE: BAND PASS FILTER **************
+# 
+
+impulse_response_filter_band_low_rolloff_frequency=200
+impulse_response_filter_band_high_rolloff_frequency=500
+# High boundary of 0 or less defaults to Nyquist. 
+
+impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave=-0
+impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave=-0
+
+
+#******** INPUT SOUND: BAND PASS FILTER **************
+# 
+
+input_sound_filter_band_low_rolloff_frequency=500
+input_sound_filter_band_high_rolloff_frequency=1000
+# High boundary of 0 or less defaults to Nyquist. 
+
+input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave=-0
+input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave=-0
+
+
+
+#******** IMPULSE RESPONSE TEMPORAL SIGNAL SHAPING ***************
+
+# 
+# For shaping, impulse response input signal amplitudes (i.e. time domain),
+# spanning the 0 to -96 dB range, are divided by the dB breakpoint.
+# Amplitudes above the breakpoint are shaped by the upper curve index and
+# amplitudes below are shaped by the lower. 
+# The upper amplitudes are mapped into a new range extending from the breakpoint
+# amplitude to the peak shaping amplitude.
+# With the peak amplitude at 0 (default) and an appropriate breakpoint setting, 
+# positive upper curve indices can be used to warp the upper values toward the 
+# breakpoint amplitude, which should suppress early reflections; conversely, 
+# negative indices will warp values toward the peak shaping amplitude, which 
+# will accentuate early reflections. 
+# Additionally, the peak shaping amplitude may be set to any level. When set below
+# 0dB and above the breakpoint level, upper values will be compressed. 
+# Set to levels below the breakpoint amplitude will invert the upper amplitude range
+# to span the range from the breakpoint to the lower peak setting, which will 
+# reduce direct and early reflections as it draws out the reverb tail. 
+# The lower region functions similarly between base and breakpoint levels, with
+# the sign of indices inverted; that is, negative indices for this region will 
+# warp values toward the break point and, thus, amplify the reverberation, and
+# positive indices will warp them toward the base, which will suppress the reverberation
+# tail, depending, of course, on where the base level is set.    
+
+impulse_response_shaping_switch__off_0__on_1=0
+peak_shaping_amplitude_in_dB=-0
+# Set to 0 for off.  
+upper_shaping_curve_index=-3 
+# Set to 0 for off.
+shaping_breakpoint_in_dB=-10
+# Any value in -96 to 0 range for off.
+base_shaping_amplitude_in_dB=-96 
+# Any value below breakpoint value for off.
+lower_shaping_curve_index=-2 
+# Set to 0 for off.
+
+
+
+
+#********** AMPLITUDE STATISTICS ********************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# ANALYSIS
+
+pvanalysisroutine=impulseresponse
+
+
+PVFLAGS="\
+\
+-b$analysis_begintime \
+-e$analysis_endtime \
+\
+\
+-P$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+\
+-a$Spectrum_DB_Plot_File \
+-N$normalization__off_0__channels_independently_1__against_peak_channel_2 \
+-d$amplitude_normalization_level_in_dB \
+\
+-C$analysis_channel \
+"
+
+echo "$pvanalysisroutine $PVFLAGS $analysis_sndfile $Impulse_Response_Data_File  "
+
+$pvanalysisroutine $PVFLAGS $analysis_sndfile $Impulse_Response_Data_File ;
+
+if test $? -eq 0
+then
+ 
+ 
+#====================================================
+# SYNTHESIS
+
+pvroutine=irconvolver 
+
+PVFLAGS="\
+\
+-E$Impulse_Response_Data_File \
+-a$deconvolution_0__convolution_1 \
+-J$impulse_channel \
+\
+-A$SOURCE_gain_in_decibels \
+-q$Convolution_input_gain_in_decibels \
+-r$Convolution_output_gain_in_decibels \
+\
+-s$impulse_response_filter_band_low_rolloff_frequency \
+-t$impulse_response_filter_band_high_rolloff_frequency \
+\
+-g$impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave \
+-G$impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave \
+\
+-D$input_sound_filter_band_low_rolloff_frequency \
+-f$input_sound_filter_band_high_rolloff_frequency \
+\
+-h$input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave \
+-H$input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave \
+\
+\
+-x$impulse_response_shaping_switch__off_0__on_1 \
+-P$peak_shaping_amplitude_in_dB \
+-B$shaping_breakpoint_in_dB \
+-F$base_shaping_amplitude_in_dB \
+-Z$upper_shaping_curve_index \
+-z$lower_shaping_curve_index \
+\
+-C$output_channel \
+-M$convolution_multichannel_output_mode__standard_0__alternate_1 \
+\
+-b$begintime \
+-e$endtime \
+\
+-d$add_ring_time__off_0__on_1 \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+"
+
+echo "$pvroutine $PVFLAGS $input_file $output_file "
+
+$pvroutine  $PVFLAGS $input_file $output_file
+
+fi

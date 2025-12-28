@@ -1,0 +1,445 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  delayfilter_with_groupdelaymaker = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		filter_low_shelf_eq_gain_in_decibels, \
+		gdf_maximum_delay_decibels, \
+		window_type, \
+		partial_band_edge_decibels, \
+		filter_low_shelf_eq_frequency, \
+		gdf_zero_delay_decibels, \
+		rate_multiplier, \
+		gdf_input_response_printflag, \
+		spectrum_warpshape_index, \
+		gdf_random_diffusion_response_time_in_seconds, \
+		data_file, \
+		release_time_in_seconds, \
+		spectrum_compression_threshold_in_decibels, \
+		gdf_random_diffusion_switch_off_0__on_1, \
+		filter_high_shelf_eq_frequency, \
+		amplitude_statistics_time_interval, \
+		input_analysis_file, \
+		filter_high_shelf_eq_gain_in_decibels, \
+		frequency_shift, \
+		time_point_origin, \
+		groupdelayresponsefile, \
+		auto_output_sound_file_play__repetitions, \
+		duration, \
+		overlapping_bin_method, \
+		print_amplitude_statistics_0_no__1_yes, \
+		oscillator_resynthesis_threshold_in_db, \
+		output_channel, \
+		default_delay_time, \
+		spectrum_decibels_of_compression, \
+		groupdelay_synthesis_printout_high_cutoff_frequency, \
+		windowsize, \
+		pitch_transposition_in_semitones, \
+		gdf_random_diffusion_bandwidth_in_seconds, \
+		attack_time_in_seconds, \
+		gain_in_decibels, \
+		frames_per_second, \
+		gdf_delay_decibels_curve_shape, \
+		gdf_delay_time_multiplier, \
+		gdf_spectrum_warpshape_index, \
+		output_file, \
+		gdf_shift, \
+		function_delay_time_scaler, \
+		default_db_level, \
+		rescale_level_in_decibels, \
+		gdf_transposition_in_semitones, \
+		frequency_change_response_time_in_seconds\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //* GROUP DELAY PHASE VOCODER RESYNTHESIS\cf2 \
+		\cf5 //* WITH SYNTHETIC GROUP DELAY SYNTHESIS\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 // Groupdelaymaker makes a response file of dB/delay-time pairs \cf2 \
+		\cf5 // for each of the FFT's frequency bins storing delay in place\cf2 \
+		\cf5 // of frequency:. Like chordresponsemaker, it makes the response\cf2 \
+		\cf5 // using a multiple tone format, with the added feature of time  \cf2 \
+		\cf5 // delay for each tone. \cf2 \
+\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //************ GROUP DELAY SYNTHESIS *****************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		groupdelayresponsefile = \cf4 "/tmp/groupdelayresponsefile"\cf2  ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		\cf5 //................ EDGE DECIBELS .......................\cf2 \
+\
+		partial_band_edge_decibels = 0 ;\
+\
+		\cf5 //................ DATA FILE  ..........................\cf2 \
+\
+		data_file = \cf4 "/tmp/shift1_file"\cf2  ;\
+\
+		\cf5 //........ Partial Overlap Resolution Method ............\cf2 \
+\
+		overlapping_bin_method = 6 ;\
+		\cf5 //( Use 1 or 2 to be safe.) \cf2 \
+\
+		\cf5 //   When multiple tones produce overlapping data, the\cf2 \
+		\cf5 //    bin settings are determined using one of the methods below.\cf2 \
+\
+		\cf5 // 0 = Use the one with the shortest delay.\cf2 \
+		\cf5 // 1 = Use the one with the longest delay.\cf2 \
+		\cf5 // 2 = Take averages of both time delay and loudness.\cf2 \
+		\cf5 // 3 = Use the loudest one.\cf2 \
+		\cf5 // 4 = Use the softest one.\cf2 \
+		\cf5 // 5 = Use the loudest one if it has the shortest delay.\cf2 \
+		\cf5 // 6 = Use the loudest one if it has the longest delay.\cf2 \
+\
+		\cf5 //......... DEFAULT DB AND DELAY .......................\cf2 \
+\
+		\cf5 // Bins not covered by the data file have their dB and\cf2 \
+		\cf5 // delay time set to the default values below.\cf2 \
+\
+		default_db_level = -100.0 ;\
+		default_delay_time = 0 ;\
+\
+\
+		\cf5 //..........GROUPDELAY RESPONSE PRINTOUT  ...............\cf2 \
+\
+		groupdelay_synthesis_printout_high_cutoff_frequency = 10000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+		\cf5 //........... DATA FILE FORMAT ............................\cf2 \
+\
+		\cf5 // DATA FILE FORMAT: septuples\cf2 \
+		\cf5 // 1:  pitch/frequency  \cf2 \
+		\cf5 // 2:  number of partials (0 = all below Nyquist)\cf2 \
+		\cf5 // 3:  bandwidth \cf2 \
+		\cf5 //        values <= 1. treated as proportion of fundamental frequency \cf2 \
+		\cf5 //        values > 1. treated as Herz\cf2 \
+		\cf5 // 4:  dB of fundamental \cf2 \
+		\cf5 // 5:  partial spacing as proportion of fundamental\cf2 \
+		\cf5 // 6:  top-partial dB relative to fundamental\cf2 \
+		\cf5 // 7:  delay time\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			 \
+			197   1	  0.2  -0  1  -0  .1  \
+			394   1	  0.2  -0  1  -0  .2  \
+			591   1	  0.2  -0  1  -0  .3  \
+			798   1	  0.2  -0  1  -0  .4  \
+			985   1	  0.2  -0  1  -0  .5  \
+			1182   1	  0.2  -0  1  -0  .6  \
+			1379   1	  0.2  -0  1  -0  .7  \
+			1576   1	  0.2  -0  1  -0  .8  \
+			1773   1	  0.2  -0  1  -0  .9  \
+			1971	  1	  0.2  -0  1  -0  1.  \
+			2167   1	  0.2  -0  1  -0  1.1  \
+			2364   1	  0.2  -0  1  -0  1.2  \
+			 \
+			> /tmp/shift1_file ; "\cf2 \
+		) ;\
+\
+\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //******************* FILTER  **************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = 0 ;\
+		\cf5 //(set to 1 to rescale to peak of input file)\cf2 \
+		\cf5 //(Don't use 1 here as analysis file levels are very low)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		input_analysis_file = \cf4 "~/pvanalysis"\cf2  ;\
+		\cf5 // A pvanalysis file\cf2 \
+\
+		\cf5 //................ DURATION .............................\cf2 \
+\
+		duration = 0 ;\
+		\cf5 // Durations of 0 or less default to analysis duration. \cf2 \
+		\cf5 // Extend duration past analysis duration as needed to \cf2 \
+		\cf5 // accommodate delay times.  \cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+		window_type = 12 ;\
+		windowsize = 0 ;\
+\
+		frames_per_second = 200 ;\
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+\
+		output_channel = 0 ;\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -90 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //.................. DATA TIME .........................\cf2 \
+		time_point_origin = 0 ;\
+		rate_multiplier = 1 ;\
+\
+\
+		\cf5 //=======================================================\cf2 \
+		\cf5 //********** GROUP DELAY FILTER  (GDF) ******************\cf2 \
+\
+		gdf_delay_time_multiplier = 1 ;\
+		\cf5 // (Master controller multiplier) of delay time for\cf2 \
+		\cf5 // use in expanding and compressing group delay times. \cf2 \
+		\cf5 // 0 = no delays.\cf2 \
+\
+		\cf5 //For each bin, a random signal, smoothed by the response\cf2 \
+		\cf5 // time, is used to randomly vary the bin's delay time, either\cf2 \
+		\cf5 // shortening or lengthening it; bandwidth sets the  \cf2 \
+		\cf5 // maximum amount of shortening or lengthening. \cf2 \
+\
+		gdf_random_diffusion_switch_off_0__on_1 = 0 ;\
+		gdf_random_diffusion_bandwidth_in_seconds = 0.1 ;\
+		gdf_random_diffusion_response_time_in_seconds = 0.05 ;\
+\
+		\cf5 //......................................................\cf2 \
+\
+		gdf_transposition_in_semitones = 0 ;\
+\
+\
+\
+\
+		gdf_shift = 0 ;\
+		gdf_spectrum_warpshape_index = 0 ;\
+\
+		\cf5 //......................................................\cf2 \
+\
+		gdf_input_response_printflag = 4000 ;\
+		\cf5 //( 0 = no, 1 = yes, values > 1 set hi freq cutoff )\cf2 \
+\
+		\cf5 //......................................................\cf2 \
+\
+		\cf5 // DELAY DECIBELS CURVE\cf2 \
+		\cf5 // The parameters below allow for additional shaping of\cf2 \
+		\cf5 // the amplitude of the spectrum as a function of delay time.\cf2 \
+		\cf5 // The parameters specify a dB mapping function; each bin's \cf2 \
+		\cf5 // delay time is mapped into the function for a decibel value  \cf2 \
+		\cf5 // subsequently used to alter the bin's amplitude.\cf2 \
+\
+		gdf_zero_delay_decibels = -0 ;\
+\
+		gdf_maximum_delay_decibels = -0 ;\
+		gdf_delay_decibels_curve_shape = 0 ;\
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //********** SPECTRUM MODIFICATIONS ********************\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //............ SPECTRUM WARPSHAPE ......................\cf2 \
+		spectrum_warpshape_index = 0 ;\
+\
+\
+		\cf5 //............SPECTRUM COMPRESSION ......................\cf2 \
+\
+		spectrum_compression_threshold_in_decibels = -0 ;\
+		spectrum_decibels_of_compression = -0 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //******* FILTER LOW/HIGH SHELF EQ (pre-processing) ****\cf2 \
+\
+		filter_low_shelf_eq_gain_in_decibels = -0 ;\
+		filter_low_shelf_eq_frequency = 50 ;\
+\
+		filter_high_shelf_eq_gain_in_decibels = 0 ;\
+		filter_high_shelf_eq_frequency = 1000 ;\
+\
+		\cf5 //======================================================\cf2 \
+\
+		\cf5 //=======================================================\cf2 \
+		\cf5 //****** POST DELAY MODIFICATIONS *********************\cf2 \
+		\cf5 //=======================================================\cf2 \
+		\cf5 // When controlled with time-varying functions, the\cf2 \
+		\cf5 // following global controls are uniquely delayed in \cf2 \
+		\cf5 // time according to the corresponding bin's delay time. \cf2 \
+		\cf5 // The decorrelating effect of the temporal diffusion\cf2 \
+		\cf5 // can be cancelled or scaled through the following \cf2 \
+		\cf5 // function time scaling control, which scales the \cf2 \
+		\cf5 // amount of delay time for functions controlling\cf2 \
+		\cf5 // post-delay modification parameters. \cf2 \
+		\cf5 //   \cf2 \
+\
+		function_delay_time_scaler = 1.0 ;\
+		\cf5 // 0: no delay\cf2 \
+		\cf5 // 1: functions synchronized with delayed bins\cf2 \
+		\cf5 // 0-1: interpolated degrees of scaling from none to full.\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		gain_in_decibels = 0 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		frequency_shift = 0 ;\
+		pitch_transposition_in_semitones = 0 ;\
+\
+		\cf5 //............ AMPLITUDE RESPONSE ......................\cf2 \
+\
+		release_time_in_seconds = 0 ;\
+		attack_time_in_seconds = 0 ;\
+\
+		\cf5 //............ FREQUENCY RESPONSE ......................\cf2 \
+\
+		frequency_change_response_time_in_seconds = 0 ;\
+\
+\
+\
+\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ******************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 0.25 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "groupdelaymaker"\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -I"\cf2  ++ default_delay_time ++  \cf4 " -s"\cf2  ++ overlapping_bin_method ++  \cf4 " -i"\cf2  ++ default_db_level ++ \
+			 \cf4 " -D"\cf2  ++ partial_band_edge_decibels ++  \cf4 " -v"\cf2  ++ groupdelay_synthesis_printout_high_cutoff_frequency ++ \
+			 \cf4 " -F"\cf2  ++ data_file ++  \cf4 " -f"\cf2  ++ input_analysis_file\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ groupdelayresponsefile\
+\
+		) ;\
+ \
+\
+\
+		\cf5 // ******** UNIX COMMAND LINE 1 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "delayfilter "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -Y"\cf2  ++ rate_multiplier ++  \cf4 " -H"\cf2  ++ filter_low_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -A"\cf2  ++ gain_in_decibels ++  \cf4 " -C"\cf2  ++ output_channel ++  \cf4 " -D"\cf2  ++ frames_per_second ++ \
+			 \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++  \cf4 " -P"\cf2  ++ pitch_transposition_in_semitones ++ \
+			 \cf4 " -e"\cf2  ++ gdf_shift ++  \cf4 " -a"\cf2  ++ frequency_shift ++  \cf4 " -c"\cf2  ++ spectrum_decibels_of_compression ++ \
+			 \cf4 " -X"\cf2  ++ filter_high_shelf_eq_gain_in_decibels ++  \cf4 " -q"\cf2  ++ gdf_random_diffusion_bandwidth_in_seconds ++ \
+			 \cf4 " -x"\cf2  ++ function_delay_time_scaler ++  \cf4 " -d"\cf2  ++ duration ++  \cf4 " -y"\cf2  ++ gdf_maximum_delay_decibels ++ \
+			 \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -B"\cf2  ++ groupdelayresponsefile ++ \
+			 \cf4 " -="\cf2  ++ rescale_level_in_decibels ++  \cf4 " -l"\cf2  ++ attack_time_in_seconds ++ \
+			 \cf4 " -L"\cf2  ++ release_time_in_seconds ++  \cf4 " -m"\cf2  ++ filter_low_shelf_eq_frequency ++ \
+			 \cf4 " -M"\cf2  ++ windowsize ++  \cf4 " -R"\cf2  ++ filter_high_shelf_eq_frequency ++  \cf4 " -v"\cf2  ++ gdf_random_diffusion_switch_off_0__on_1 ++ \
+			 \cf4 " -T"\cf2  ++ gdf_delay_time_multiplier ++  \cf4 " -w"\cf2  ++ gdf_spectrum_warpshape_index ++ \
+			 \cf4 " -W"\cf2  ++ spectrum_warpshape_index ++  \cf4 " -b"\cf2  ++ gdf_transposition_in_semitones ++ \
+			 \cf4 " -z"\cf2  ++ gdf_delay_decibels_curve_shape ++  \cf4 " -S"\cf2  ++ window_type ++  \cf4 " -Z"\cf2  ++ gdf_input_response_printflag ++ \
+			 \cf4 " -E"\cf2  ++ spectrum_compression_threshold_in_decibels ++  \cf4 " -f"\cf2  ++ frequency_change_response_time_in_seconds ++ \
+			 \cf4 " -r"\cf2  ++ gdf_random_diffusion_response_time_in_seconds ++  \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++ \
+			 \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++  \cf4 " -V"\cf2  ++ gdf_zero_delay_decibels ++ \
+			 \cf4 " -F"\cf2  ++ input_analysis_file ++  \cf4 " -Q"\cf2  ++ time_point_origin\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+delayfilter_with_groupdelaymaker.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

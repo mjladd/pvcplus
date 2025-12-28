@@ -1,0 +1,465 @@
+#!/bin/sh
+#******************************************************
+#... FILTER WITH FREQUENCY RESPONSE ANALYSIS ..........
+#******************************************************
+
+#------------------------------------------------------
+#*** FREQRESPONSE FREQUENCY RESPONSE ANALYSIS *********
+#------------------------------------------------------
+
+#****FREQUENCY RESPONSE OUTPUT FILE *******************
+
+freqresponsefile=~/freqresponsefile
+
+Formants_Data_File=~/Formants_Data_File
+Formants_ASCII_Data_File=~/Formants_ASCII_Data_File
+
+#************ PLOT OUTPUT FILES **********************
+
+SpectrumPlotFileInDB=~/sp
+formantsBarPlotFile=~/bp
+
+#****** ANALYSIS INPUT SOUND FILE ********************
+
+FREQUENCY_RESPONSE_ANALYSIS_sndfile=~/Flute.NF.C5.au
+
+#........ BEGIN/END TIMES .............................
+
+FREQUENCY_RESPONSE_ANALYSIS_begintime=0
+FREQUENCY_RESPONSE_ANALYSIS_endtime=0
+
+#........... ANALYSIS CHANNEL(S) .......................
+
+FREQUENCY_RESPONSE_ANALYSIS_channel=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+FREQUENCY_RESPONSE_ANALYSIS_window_type=16
+
+#...................................................... 
+
+FREQUENCY_RESPONSE_ANALYSIS_frames_per_second=200
+
+
+FREQUENCY_RESPONSE_ANALYSIS_METHOD_Average_0__Peak_1=0
+
+Amplitude_Weighted_Average__Off_0__On_1=0
+#
+# Amplitude weighting biases the final average spectrum toward 
+# frames with greater overall amplitude. The weighted average spectrum 
+# and peak spectra can be very similar. 
+
+
+
+#********** FORMANT ANALYSIS **************************
+
+Formant_Selection_Threshold__0_to_1=0.0
+#
+# Using the difference between analyzed peak and average amps for
+# windowed frequency regions, an amplitude variation range, in dB, 
+# is set and used to select formants; 0 to 1 threshold control is 
+# mapped into decibel selection range for selection/rejection of
+# spectral peaks as formants. 
+# 0 = all formants, 1 = few to none. Try .5 to .8
+
+formant_peak_amplitude_threshold_in_dB=-30.
+#
+# Formants in the normalized formant range are selected or rejected based
+# on whether their peak amplitude meets the threshold. 
+
+
+FORMANT_ANALYSIS_low_formant_frequency_limit=20
+FORMANT_ANALYSIS_high_formant_frequency_limit=20000
+
+
+#********* FORMANT NORMALIZATION -- SPECTRUM COMPANDING **
+
+Normalize_Spectrum_to_Formant_Peaks__off_0__on_1=0
+#
+# If on, formant peaks in the spectrum are normalized to 1.0
+# with bins between formants scaled by a gain interpolated 
+# between the adjoing formant normalization gains according to 
+# the bin's respective position between them. Normalization of
+# peaks equalizes formant amplitude differences, allowing
+# more source energy to pass (producing a brighter output) while
+# not losing the resonant characteristics of the filter response. 
+
+Warp_Index_for_Spectral_Expansion_or_Compression=0
+
+#
+# 0: compression or expansion.
+# Values > 0: expand dynamic range between formants; try 0 to 30.
+# Values < 0: compress dynamic range; try 0 to -30.  
+#
+# A non-zero warp index reshapes the distribution of amplitudes of bins
+# lying between formants. Positive warp indices reshape distribution 
+# towards lower amplitudes, thus expanding the mid-formant dynamic range;
+# expansion increases with higher values; negative indices do the reverse, 
+# compressing the range. Compression/expansion is greatest at the midpoint
+# between formants and decreasingly less to none in approach of the formant.
+   
+
+#------------------------------------------------------
+#*** FREQUENCY RESPONSE ANALYSIS LOW/HIGH SHELF EQ ****
+
+FREQUENCY_RESPONSE_ANALYSIS_LOW_SHELF_EQ_gain_in_decibels=-0
+FREQUENCY_RESPONSE_ANALYSIS_LOW_SHELF_EQ_frequency=300
+
+FREQUENCY_RESPONSE_ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels=0
+FREQUENCY_RESPONSE_ANALYSIS_HIGH_SHELF_EQ_frequency=1000
+
+#------------------------------------------------------
+
+FREQRESPONSE_FILTER_ANALYSIS_PRINTOUT_high_cutoff_frequency=8000
+# ( 0 = off )
+
+
+
+#------------------------------------------------------
+#************ FILTER ROUTINE **************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=-0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+input_file=~/HumanSounds/BabyCoo.aif
+
+#........ BEGIN/END TIMES .............................
+
+begintime=0
+endtime=-1
+# (-1 end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=4096
+window_type=16
+windowsize=0
+
+frames_per_second=200
+
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=0
+
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-80
+
+#======================================================
+#********** SOURCE OUTPUT SETTINGS ********************
+
+#.................. DECIBELS ..........................
+
+SOURCE_gain_in_dB=-96
+
+#.................. PITCH .............................
+
+SOURCE_frequency_shift=0
+SOURCE_pitch_transposition_in_semitones=0
+
+
+#.................. DELAY TIME ........................
+
+SOURCE_delay_time=0
+
+
+
+#=====================================================
+
+#.................. TIME ..............................
+
+MACRO_output_time_expansion_contraction_factor=1
+
+
+
+#=====================================================
+#***************** FILTER ****************************
+
+#********* FILTER FREQUENCY RESPONSE SETTINGS ********
+
+
+FILTER_FREQUENCY_RESPONSE_type=0
+#( 0 = pass )
+#( 1 = reject (invert response)  )
+
+#.......... DECIBELS FLOOR .............................
+
+FILTER_FREQUENCY_RESPONSE_dB_floor=-96
+
+
+#.................. PITCH .............................
+
+FILTER_FREQUENCY_RESPONSE_transposition_in_semitones=0
+FILTER_FREQUENCY_RESPONSE_frequency_shift=0
+
+
+
+#................. WARP ...............................
+
+FILTER_FREQUENCY_RESPONSE_spectrum_warpshape_index=0
+
+
+#............ FILTER RESPONSE SMOOTHING ...............
+FILTER_FREQUENCY_RESPONSE_peaks_response_smooth_factor_BW__in_frequency_or_octaves=0
+
+# Negative values are treated as positive octave bandwidths, 
+# otherwise units are in frequency.
+
+
+#.. FILTER RESPONSE COMPRESSION .......................
+
+FILTER_FREQUENCY_RESPONSE_compression_threshold_in_decibels=-0
+FILTER_FREQUENCY_RESPONSE_decibels_of_compression=-0
+
+#.. FILTER RESPONSE EXPANSION .........................
+
+FILTER_FREQUENCY_RESPONSE_expansion_threshold_in_decibels=-0
+FILTER_FREQUENCY_RESPONSE_decibels_of_expansion=-0
+
+
+#=====================================================
+#* FILTER FREQUENCY RESPONSE LOW/HIGH SHELF EQ (pre-processing)**
+
+FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_gain_in_decibels=-0
+FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_frequency=200
+
+FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_gain_in_decibels=-0
+FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_frequency=4000
+
+
+#********* FILTER OUTPUT MODIFICATIONS *****************
+
+
+#.................. DECIBELS ..........................
+
+FILTER_OUTPUT_gain_in_decibels=-0
+
+
+
+#.................. PITCH .............................
+
+FILTER_OUTPUT_frequency_shift=0
+FILTER_OUTPUT_pitch_transposition_in_semitones=0
+
+
+FILTER_PITCH_CHANGE_SELECT__source_only_0__both_source_and_filter_1=1
+# 0: applies freq/pitch changes to source only (before filtering)
+# 1: applies freq/pitch changes to both source and filter (after filtering)
+
+#............ AMPLITUDE RESPONSE ......................
+
+FILTER_OUTPUT_release_time_in_seconds=0
+FILTER_OUTPUT_attack_time_in_seconds=0
+
+
+#............INPUT TIME DELAY ...........................
+FILTER_INPUT_time_delay=0
+
+
+#***********************************************************
+
+Function_Delay_Time_Scaler=1
+# Setting this parameter to a value of 1 scales the delayed
+# start time of control functions to their full, respective delay time;
+# values less than 1 scale the start time by the specified proportion.
+# A value of 0 causes all functions to start at the beginning, thus
+# canceling their respective delays. Scaler can be modulated
+# continuously with a function. 
+
+
+#********* FRAME NORMALIZATION ******************************
+
+FILTER_OUTPUT_Frame_Normalization_Decibel_Limit=100
+
+FILTER_OUTPUT_Normalize_to__Input_Sound_0__Filter_1=0
+
+# Scale the amplitudes of each output frame against either the changing 
+# input-source or constant filter. Scaling is produced using a ratio 
+# formed from the sum of the respective input-source or filter amplitudes
+# over the sum of the output frame amplitudes limited by the decibel limit. 
+# 0 prevents normalization; increase limit as necessary. 
+
+
+
+
+#********** AMPLITUDE STATISTICS ******************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1.
+
+#.............. PRINT ................................ 
+
+FREQRESPONSE_PRINTOUT_high_cutoff_frequency=8000
+# ( 0 = off )
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# SPECTRUM ANALYSIS: FILTER
+
+pvanalysisroutine=freqresponse
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M0 \
+-D$FREQUENCY_RESPONSE_ANALYSIS_frames_per_second \
+-w$FREQUENCY_RESPONSE_ANALYSIS_window_type \
+\
+-b$FREQUENCY_RESPONSE_ANALYSIS_begintime \
+-e$FREQUENCY_RESPONSE_ANALYSIS_endtime \
+\
+-c$FREQUENCY_RESPONSE_ANALYSIS_METHOD_Average_0__Peak_1 \
+-W$Amplitude_Weighted_Average__Off_0__On_1 \
+\
+-F$Formants_Data_File \
+-i$Formants_ASCII_Data_File \
+\
+\
+-L$FORMANT_ANALYSIS_low_formant_frequency_limit \
+-j$FORMANT_ANALYSIS_high_formant_frequency_limit \
+\
+-g$Formant_Selection_Threshold__0_to_1 \
+-A$formant_peak_amplitude_threshold_in_dB \
+-o$formantsBarPlotFile \
+\
+\
+-p$Normalize_Spectrum_to_Formant_Peaks__off_0__on_1 \
+-E$Warp_Index_for_Spectral_Expansion_or_Compression \
+\
+\
+\
+-H$FREQUENCY_RESPONSE_ANALYSIS_LOW_SHELF_EQ_gain_in_decibels \
+-m$FREQUENCY_RESPONSE_ANALYSIS_LOW_SHELF_EQ_frequency \
+\
+-X$FREQUENCY_RESPONSE_ANALYSIS_HIGH_SHELF_EQ_gain_in_decibels \
+-R$FREQUENCY_RESPONSE_ANALYSIS_HIGH_SHELF_EQ_frequency \
+\
+-a$SpectrumPlotFileInDB \
+\
+-P$FREQRESPONSE_FILTER_ANALYSIS_PRINTOUT_high_cutoff_frequency \
+\
+-C$FREQUENCY_RESPONSE_ANALYSIS_channel \
+"
+echo "\n\n$pvanalysisroutine $PVFLAGS $FREQUENCY_RESPONSE_ANALYSIS_sndfile $freqresponsefile  "
+
+$pvanalysisroutine $PVFLAGS $FREQUENCY_RESPONSE_ANALYSIS_sndfile $freqresponsefile ;
+
+if test $? -eq 0
+then
+ 
+ 
+#====================================================
+
+# SYNTHESIS
+pvroutine=filter 
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$MACRO_output_time_expansion_contraction_factor \
+\
+-a$FILTER_OUTPUT_frequency_shift \
+-P$FILTER_OUTPUT_pitch_transposition_in_semitones \
+-A$FILTER_OUTPUT_gain_in_decibels \
+-B$FILTER_PITCH_CHANGE_SELECT__source_only_0__both_source_and_filter_1 \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+-J$SOURCE_gain_in_dB \
+-u$SOURCE_frequency_shift \
+-U$SOURCE_delay_time \
+-r$SOURCE_pitch_transposition_in_semitones \
+\
+-F$freqresponsefile \
+-G$FILTER_FREQUENCY_RESPONSE_type \
+-T$FILTER_FREQUENCY_RESPONSE_transposition_in_semitones \
+-V$FILTER_FREQUENCY_RESPONSE_frequency_shift \
+\
+-h$FILTER_INPUT_time_delay \
+\
+-S$FILTER_FREQUENCY_RESPONSE_dB_floor \
+-W$FILTER_FREQUENCY_RESPONSE_spectrum_warpshape_index \
+\
+-c$FILTER_FREQUENCY_RESPONSE_compression_threshold_in_decibels \
+-d$FILTER_FREQUENCY_RESPONSE_decibels_of_compression \
+-E$FILTER_FREQUENCY_RESPONSE_expansion_threshold_in_decibels \
+-g$FILTER_FREQUENCY_RESPONSE_decibels_of_expansion \
+\
+-L$FILTER_OUTPUT_release_time_in_seconds \
+-l$FILTER_OUTPUT_attack_time_in_seconds \
+\
+-n$FILTER_OUTPUT_Frame_Normalization_Decibel_Limit \
+-v$FILTER_OUTPUT_Normalize_to__Input_Sound_0__Filter_1 \
+\
+-H$FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_gain_in_decibels \
+-m$FILTER_FREQUENCY_RESPONSE_LOW_SHELF_EQ_frequency \
+\
+-X$FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_gain_in_decibels \
+-R$FILTER_FREQUENCY_RESPONSE_HIGH_SHELF_EQ_frequency \
+\
+-Q$FILTER_FREQUENCY_RESPONSE_peaks_response_smooth_factor_BW__in_frequency_or_octaves \
+\
+-x$Function_Delay_Time_Scaler \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+-q$FREQUENCY_RESPONSE_ANALYSIS_sndfile \
+\
+-Z$FREQRESPONSE_PRINTOUT_high_cutoff_frequency \
+"
+
+
+echo "$pvroutine $PVFLAGS $input_file $output_file"
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 
+
+fi

@@ -1,0 +1,303 @@
+#!/bin/sh
+#******************************************************
+#..................... SPECTWARPER ......................
+#******************************************************
+# Spectwarper uses the same processing as compander
+# with the modification that bins changed through 
+# compression are limited to levels beyond the compression 
+# threshold down to zero; this turns the compression 
+# threshold into a limiting boundary separating strong 
+# and weak bins. The separation of the sound into
+# strong and weak bins offers access to a sound's 
+# pitch and noise, or, more generally, its 
+# principal and residual components. With spectwarper,
+# breathy violin notes, for example, can be separated 
+# into pitch and noise, or colorful ride cymbals into
+# their stronger and weaker pitch nodes. 
+#
+# Compression brings out the weaker/noisier bins whereas
+# expansion privileges the stronger/resonant bins. The
+# 0-1 complement control offers dynamic control of the 
+# transition between the current strong/weak setting and 
+# its inverse or complement. 
+#
+# The rescale feature allows for easy amplification of 
+# the reduced signal energy levels produced by compression.
+# However, the rescale feature will not equalize moment-to-moment 
+# differences in signal level incurred through 
+# shifts from pitch to noise created through complement
+# control transitions. Dynamic normalization, which addresses
+# these differences, can be achieved, however, through the 
+# frame normalization feature, which offers dynamic rescaling 
+# of the frame to its original energy level or less. 
+# The frame normalization limit sets the degree of frame
+# normalization; values greater than 0dB will cause 
+# frames to be normalized to match the frame's original 
+# overall energy level, up to the specified limit. 
+# 
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=0
+#(-96 to 0 dB. )
+#(Set to 1 to rescale to peak of input file.)
+#(Set to 2 to bypass rescale.)
+
+#******************** INPUT ***************************
+
+input_file=~/violin.A5.au
+
+#........ BEGIN/END TIMES .............................
+begintime=0
+endtime=0
+# (0 end time defaults to end of file)
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+FFT_length=4096
+window_type=8
+windowsize=0
+
+#( Try window_type 12 for good separation of noise and
+#   pitch. )
+
+frames_per_second=200
+
+#======================================================
+#*** RESYNTHESIS PARAMETERS ***************************
+
+
+#........... OUTPUT CHANNEL(S) .......................
+
+output_channel=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-96
+
+#****************** MODIFICATIONS *********************
+
+#.................. TIME ..............................
+
+time_expansion_contraction_factor=1
+
+
+#.................. DECIBELS ..........................
+
+gain_in_decibels=0
+
+#.................. PITCH .............................
+
+frequency_shift=0
+pitch_transposition_in_semitones=0
+
+#======================================================
+#****** COMPRESSION/EXPANSION PARAMETERS **************
+
+
+#.....COMPANDER FREQUENCY BAND ......................
+
+low_cutoff_frequency=0 
+high_cutoff_frequency=20000
+octaves_of_rolloff=0
+
+
+#  Choose to compress, for noise/residue, or expand, for pitch/resonance,
+#  by setting the respective threshold and decibel levels below.  
+#  Less interesting, though possible, is the selection of an 
+#  amplitude band. To do this, set the expand threshold below 
+#  the compress threshold, and give both substantial reduction levels.
+
+#.....COMPRESSION..(NOISE)...........................
+
+COMPRESSION_threshold_in_dB=-10
+#( Try -10 to -30 with -96 below to compress out pitch/resonance.)
+decibels_of_compression=-0
+
+#.....EXPANSION..(PITCH)...............................
+
+EXPANSION_threshold_in_dB=-3
+#( Try -2 with -96 below to expand out residue and noise.)
+decibels_of_expansion=-0
+
+#......... COMPLEMENT SPECTRUM PROPORTION ..............
+
+COMPLEMENT_SPECTRUM_proportion=0
+
+#  A value of 1 produces the inversion of the current 
+#  compression/expansion settings given above. A value of 
+#  0 produces no change to the settings. Values in-between 
+#  0 and 1 interpolate between no change and the
+#  inverted noise/pitch spectrum. 
+#
+#  For example, if the settings above produced an (expanded) spectrum 
+#  highlighting the resonant parts of the sound, then a value 
+#  of 1  would produce its (compressed) complement of residual-noise 
+#  components. A function moving from 0-1 would create a crossfade 
+#  between the original setting and its inversion or complement.
+
+#......................................................
+
+COMPANDER_WINDOW_SIZE_in_Octaves_or_Hz=0.0
+
+# Variable Units
+# 0 = off
+# Values between 0 and 8 are treated as octaves, offering pitch windows.
+# Values greater than 8 are treated as Herz, offering frequency windows.
+
+# Compression/expansion is created by warping the amplitude of each
+# bin against the peak amplitude of the collection of adjacent bins lying
+# within the specified pitch/frequency window centered on the bin frequency. 
+# The width of the window is determined by the compander window size, specified
+# in units of octaves or Herz.
+#
+# The larger the window, the more suppression will occur
+# in favor of the few strongest formants. Consider windows in the 
+# region of (or greater than) the fundamental frequency of the sound's
+# pitched material. Very large windows are equivalent to 0, or off, 
+# which uses one window for the whole spectrum.
+
+#....PEAK FOLLOWING RESPONSE TIMES ....................
+
+PEAK_FOLLOWING_attack_response_time_in_seconds=0.0
+PEAK_FOLLOWING_release_response_time_in_seconds=0.0
+
+#  In normal mode, amplitudes are warped against the
+#  peak amp of the current analysis frame, a peak that, in
+# sucession represents the amplitude envelope of the signal. 
+#  Setting non-zero response times for the parameters above 
+#  delays the attack and decay features of this envelope, which, 
+#  in turn, changes the warp of amplitudes by changing the current peak. 
+#  The best use is with non-zero release times. 
+#  These perpetuate strong envelope peaks that  expand
+#  out the decays after them.
+
+#......................................................
+
+WARP_CURVE_INDEX=3
+
+# An index of 0 produces a linear gradient. Positive warp curve  
+#  values smooth the transition into the compression/expansion 
+#  regions, negative values sharpen the transition.
+
+#......................................................
+
+COMPANDER_response_time_in_seconds=0.0
+# Try .05
+#  Use values from .01-.2 or more to remove the gurgle and 
+#  roughness caused by  the oscillation of components
+#  into and out of the compander band.
+
+#********* FRAME NORMALIZATION ******************************
+
+Frame_Normalization_Decibel_Limit=0
+# Scale the amplitudes of each output frame against the input frame
+# using a scaling ratio formed from the sum of the input frame amplitudes
+# over the sum of the output frame amplitudes limited by the decibel limit. 
+# Use up to 100 or less as needed; 0 prevents normalization. 
+
+#======================================================
+#*************** LOW/HIGH SHELF EQ *********************
+LOW_SHELF_EQ_gain_in_decibels=-0
+LOW_SHELF_EQ_frequency=1000
+
+HIGH_SHELF_EQ_gain_in_decibels=-0
+HIGH_SHELF_EQ_frequency=8000
+
+#********** AMPLITUDE STATISTICS ******************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=1
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+
+#====================================================
+# SYNTHESIS
+pvroutine=spectwarper 
+
+
+PVFLAGS="\
+\
+-N$FFT_length \
+-M$windowsize \
+-w$window_type \
+-D$frames_per_second \
+-I$time_expansion_contraction_factor \
+\
+-a$frequency_shift \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+-b$begintime \
+-e$endtime \
+\
+\
+-o$COMPRESSION_threshold_in_dB \
+-O$decibels_of_compression \
+-q$EXPANSION_threshold_in_dB \
+-Q$decibels_of_expansion \
+\
+-W$WARP_CURVE_INDEX \
+-S$COMPANDER_WINDOW_SIZE_in_Octaves_or_Hz \
+-r$COMPANDER_response_time_in_seconds \
+\
+-g$COMPLEMENT_SPECTRUM_proportion \
+\
+-c$low_cutoff_frequency \
+-d$high_cutoff_frequency \
+-f$octaves_of_rolloff \
+\
+-L$PEAK_FOLLOWING_release_response_time_in_seconds \
+-l$PEAK_FOLLOWING_attack_response_time_in_seconds \
+\
+-H$LOW_SHELF_EQ_gain_in_decibels \
+-m$LOW_SHELF_EQ_frequency \
+\
+-X$HIGH_SHELF_EQ_gain_in_decibels \
+-R$HIGH_SHELF_EQ_frequency \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-n$Frame_Normalization_Decibel_Limit \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+\
+"
+echo "$pvroutine $PVFLAGS $input_file $output_file"
+
+$pvroutine  $PVFLAGS $input_file $output_file   ; 

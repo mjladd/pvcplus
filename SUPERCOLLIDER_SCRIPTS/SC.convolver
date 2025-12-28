@@ -1,0 +1,346 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  convolver = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		sound_a_input_sound_file, \
+		output_spectrum_pitch_transposition_in_semitones, \
+		sound_b_input_analysis_file_gain_in_decibels, \
+		filter_low_shelf_eq_gain_in_decibels, \
+		window_type, \
+		sound_a_input_sound_file_channel_1_to_max__0_all, \
+		auto_output_sound_file_play__repetitions, \
+		release_in_seconds, \
+		sound_b_input_analysis_file_upper_time_boundary, \
+		output_file, \
+		sound_b_input_analysis_file_panpot_domain_warp, \
+		time_expansion_contraction_factor, \
+		normalize_to__sound_a_0__sound_b_1, \
+		frame_normalization_decibel_limit, \
+		smooth__polar_0__cartesian_1, \
+		sound_a_input_sound_file_begintime, \
+		filter_high_shelf_eq_gain_in_decibels, \
+		onset_and_release_segment_mode__off_0__on_1, \
+		attack_in_seconds, \
+		sound_b_input_analysis_file_channel_1_to_max__0_all, \
+		output_spectrum_gain_in_decibels, \
+		convolution_panpot_position, \
+		oscillator_resynthesis_threshold_in_db, \
+		convolution_gain_in_decibels, \
+		mode__sampler_loop_0__autostop_1, \
+		sound_b_input_analysis_file, \
+		filter_low_shelf_eq_frequency, \
+		output_spectrum_frequency_shift, \
+		sound_b_input_analysis_file_time_point_origin, \
+		sound_a_input_sound_file_panpot_domain_warp, \
+		sound_b_input_analysis_file_rate_multiplier, \
+		filter_high_shelf_eq_frequency, \
+		amplitude_statistics_time_interval, \
+		windowsize, \
+		sound_a_input_sound_file_gain_in_decibels, \
+		sampler_loop_mode__wrap_0__fold_1__clip_2, \
+		sound_b_input_analysis_file_lower_time_boundary, \
+		sound_a_input_sound_file_endtime, \
+		rescale_level_in_decibels, \
+		print_amplitude_statistics_0_no__1_yes\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //................... CONVOLVER ........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //......................................................\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = -0 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		sound_a_input_sound_file = \cf4 "~/ridecymbal.au"\cf2  ;\
+\
+\
+		\cf5 //......................................................\cf2 \
+\
+		sound_b_input_analysis_file = \cf4 "~/pvanalysis_oboe.B4"\cf2  ;\
+\
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+\
+		sound_a_input_sound_file_channel_1_to_max__0_all = 1 ;\
+		sound_b_input_analysis_file_channel_1_to_max__0_all = 1 ;\
+\
+		\cf5 // Channels are numbered from 1 to the maximum.\cf2 \
+		\cf5 // 0 = all channels\cf2 \
+		\cf5 // \cf2 \
+		\cf5 // 0-0 configurations will match Sound A and Sound B channels.\cf2 \
+		\cf5 // 0 with a single channel will apply single channel to\cf2 \
+		\cf5 // ( all channels of other file) \cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //............ SOUND A BEGIN/END TIMES .................\cf2 \
+\
+		sound_a_input_sound_file_begintime = 0 ;\
+		sound_a_input_sound_file_endtime = 0 ;\
+		\cf5 // (0 end time defaults to end of file)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //............. SOUND B TIME ...........................\cf2 \
+\
+		sound_b_input_analysis_file_time_point_origin = 0 ;\
+		sound_b_input_analysis_file_rate_multiplier = 0.5 ;\
+\
+		\cf5 //( In rate mode, set time_point to initial position.)\cf2 \
+		\cf5 //( In explicit mode, control time_point with a function.)\cf2 \
+		\cf5 //(  Rate_multiplier is nonfunctional in explicit mode.)\cf2 \
+\
+		\cf5 //......................................................\cf2 \
+\
+		sound_b_input_analysis_file_lower_time_boundary = 0.0 ;\
+		sound_b_input_analysis_file_upper_time_boundary = -1 ;\
+		\cf5 //(upper time < 0 defaults to file duration)\cf2 \
+\
+		mode__sampler_loop_0__autostop_1 = 1 ;\
+\
+		\cf5 // In autostop mode, synthesis terminates with crossing of \cf2 \
+		\cf5 // a time boundary. In sampler loop mode, time boundaries \cf2 \
+		\cf5 // function as sampler loop points. \cf2 \
+\
+\
+		sampler_loop_mode__wrap_0__fold_1__clip_2 = 0 ;\
+\
+		\cf5 // In Sampler Loop Mode, all timepoints are constrained to\cf2 \
+		\cf5 // region between boundaries using the specified method.  \cf2 \
+		\cf5 // 0: Wrap time into loop range. (/////)\cf2 \
+		\cf5 // 1: Fold time into loop range. (/\\/\\/\\/\\)\cf2 \
+		\cf5 // 2: Clip or limit time to the nearest boundary. (\\____)\cf2 \
+\
+		onset_and_release_segment_mode__off_0__on_1 = 1 ;\
+\
+		\cf5 // Setting onset/release mode in Sampler Mode causes looping\cf2 \
+		\cf5 // to be preceded by a pre-loop/onset and post-loop/release \cf2 \
+		\cf5 // segments. The data time origin is initialized to 0.0 and \cf2 \
+		\cf5 // progresses according to data time controls. The first entrance\cf2 \
+		\cf5 // into the loop region triggers loop mode, which is maintained\cf2 \
+		\cf5 // until trigger of the release segment. The release segment\cf2 \
+		\cf5 // progresses from the current loop point to the analysis data\cf2 \
+		\cf5 // end time, conforming to the data time rate control and specified\cf2 \
+		\cf5 // synthesis duration. \cf2 \
+\
+\
+\
+		\cf5 //********* FRAME NORMALIZATION ******************************\cf2 \
+\
+		frame_normalization_decibel_limit = 0 ;\
+		normalize_to__sound_a_0__sound_b_1 = 0 ;\
+\
+\
+		\cf5 // Scale the amplitudes of each output frame against either the input-sound \cf2 \
+		\cf5 // file (A) or the analyzed sound (B). Scaling is produced using a ratio formed\cf2 \
+		\cf5 // from the sum of the respective Sound A or Sound B amplitudes\cf2 \
+		\cf5 // over the sum of the output frame amplitudes limited by the decibel limit. \cf2 \
+		\cf5 // 0 prevents normalization; increase limit as necessary to as much as 200. \cf2 \
+\
+\
+		\cf5 //......................................................\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+		window_type = 16 ;\
+		windowsize = 0 ;\
+		\cf5 //(set to 0 to autoset window to 2 * FFT)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -96 ;\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. TIME ..............................\cf2 \
+\
+		time_expansion_contraction_factor = 1 ;\
+\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		output_spectrum_gain_in_decibels = 0 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		output_spectrum_frequency_shift = 0 ;\
+		output_spectrum_pitch_transposition_in_semitones = 0 ;\
+\
+\
+		\cf5 //............ AMPLITUDE RESPONSE SMOOTHING ........... \cf2 \
+		smooth__polar_0__cartesian_1 = 0 ;\
+\
+		release_in_seconds = 0 ;\
+		attack_in_seconds = 0 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** CONVOLUTION PANPOT (-1 to 1) (-1 = A,  1 = B )****\cf2 \
+		convolution_panpot_position = 0 ;\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		sound_a_input_sound_file_gain_in_decibels = -0 ;\
+		sound_b_input_analysis_file_gain_in_decibels = -0 ;\
+		convolution_gain_in_decibels = 0 ;\
+\
+		\cf5 //............ PANPOT DOMAIN WARP ......................\cf2 \
+\
+		sound_a_input_sound_file_panpot_domain_warp = 5 ;\
+		sound_b_input_analysis_file_panpot_domain_warp = 0 ;\
+\
+		\cf5 //(warp values: 0 and greater)\cf2 \
+\
+		\cf5 //The domain warp allows you to expand the useful\cf2 \
+		\cf5 // convolution range on either side of the full \cf2 \
+		\cf5 // convolution point at 0 by warping the panpot range on\cf2 \
+		\cf5 // that side.  Use increasingly positive  warp values\cf2 \
+		\cf5 //  to expand the convolution center into the\cf2 \
+		\cf5 // Sound A or B's panpot domain.  \cf2 \
+\
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //****** CONVOLUTION LOW/HIGH SHELF EQ **********\cf2 \
+		filter_low_shelf_eq_gain_in_decibels = -0 ;\
+		filter_low_shelf_eq_frequency = 500 ;\
+\
+		filter_high_shelf_eq_gain_in_decibels = 30 ;\
+		filter_high_shelf_eq_frequency = 2000 ;\
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //********** AMPLITUDE STATISTICS ******************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 0.25 ;\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "convolver "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -j"\cf2  ++ sound_a_input_sound_file_panpot_domain_warp ++  \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++ \
+			 \cf4 " -k"\cf2  ++ smooth__polar_0__cartesian_1 ++  \cf4 " -m"\cf2  ++ filter_low_shelf_eq_frequency ++ \
+			 \cf4 " -X"\cf2  ++ filter_high_shelf_eq_gain_in_decibels ++  \cf4 " -P"\cf2  ++ output_spectrum_pitch_transposition_in_semitones ++ \
+			 \cf4 " -a"\cf2  ++ output_spectrum_frequency_shift ++  \cf4 " -A"\cf2  ++ output_spectrum_gain_in_decibels ++ \
+			 \cf4 " -y"\cf2  ++ mode__sampler_loop_0__autostop_1 ++  \cf4 " -l"\cf2  ++ attack_in_seconds ++ \
+			 \cf4 " -R"\cf2  ++ filter_high_shelf_eq_frequency ++  \cf4 " -w"\cf2  ++ window_type ++  \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++ \
+			 \cf4 " -Q"\cf2  ++ sound_b_input_analysis_file_time_point_origin ++  \cf4 " -n"\cf2  ++ frame_normalization_decibel_limit ++ \
+			 \cf4 " -L"\cf2  ++ release_in_seconds ++  \cf4 " -="\cf2  ++ rescale_level_in_decibels ++  \cf4 " -C"\cf2  ++ sound_a_input_sound_file_channel_1_to_max__0_all ++ \
+			 \cf4 " -r"\cf2  ++ onset_and_release_segment_mode__off_0__on_1 ++  \cf4 " -b"\cf2  ++ sound_a_input_sound_file_begintime ++ \
+			 \cf4 " -G"\cf2  ++ sound_b_input_analysis_file_upper_time_boundary ++  \cf4 " -q"\cf2  ++ sound_a_input_sound_file_gain_in_decibels ++ \
+			 \cf4 " -F"\cf2  ++ sound_b_input_analysis_file ++  \cf4 " -S"\cf2  ++ convolution_panpot_position ++ \
+			 \cf4 " -J"\cf2  ++ sound_b_input_analysis_file_panpot_domain_warp ++  \cf4 " -g"\cf2  ++ sound_b_input_analysis_file_lower_time_boundary ++ \
+			 \cf4 " -o"\cf2  ++ sampler_loop_mode__wrap_0__fold_1__clip_2 ++  \cf4 " -B"\cf2  ++ sound_b_input_analysis_file_gain_in_decibels ++ \
+			 \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++  \cf4 " -v"\cf2  ++ normalize_to__sound_a_0__sound_b_1 ++ \
+			 \cf4 " -e"\cf2  ++ sound_a_input_sound_file_endtime ++  \cf4 " -I"\cf2  ++ time_expansion_contraction_factor ++ \
+			 \cf4 " -K"\cf2  ++ sound_b_input_analysis_file_channel_1_to_max__0_all ++  \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++ \
+			 \cf4 " -Y"\cf2  ++ sound_b_input_analysis_file_rate_multiplier ++  \cf4 " -Z"\cf2  ++ convolution_gain_in_decibels ++ \
+			 \cf4 " -H"\cf2  ++ filter_low_shelf_eq_gain_in_decibels ++  \cf4 " -M"\cf2  ++ windowsize\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ sound_a_input_sound_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+convolver.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

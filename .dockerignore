@@ -1,0 +1,23 @@
+# Build artifacts
+*.o
+*.a
+bin/*
+
+# macOS
+.DS_Store
+._*
+
+# Editor/IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore

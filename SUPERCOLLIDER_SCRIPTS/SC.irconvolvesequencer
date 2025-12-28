@@ -1,0 +1,334 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  irconvolvesequencer = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave, \
+		add_ring_time__off_0__on_1, \
+		impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave, \
+		print_amplitude_statistics_0_no__1_yes, \
+		input_sound_filter_band_high_rolloff_frequency, \
+		endtime, \
+		normalization__0__1__2__3, \
+		input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave, \
+		input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave, \
+		auto_output_sound_file_play__repetitions, \
+		input_sound_filter_band_low_rolloff_frequency, \
+		impulse_response_shaping_switch__off_0__on_1, \
+		impulse_response_filter_band_high_rolloff_frequency, \
+		impulse_channel, \
+		begintime, \
+		impulse_response_filter_band_low_rolloff_frequency, \
+		amplitude_statistics_time_interval, \
+		output_directory, \
+		output_channel, \
+		lower_shaping_curve_index, \
+		source_gain_in_decibels, \
+		base_shaping_amplitude_in_db, \
+		convolution_multichannel_output_mode__standard_0__alternate_1, \
+		peak_shaping_amplitude_in_db, \
+		output_file, \
+		input_file, \
+		shaping_breakpoint_in_db, \
+		rescale_level_in_decibels, \
+		upper_shaping_curve_index, \
+		convolution_output_gain_in_decibels\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //........... IR CONVOLUTION SEQUENCER\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_directory = \cf4 "/tmp/rr"\cf2  ;\
+		\cf5 //\cf2 \
+		\cf5 // Directory specified in roomresponsesequencer for impulse responses\cf2 \
+		\cf5 // and intermediary audio files. \cf2 \
+\
+		add_ring_time__off_0__on_1 = 1 ;\
+		\cf5 //\cf2 \
+		\cf5 // If sound end seems cutoff, then add this; in most situations, this should be on.\cf2 \
+\
+		output_file = \cf4 "/tmp/output.mix.au"\cf2  ;\
+\
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = 2 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		input_file = \cf4 "~/water10.Five.Seconds.au"\cf2  ;\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+		output_channel = 1 ;\
+		\cf5 // (channels are numbered from 1 to the maximum.)\cf2 \
+		\cf5 // (To specify mono file for multi-channel convolution, should be 1 or greater.)\cf2 \
+\
+		convolution_multichannel_output_mode__standard_0__alternate_1 = 1 ;\
+		\cf5 // (Should be 1 for mono-to-multi-channel convolution.)\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // *Standard-output-mode* matches the input audio file channels \cf2 \
+		\cf5 // specified above (either one or all) with the channels of the \cf2 \
+		\cf5 // impulse analysis file, loop assigning the (one or more) \cf2 \
+		\cf5 // impulse channels to the input audio channels, as needed. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // *Alternate-output-mode* offers the step-saving option of\cf2 \
+		\cf5 // convolving a single specified input channel or monophonic \cf2 \
+		\cf5 // audio file with all the channels of the impulse analysis file \cf2 \
+		\cf5 // in a multi-channel output file of the same number of channels.\cf2 \
+		\cf5 // The selected channel is through the output channel parameter \cf2 \
+		\cf5 // (see above), which *must* be selected (i.e. cannot be 0). \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Impulse analysis channels may be initially limited/selected by  \cf2 \
+		\cf5 // specifying one or more channels in the impulse response \cf2 \
+		\cf5 // analysis stage (see beginning of script) or by selecting one \cf2 \
+		\cf5 // channel from the resulting impulse analysis file (see below), \cf2 \
+		\cf5 // for subsequent use in irconvolver.\cf2 \
+		\cf5 //\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		\cf5 // IMPULSE FREQ RESPONSE FILE\cf2 \
+		\cf5 //impulse_frequency_response_file=~/Impulse_Response_Data_File\cf2 \
+\
+		impulse_channel = 0 ;\
+		\cf5 // (Should be 0 for mono-to-multi-channel convolution.)\cf2 \
+		\cf5 // Channels are numbered from 1 to the maximum.\cf2 \
+		\cf5 // 0 = all channels\cf2 \
+		\cf5 // Impulse channels will be loop-assigned when input\cf2 \
+		\cf5 // channels exceed impulse channels.\cf2 \
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		begintime = 0 ;\
+		endtime = 0 ;\
+\
+		\cf5 // (End time of 0 or less defaults to end of file.)\cf2 \
+		\cf5 // \cf2 \
+\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+\
+\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		source_gain_in_decibels = -100 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Source input added to convolution output. \cf2 \
+\
+\
+		convolution_output_gain_in_decibels = 27 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Gain here of 27 seems to compensate for amplitude lost\cf2 \
+		\cf5 // in computation.\cf2 \
+\
+\
+\
+		\cf5 //******** IMPULSE RESPONSE: BAND PASS FILTER **************\cf2 \
+		\cf5 // \cf2 \
+\
+		impulse_response_filter_band_low_rolloff_frequency = 200 ;\
+		\cf5 // (func)\cf2 \
+		impulse_response_filter_band_high_rolloff_frequency = 500 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // High boundary of 0 or less defaults to Nyquist. \cf2 \
+\
+		impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+		\cf5 // (func)\cf2 \
+		impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+		\cf5 // (func)\cf2 \
+\
+\
+		\cf5 //******** INPUT SOUND: BAND PASS FILTER **************\cf2 \
+		\cf5 // \cf2 \
+\
+		input_sound_filter_band_low_rolloff_frequency = 500 ;\
+		\cf5 // (func)\cf2 \
+		input_sound_filter_band_high_rolloff_frequency = 1000 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // High boundary of 0 or less defaults to Nyquist. \cf2 \
+\
+		input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+		input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave = -0 ;\
+\
+\
+\
+		\cf5 //******** IMPULSE RESPONSE TEMPORAL SIGNAL SHAPING ***************\cf2 \
+\
+		\cf5 // \cf2 \
+		\cf5 // For shaping, impulse response input signal amplitudes (i.e. time domain),\cf2 \
+		\cf5 // spanning the 0 to -96 dB range, are divided by the dB breakpoint.\cf2 \
+		\cf5 // Amplitudes above the breakpoint are shaped by the upper curve index and\cf2 \
+		\cf5 // amplitudes below are shaped by the lower. \cf2 \
+		\cf5 // The upper amplitudes are mapped into a new range extending from the breakpoint\cf2 \
+		\cf5 // amplitude to the peak shaping amplitude.\cf2 \
+		\cf5 // With the peak amplitude at 0 (default) and an appropriate breakpoint setting, \cf2 \
+		\cf5 // positive upper curve indices can be used to warp the upper values toward the \cf2 \
+		\cf5 // breakpoint amplitude, which should suppress early reflections; conversely, \cf2 \
+		\cf5 // negative indices will warp values toward the peak shaping amplitude, which \cf2 \
+		\cf5 // will accentuate early reflections. \cf2 \
+		\cf5 // Additionally, the peak shaping amplitude may be set to any level. When set below\cf2 \
+		\cf5 // 0dB and above the breakpoint level, upper values will be compressed. \cf2 \
+		\cf5 // Set to levels below the breakpoint amplitude will invert the upper amplitude range\cf2 \
+		\cf5 // to span the range from the breakpoint to the lower peak setting, which will \cf2 \
+		\cf5 // reduce direct and early reflections as it draws out the reverb tail. \cf2 \
+		\cf5 // The lower region functions similarly between base and breakpoint levels, with\cf2 \
+		\cf5 // the sign of indices inverted; that is, negative indices for this region will \cf2 \
+		\cf5 // warp values toward the break point and, thus, amplify the reverberation, and\cf2 \
+		\cf5 // positive indices will warp them toward the base, which will suppress the reverberation\cf2 \
+		\cf5 // tail, depending, of course, on where the base level is set.    \cf2 \
+\
+		impulse_response_shaping_switch__off_0__on_1 = 0 ;\
+		peak_shaping_amplitude_in_db = -0 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Set to 0 for off.  \cf2 \
+		upper_shaping_curve_index = -3 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Set to 0 for off.\cf2 \
+		shaping_breakpoint_in_db = -10 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Any value in -96 to 0 range for off.\cf2 \
+		base_shaping_amplitude_in_db = -96 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Any value below breakpoint value for off.\cf2 \
+		lower_shaping_curve_index = -2 ;\
+		\cf5 // (func)\cf2 \
+		\cf5 // Set to 0 for off.\cf2 \
+\
+\
+\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ********************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1 ;\
+\
+		\cf5 //********** MIXFILES *************************************** \cf2 \
+		\cf5 //  \cf2 \
+		normalization__0__1__2__3 = 2 ;\
+		\cf5 //\cf2 \
+		\cf5 // Use 2, which normalizes relative to the peak channel for multi-channel \cf2 \
+		\cf5 // input files, for most applications. \cf2 \
+		\cf5 // 0 = off. \cf2 \
+\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "irconvolvesequencer "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -P"\cf2  ++ peak_shaping_amplitude_in_db ++  \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -f"\cf2  ++ input_sound_filter_band_high_rolloff_frequency ++ \
+			 \cf4 " -D"\cf2  ++ input_sound_filter_band_low_rolloff_frequency ++  \cf4 " -C"\cf2  ++ output_channel ++ \
+			 \cf4 " -d"\cf2  ++ add_ring_time__off_0__on_1 ++  \cf4 " -="\cf2  ++ rescale_level_in_decibels ++ \
+			 \cf4 " -x"\cf2  ++ impulse_response_shaping_switch__off_0__on_1 ++  \cf4 " -M"\cf2  ++ convolution_multichannel_output_mode__standard_0__alternate_1 ++ \
+			 \cf4 " -F"\cf2  ++ base_shaping_amplitude_in_db ++  \cf4 " -t"\cf2  ++ impulse_response_filter_band_high_rolloff_frequency ++ \
+			 \cf4 " -G"\cf2  ++ impulse_response_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -J"\cf2  ++ impulse_channel ++  \cf4 " -Z"\cf2  ++ upper_shaping_curve_index ++  \cf4 " -A"\cf2  ++ source_gain_in_decibels ++ \
+			 \cf4 " -h"\cf2  ++ input_sound_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++  \cf4 " -H"\cf2  ++ input_sound_filter_band_high_edge_amplitude_rolloff_in_decibels_per_octave ++ \
+			 \cf4 " -I"\cf2  ++ output_directory ++  \cf4 " -B"\cf2  ++ shaping_breakpoint_in_db ++  \cf4 " -s"\cf2  ++ impulse_response_filter_band_low_rolloff_frequency ++ \
+			 \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++  \cf4 " -r"\cf2  ++ convolution_output_gain_in_decibels ++ \
+			 \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++  \cf4 " -v"\cf2  ++ normalization__0__1__2__3 ++ \
+			 \cf4 " -b"\cf2  ++ begintime ++  \cf4 " -z"\cf2  ++ lower_shaping_curve_index ++  \cf4 " -g"\cf2  ++ impulse_response_filter_band_low_edge_amplitude_rolloff_in_decibels_per_octave\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+irconvolvesequencer.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

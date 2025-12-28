@@ -1,0 +1,529 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  filter_with_analysis = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		output_channel, \
+		source_gain_in_db, \
+		filter_frequency_response_type, \
+		spectrumplotfileindb, \
+		filter_frequency_response_low_shelf_eq_frequency, \
+		frequency_response_analysis_high_shelf_eq_gain_in_decibels, \
+		window_type, \
+		frequency_response_analysis_endtime, \
+		fft_length, \
+		filter_frequency_response_db_floor, \
+		filter_frequency_response_frequency_shift, \
+		filter_output_frame_normalization_decibel_limit, \
+		filter_frequency_response_transposition_in_semitones, \
+		frequency_response_analysis_high_shelf_eq_frequency, \
+		endtime, \
+		frames_per_second, \
+		filter_frequency_response_expansion_threshold_in_decibels, \
+		rescale_level_in_decibels, \
+		filter_frequency_response_decibels_of_expansion, \
+		filter_frequency_response_high_shelf_eq_frequency, \
+		filter_frequency_response_low_shelf_eq_gain_in_decibels, \
+		output_file, \
+		freqresponse_filter_analysis_printout_high_cutoff_frequency, \
+		frequency_response_analysis_low_shelf_eq_gain_in_decibels, \
+		source_pitch_transposition_in_semitones, \
+		frequency_response_analysis_begintime, \
+		filter_frequency_response_spectrum_warpshape_index, \
+		freqresponsefile, \
+		filter_output_attack_time_in_seconds, \
+		amplitude_statistics_time_interval, \
+		formant_selection_threshold__0_to_1, \
+		source_frequency_shift, \
+		windowsize, \
+		formantsbarplotfile, \
+		normalize_spectrum_to_formant_peaks__off_0__on_1, \
+		filter_output_frequency_shift, \
+		formants_ascii_data_file, \
+		filter_frequency_response_decibels_of_compression, \
+		frequency_response_analysis_frames_per_second, \
+		frequency_response_analysis_method_average_0__peak_1, \
+		input_file, \
+		frequency_response_analysis_low_shelf_eq_frequency, \
+		filter_frequency_response_peaks_response_smooth_factor_bw__in_frequency_or_octaves, \
+		oscillator_resynthesis_threshold_in_db, \
+		formant_analysis_high_formant_frequency_limit, \
+		frequency_response_analysis_window_type, \
+		warp_index_for_spectral_expansion_or_compression, \
+		filter_output_release_time_in_seconds, \
+		freqresponse_printout_high_cutoff_frequency, \
+		formant_analysis_low_formant_frequency_limit, \
+		filter_output_gain_in_decibels, \
+		print_amplitude_statistics_0_no__1_yes, \
+		filter_pitch_change_select__source_only_0__both_source_and_filter_1, \
+		macro_output_time_expansion_contraction_factor, \
+		begintime, \
+		frequency_response_analysis_channel, \
+		filter_output_pitch_transposition_in_semitones, \
+		function_delay_time_scaler, \
+		formant_peak_amplitude_threshold_in_db, \
+		frequency_response_analysis_sndfile, \
+		filter_input_time_delay, \
+		filter_frequency_response_high_shelf_eq_gain_in_decibels, \
+		formants_data_file, \
+		amplitude_weighted_average__off_0__on_1, \
+		auto_output_sound_file_play__repetitions, \
+		filter_frequency_response_compression_threshold_in_decibels, \
+		filter_output_normalize_to__input_sound_0__filter_1, \
+		source_delay_time\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //... FILTER WITH FREQUENCY RESPONSE ANALYSIS ..........\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //*** FREQRESPONSE FREQUENCY RESPONSE ANALYSIS *********\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //****FREQUENCY RESPONSE OUTPUT FILE *******************\cf2 \
+\
+		freqresponsefile = \cf4 "~/freqresponsefile"\cf2  ;\
+\
+		formants_data_file = \cf4 "~/Formants_Data_File"\cf2  ;\
+		formants_ascii_data_file = \cf4 "~/Formants_ASCII_Data_File"\cf2  ;\
+\
+		\cf5 //************ PLOT OUTPUT FILES **********************\cf2 \
+\
+		spectrumplotfileindb = \cf4 "~/sp"\cf2  ;\
+		formantsbarplotfile = \cf4 "~/bp"\cf2  ;\
+\
+		\cf5 //****** ANALYSIS INPUT SOUND FILE ********************\cf2 \
+\
+		frequency_response_analysis_sndfile = \cf4 "~/Flute.NF.C5.au"\cf2  ;\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		frequency_response_analysis_begintime = 0 ;\
+		frequency_response_analysis_endtime = 0 ;\
+\
+		\cf5 //........... ANALYSIS CHANNEL(S) .......................\cf2 \
+\
+		frequency_response_analysis_channel = 0 ;\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		frequency_response_analysis_window_type = 16 ;\
+\
+		\cf5 //...................................................... \cf2 \
+\
+		frequency_response_analysis_frames_per_second = 200 ;\
+\
+\
+		frequency_response_analysis_method_average_0__peak_1 = 0 ;\
+\
+		amplitude_weighted_average__off_0__on_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // Amplitude weighting biases the final average spectrum toward \cf2 \
+		\cf5 // frames with greater overall amplitude. The weighted average spectrum \cf2 \
+		\cf5 // and peak spectra can be very similar. \cf2 \
+\
+\
+\
+		\cf5 //********** FORMANT ANALYSIS **************************\cf2 \
+\
+		formant_selection_threshold__0_to_1 = 0.0 ;\
+		\cf5 //\cf2 \
+		\cf5 // Using the difference between analyzed peak and average amps for\cf2 \
+		\cf5 // windowed frequency regions, an amplitude variation range, in dB, \cf2 \
+		\cf5 // is set and used to select formants; 0 to 1 threshold control is \cf2 \
+		\cf5 // mapped into decibel selection range for selection/rejection of\cf2 \
+		\cf5 // spectral peaks as formants. \cf2 \
+		\cf5 // 0 = all formants, 1 = few to none. Try .5 to .8\cf2 \
+\
+		formant_peak_amplitude_threshold_in_db = -30.0 ;\
+		\cf5 //\cf2 \
+		\cf5 // Formants in the normalized formant range are selected or rejected based\cf2 \
+		\cf5 // on whether their peak amplitude meets the threshold. \cf2 \
+\
+\
+		formant_analysis_low_formant_frequency_limit = 20 ;\
+		formant_analysis_high_formant_frequency_limit = 20000 ;\
+\
+\
+		\cf5 //********* FORMANT NORMALIZATION -- SPECTRUM COMPANDING **\cf2 \
+\
+		normalize_spectrum_to_formant_peaks__off_0__on_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // If on, formant peaks in the spectrum are normalized to 1.0\cf2 \
+		\cf5 // with bins between formants scaled by a gain interpolated \cf2 \
+		\cf5 // between the adjoing formant normalization gains according to \cf2 \
+		\cf5 // the bin's respective position between them. Normalization of\cf2 \
+		\cf5 // peaks equalizes formant amplitude differences, allowing\cf2 \
+		\cf5 // more source energy to pass (producing a brighter output) while\cf2 \
+		\cf5 // not losing the resonant characteristics of the filter response. \cf2 \
+\
+		warp_index_for_spectral_expansion_or_compression = 0 ;\
+\
+		\cf5 //\cf2 \
+		\cf5 // 0: compression or expansion.\cf2 \
+		\cf5 // Values > 0: expand dynamic range between formants; try 0 to 30.\cf2 \
+		\cf5 // Values < 0: compress dynamic range; try 0 to -30.  \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // A non-zero warp index reshapes the distribution of amplitudes of bins\cf2 \
+		\cf5 // lying between formants. Positive warp indices reshape distribution \cf2 \
+		\cf5 // towards lower amplitudes, thus expanding the mid-formant dynamic range;\cf2 \
+		\cf5 // expansion increases with higher values; negative indices do the reverse, \cf2 \
+		\cf5 // compressing the range. Compression/expansion is greatest at the midpoint\cf2 \
+		\cf5 // between formants and decreasingly less to none in approach of the formant.\cf2 \
+\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //*** FREQUENCY RESPONSE ANALYSIS LOW/HIGH SHELF EQ ****\cf2 \
+\
+		frequency_response_analysis_low_shelf_eq_gain_in_decibels = -0 ;\
+		frequency_response_analysis_low_shelf_eq_frequency = 300 ;\
+\
+		frequency_response_analysis_high_shelf_eq_gain_in_decibels = 0 ;\
+		frequency_response_analysis_high_shelf_eq_frequency = 1000 ;\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		freqresponse_filter_analysis_printout_high_cutoff_frequency = 8000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+\
+\
+		\cf5 //------------------------------------------------------\cf2 \
+		\cf5 //************ FILTER ROUTINE **************************\cf2 \
+		\cf5 //------------------------------------------------------\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompts for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = -0 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Set to 1 to rescale to peak of input file.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+		input_file = \cf4 "~/HumanSounds/BabyCoo.aif"\cf2  ;\
+\
+		\cf5 //........ BEGIN/END TIMES .............................\cf2 \
+\
+		begintime = 0 ;\
+		endtime = -1 ;\
+		\cf5 // (-1 end time defaults to end of file)\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		fft_length = 4096 ;\
+		window_type = 16 ;\
+		windowsize = 0 ;\
+\
+		frames_per_second = 200 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+		output_channel = 0 ;\
+\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -80 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //********** SOURCE OUTPUT SETTINGS ********************\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		source_gain_in_db = -96 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		source_frequency_shift = 0 ;\
+		source_pitch_transposition_in_semitones = 0 ;\
+\
+\
+		\cf5 //.................. DELAY TIME ........................\cf2 \
+\
+		source_delay_time = 0 ;\
+\
+\
+\
+		\cf5 //=====================================================\cf2 \
+\
+		\cf5 //.................. TIME ..............................\cf2 \
+\
+		macro_output_time_expansion_contraction_factor = 1 ;\
+\
+\
+\
+		\cf5 //=====================================================\cf2 \
+		\cf5 //***************** FILTER ****************************\cf2 \
+\
+		\cf5 //********* FILTER FREQUENCY RESPONSE SETTINGS ********\cf2 \
+\
+\
+		filter_frequency_response_type = 0 ;\
+		\cf5 //( 0 = pass )\cf2 \
+		\cf5 //( 1 = reject (invert response)  )\cf2 \
+\
+		\cf5 //.......... DECIBELS FLOOR .............................\cf2 \
+\
+		filter_frequency_response_db_floor = -96 ;\
+\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		filter_frequency_response_transposition_in_semitones = 0 ;\
+		filter_frequency_response_frequency_shift = 0 ;\
+\
+\
+\
+		\cf5 //................. WARP ...............................\cf2 \
+\
+		filter_frequency_response_spectrum_warpshape_index = 0 ;\
+\
+\
+		\cf5 //............ FILTER RESPONSE SMOOTHING ...............\cf2 \
+		filter_frequency_response_peaks_response_smooth_factor_bw__in_frequency_or_octaves = 0 ;\
+\
+		\cf5 // Negative values are treated as positive octave bandwidths, \cf2 \
+		\cf5 // otherwise units are in frequency.\cf2 \
+\
+\
+		\cf5 //.. FILTER RESPONSE COMPRESSION .......................\cf2 \
+\
+		filter_frequency_response_compression_threshold_in_decibels = -0 ;\
+		filter_frequency_response_decibels_of_compression = -0 ;\
+\
+		\cf5 //.. FILTER RESPONSE EXPANSION .........................\cf2 \
+\
+		filter_frequency_response_expansion_threshold_in_decibels = -0 ;\
+		filter_frequency_response_decibels_of_expansion = -0 ;\
+\
+\
+		\cf5 //=====================================================\cf2 \
+		\cf5 //* FILTER FREQUENCY RESPONSE LOW/HIGH SHELF EQ (pre-processing)**\cf2 \
+\
+		filter_frequency_response_low_shelf_eq_gain_in_decibels = -0 ;\
+		filter_frequency_response_low_shelf_eq_frequency = 200 ;\
+\
+		filter_frequency_response_high_shelf_eq_gain_in_decibels = -0 ;\
+		filter_frequency_response_high_shelf_eq_frequency = 4000 ;\
+\
+\
+		\cf5 //********* FILTER OUTPUT MODIFICATIONS *****************\cf2 \
+\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		filter_output_gain_in_decibels = -0 ;\
+\
+\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		filter_output_frequency_shift = 0 ;\
+		filter_output_pitch_transposition_in_semitones = 0 ;\
+\
+\
+		filter_pitch_change_select__source_only_0__both_source_and_filter_1 = 1 ;\
+		\cf5 // 0: applies freq/pitch changes to source only (before filtering)\cf2 \
+		\cf5 // 1: applies freq/pitch changes to both source and filter (after filtering)\cf2 \
+\
+		\cf5 //............ AMPLITUDE RESPONSE ......................\cf2 \
+\
+		filter_output_release_time_in_seconds = 0 ;\
+		filter_output_attack_time_in_seconds = 0 ;\
+\
+\
+		\cf5 //............INPUT TIME DELAY ...........................\cf2 \
+		filter_input_time_delay = 0 ;\
+\
+\
+		\cf5 //***********************************************************\cf2 \
+\
+		function_delay_time_scaler = 1 ;\
+		\cf5 // Setting this parameter to a value of 1 scales the delayed\cf2 \
+		\cf5 // start time of control functions to their full, respective delay time;\cf2 \
+		\cf5 // values less than 1 scale the start time by the specified proportion.\cf2 \
+		\cf5 // A value of 0 causes all functions to start at the beginning, thus\cf2 \
+		\cf5 // canceling their respective delays. Scaler can be modulated\cf2 \
+		\cf5 // continuously with a function. \cf2 \
+\
+\
+		\cf5 //********* FRAME NORMALIZATION ******************************\cf2 \
+\
+		filter_output_frame_normalization_decibel_limit = 100 ;\
+\
+		filter_output_normalize_to__input_sound_0__filter_1 = 0 ;\
+\
+		\cf5 // Scale the amplitudes of each output frame against either the changing \cf2 \
+		\cf5 // input-source or constant filter. Scaling is produced using a ratio \cf2 \
+		\cf5 // formed from the sum of the respective input-source or filter amplitudes\cf2 \
+		\cf5 // over the sum of the output frame amplitudes limited by the decibel limit. \cf2 \
+		\cf5 // 0 prevents normalization; increase limit as necessary. \cf2 \
+\
+\
+\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ******************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1.0 ;\
+\
+		\cf5 //.............. PRINT ................................ \cf2 \
+\
+		freqresponse_printout_high_cutoff_frequency = 8000 ;\
+		\cf5 // ( 0 = off )\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "freqresponse"\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -F"\cf2  ++ formants_data_file ++  \cf4 " -E"\cf2  ++ warp_index_for_spectral_expansion_or_compression ++ \
+			 \cf4 " -R"\cf2  ++ frequency_response_analysis_high_shelf_eq_frequency ++  \cf4 " -D"\cf2  ++ frequency_response_analysis_frames_per_second ++ \
+			 \cf4 " -M0"\cf2  ++  \cf4 " -W"\cf2  ++ amplitude_weighted_average__off_0__on_1 ++  \cf4 " -N"\cf2  ++ fft_length ++ \
+			 \cf4 " -b"\cf2  ++ frequency_response_analysis_begintime ++  \cf4 " -e"\cf2  ++ frequency_response_analysis_endtime ++ \
+			 \cf4 " -g"\cf2  ++ formant_selection_threshold__0_to_1 ++  \cf4 " -a"\cf2  ++ spectrumplotfileindb ++ \
+			 \cf4 " -c"\cf2  ++ frequency_response_analysis_method_average_0__peak_1 ++  \cf4 " -C"\cf2  ++ frequency_response_analysis_channel ++ \
+			 \cf4 " -P"\cf2  ++ freqresponse_filter_analysis_printout_high_cutoff_frequency ++  \cf4 " -L"\cf2  ++ formant_analysis_low_formant_frequency_limit ++ \
+			 \cf4 " -m"\cf2  ++ frequency_response_analysis_low_shelf_eq_frequency ++  \cf4 " -A"\cf2  ++ formant_peak_amplitude_threshold_in_db ++ \
+			 \cf4 " -j"\cf2  ++ formant_analysis_high_formant_frequency_limit ++  \cf4 " -X"\cf2  ++ frequency_response_analysis_high_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -p"\cf2  ++ normalize_spectrum_to_formant_peaks__off_0__on_1 ++  \cf4 " -o"\cf2  ++ formantsbarplotfile ++ \
+			 \cf4 " -w"\cf2  ++ frequency_response_analysis_window_type ++  \cf4 " -H"\cf2  ++ frequency_response_analysis_low_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -i"\cf2  ++ formants_ascii_data_file\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ frequency_response_analysis_sndfile ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ freqresponsefile\
+\
+		) ;\
+ \
+\
+\
+		\cf5 // ******** UNIX COMMAND LINE 1 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "filter "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -m"\cf2  ++ filter_frequency_response_low_shelf_eq_frequency ++  \cf4 " -A"\cf2  ++ filter_output_gain_in_decibels ++ \
+			 \cf4 " -Q"\cf2  ++ filter_frequency_response_peaks_response_smooth_factor_bw__in_frequency_or_octaves ++ \
+			 \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++  \cf4 " -B"\cf2  ++ filter_pitch_change_select__source_only_0__both_source_and_filter_1 ++ \
+			 \cf4 " -L"\cf2  ++ filter_output_release_time_in_seconds ++  \cf4 " -U"\cf2  ++ source_delay_time ++ \
+			 \cf4 " -u"\cf2  ++ source_frequency_shift ++  \cf4 " -h"\cf2  ++ filter_input_time_delay ++  \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++ \
+			 \cf4 " -Z"\cf2  ++ freqresponse_printout_high_cutoff_frequency ++  \cf4 " -W"\cf2  ++ filter_frequency_response_spectrum_warpshape_index ++ \
+			 \cf4 " -d"\cf2  ++ filter_frequency_response_decibels_of_compression ++  \cf4 " -g"\cf2  ++ filter_frequency_response_decibels_of_expansion ++ \
+			 \cf4 " -b"\cf2  ++ begintime ++  \cf4 " -q"\cf2  ++ frequency_response_analysis_sndfile ++  \cf4 " -H"\cf2  ++ filter_frequency_response_low_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -e"\cf2  ++ endtime ++  \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++ \
+			 \cf4 " -P"\cf2  ++ filter_output_pitch_transposition_in_semitones ++  \cf4 " -X"\cf2  ++ filter_frequency_response_high_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -R"\cf2  ++ filter_frequency_response_high_shelf_eq_frequency ++  \cf4 " -r"\cf2  ++ source_pitch_transposition_in_semitones ++ \
+			 \cf4 " -V"\cf2  ++ filter_frequency_response_frequency_shift ++  \cf4 " -x"\cf2  ++ function_delay_time_scaler ++ \
+			 \cf4 " -n"\cf2  ++ filter_output_frame_normalization_decibel_limit ++  \cf4 " -M"\cf2  ++ windowsize ++ \
+			 \cf4 " -J"\cf2  ++ source_gain_in_db ++  \cf4 " -T"\cf2  ++ filter_frequency_response_transposition_in_semitones ++ \
+			 \cf4 " -E"\cf2  ++ filter_frequency_response_expansion_threshold_in_decibels ++  \cf4 " -v"\cf2  ++ filter_output_normalize_to__input_sound_0__filter_1 ++ \
+			 \cf4 " -c"\cf2  ++ filter_frequency_response_compression_threshold_in_decibels ++  \cf4 " -C"\cf2  ++ output_channel ++ \
+			 \cf4 " -S"\cf2  ++ filter_frequency_response_db_floor ++  \cf4 " -F"\cf2  ++ freqresponsefile ++ \
+			 \cf4 " -I"\cf2  ++ macro_output_time_expansion_contraction_factor ++  \cf4 " -="\cf2  ++ rescale_level_in_decibels ++ \
+			 \cf4 " -N"\cf2  ++ fft_length ++  \cf4 " -G"\cf2  ++ filter_frequency_response_type ++  \cf4 " -a"\cf2  ++ filter_output_frequency_shift ++ \
+			 \cf4 " -l"\cf2  ++ filter_output_attack_time_in_seconds ++  \cf4 " -D"\cf2  ++ frames_per_second ++ \
+			 \cf4 " -w"\cf2  ++ window_type\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ input_file ++ \cf4 "  "\cf2  ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+filter_with_analysis.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

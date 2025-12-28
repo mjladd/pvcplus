@@ -1,0 +1,400 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  twarp = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		frequency_variation_distribution_curve_index, \
+		rate_multiplier, \
+		amplitude_statistics_time_interval, \
+		high_time_boundary, \
+		random_variation_response_time_in_seconds, \
+		random_variation_rolloff_frequency, \
+		time_point_change_response_time_in_seconds, \
+		release_time_in_seconds, \
+		loop_smooth_time_in_seconds, \
+		frequency_shift, \
+		frequency_variation_response_time_in_seconds, \
+		low_shelf_eq_frequency, \
+		high_shelf_eq_frequency, \
+		window_type, \
+		auto_output_sound_file_play__repetitions, \
+		pitch_transposition_in_semitones, \
+		time_point_origin, \
+		frames_per_second, \
+		oscillator_resynthesis_threshold_in_db, \
+		sampler_loop_mode__wrap_0__fold_1__clip_2, \
+		spectrum_warpshape_index, \
+		gain_in_decibels, \
+		frequency_change_response_time_in_seconds, \
+		input_analysis_file, \
+		mode__sampler_loop_0__autostop_1, \
+		onset_and_release_segment_mode__off_0__on_1, \
+		low_time_boundary, \
+		output_file, \
+		random_variation_cutoff_frequency, \
+		normalize_loop_amplitudes__off_0__on_1, \
+		low_shelf_eq_gain_in_decibels, \
+		windowsize, \
+		output_channel, \
+		timepoint_dither_window_in_seconds, \
+		duration, \
+		print_amplitude_statistics_0_no__1_yes, \
+		attack_time_in_seconds, \
+		high_shelf_eq_gain_in_decibels, \
+		decibels_of_variation, \
+		rescale_level_in_decibels, \
+		random_variation_rolloff_shape_index, \
+		random_frequency_variation_proportion\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //......................TWARP ..........................\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+		\cf5 //......................................................\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompt for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = 2 ;\
+		\cf5 //(-96 to 0 dB. )\cf2 \
+		\cf5 //(Do not use 1 as analysis file levels are very low.)\cf2 \
+		\cf5 //(Set to 2 to bypass rescale.)\cf2 \
+\
+		\cf5 //******************** INPUT ***************************\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+		window_type = 8 ;\
+\
+		\cf5 // hamming(0),  rectangular(1) Blackman(2), Bartlett(3)\cf2 \
+		\cf5 // Kaiser(4-12) for corresponding alpha values:\cf2 \
+		\cf5 // alpha = 4: sidelobe of -30dB, narrow center lobe\cf2 \
+		\cf5 // alpha = 8: sidelobe of -58dB, medium center lobe\cf2 \
+		\cf5 // alpha = 4: sidelobe of -90dB, wide center lobe\cf2 \
+\
+		windowsize = 0 ;\
+\
+		frames_per_second = 200 ;\
+\
+		\cf5 // For inexplicable reasons, it is best to set the frame rate\cf2 \
+		\cf5 // to a value >=  the frame rate used in the analysis.\cf2 \
+		\cf5 // Lesser frame rates create loss of amplitude and phasiness.\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+		\cf5 //........... OUTPUT CHANNEL(S) .......................\cf2 \
+		output_channel = 0 ;\
+\
+		\cf5 // (channels are numbered from 1-maximum)\cf2 \
+		\cf5 // (0 = all channels)\cf2 \
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -96 ;\
+\
+		\cf5 //( -60 to -70 is fairly standard. )\cf2 \
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		gain_in_decibels = 0 ;\
+\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		frequency_shift = 0 ;\
+		pitch_transposition_in_semitones = 0 ;\
+\
+		\cf5 //..................... RESPONSE ......................\cf2 \
+\
+		release_time_in_seconds = 0.0 ;\
+		attack_time_in_seconds = 0.0 ;\
+\
+\
+\
+		frequency_change_response_time_in_seconds = 0 ;\
+\
+\
+		input_analysis_file = \cf4 "~/pvanalysis"\cf2  ;\
+\
+\
+\
+		duration = 5 ;\
+		\cf5 // Durations of 0. or less default to analysis duration. \cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //**************** DATA TIME **************************\cf2 \
+\
+		time_point_origin = 0 ;\
+		rate_multiplier = 1 ;\
+\
+\
+		\cf5 //  ** STANDARD USE: By Time Point or Rate ***\cf2 \
+		\cf5 //  Movement through data time is controlled either directly,\cf2 \
+		\cf5 //  through control of the time_point_origin, or indirectly, through the\cf2 \
+		\cf5 //  accumulated shifts of the rate control. \cf2 \
+		\cf5 //\cf2 \
+		\cf5 //  ** Time Point Mode: Direct Control of Time Point **\cf2 \
+		\cf5 //  Set rate_multiplier to 0 and use a continuous time_point_origin function\cf2 \
+		\cf5 //  to move through the time range of the analyzed sound.  \cf2 \
+		\cf5 //   or\cf2 \
+		\cf5 //  ** Rate Mode: Indirect Control of Time Point ** \cf2 \
+		\cf5 //  Set time_point_origin to an initial analysis time point and scale/modulate\cf2 \
+		\cf5 //  movement through original sound file time by a constant or a function, which \cf2 \
+		\cf5 //  produces a respective fixed or changing scaling of time. Negative \cf2 \
+		\cf5 //  rate_multiplier values reverse time; zero stops movement through time. \cf2 \
+\
+		\cf5 //  *** Combining Time Point and Rate ***\cf2 \
+		\cf5 //  If functions are used for both the time_point_origin and rate_multiplier, \cf2 \
+		\cf5 //  the two are simply combined, i.e. the subsequent changes to the origin\cf2 \
+		\cf5 //  are added to the changes in position incurred through rate. \cf2 \
+\
+		\cf5 //......................................................\cf2 \
+\
+		\cf5 //........... TIME BOUNDARIES AND SAMPLER LOOP MODE ..............\cf2 \
+\
+		\cf5 // The low/high data time boundaries serve as either auto-stop\cf2 \
+		\cf5 // boundaries that terminate synthesis at the crossing of a \cf2 \
+		\cf5 // data time boundary or as sampler loop points to which can \cf2 \
+		\cf5 // be added pre-loop and post-loop onset and release segments. \cf2 \
+\
+		low_time_boundary = 0 ;\
+		high_time_boundary = -1 ;\
+\
+\
+		\cf5 // -1 for low defaults to 0.0, and, for high, to analysis file duration.\cf2 \
+\
+		mode__sampler_loop_0__autostop_1 = 1 ;\
+\
+		\cf5 // In autostop mode, synthesis terminates with crossing of \cf2 \
+		\cf5 // a time boundary. In sampler loop mode, time boundaries \cf2 \
+		\cf5 // function as sampler loop points. \cf2 \
+\
+\
+		sampler_loop_mode__wrap_0__fold_1__clip_2 = 0 ;\
+\
+		\cf5 // In Sampler Loop Mode, all timepoints are constrained to\cf2 \
+		\cf5 // region between boundaries using the specified method.  \cf2 \
+		\cf5 // 0: Wrap time into loop range. (/////)\cf2 \
+		\cf5 // 1: Fold time into loop range. (/\\/\\/\\/\\)\cf2 \
+		\cf5 // 2: Clip or limit time to the nearest boundary. (\\____)\cf2 \
+\
+		onset_and_release_segment_mode__off_0__on_1 = 1 ;\
+\
+		\cf5 // Setting onset/release mode in Sampler Mode causes looping\cf2 \
+		\cf5 // to be preceded by a pre-loop/onset and a post-loop/release \cf2 \
+		\cf5 // segment. The data time origin is initialized to 0.0 and \cf2 \
+		\cf5 // progresses according to data time controls. The first entrance\cf2 \
+		\cf5 // into the loop region triggers loop mode, which is maintained\cf2 \
+		\cf5 // until trigger of the release segment. The release segment\cf2 \
+		\cf5 // progresses from the current loop point to the analysis data\cf2 \
+		\cf5 // end time, conforming to the data time rate control and specified\cf2 \
+		\cf5 // synthesis duration. \cf2 \
+\
+		normalize_loop_amplitudes__off_0__on_1 = 0 ;\
+\
+		\cf5 // Set to 1, amplitudes in loop range are normalized to peak \cf2 \
+		\cf5 // amplitude of low/high boundary frames. Onset and release \cf2 \
+		\cf5 // segments are ramped in and out of loop range gain change \cf2 \
+		\cf5 // as needed.  \cf2 \
+\
+		loop_smooth_time_in_seconds = 0.2 ;\
+\
+		\cf5 // Loop junctures for wrapped and folded loops are smoothed\cf2 \
+		\cf5 // with a lowpass filter, the smooth time of which is ramped \cf2 \
+		\cf5 // up and down before and after the loop juncture points to \cf2 \
+		\cf5 // smooth any sudden change in amplitude and frequency values.\cf2 \
+\
+\
+		\cf5 //......TIMEPOINT DITHER ...............................\cf2 \
+\
+		timepoint_dither_window_in_seconds = 0 ;\
+		time_point_change_response_time_in_seconds = 0.0 ;\
+\
+		\cf5 // TRY DITHER OF .01 to .05 TO MAKE LARGE TIME EXPANSIONS\cf2 \
+		\cf5 //( NOT SOUND FLANGEY.)\cf2 \
+\
+		\cf5 //******************************************************\cf2 \
+		\cf5 //********** SPECTRUM MODIFICATIONS ********************\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //............ SPECTRUM WARPSHAPE ......................\cf2 \
+		spectrum_warpshape_index = 0 ;\
+\
+\
+		\cf5 //.... RANDOM AMPLITUDE VARIATION ......................\cf2 \
+\
+		decibels_of_variation = 0 ;\
+		\cf5 //( Use positive values; 0 = no variation. ) \cf2 \
+\
+		random_variation_response_time_in_seconds = 0.0 ;\
+\
+		\cf5 //......RANDOM FREQUENCY VARIATION .....................\cf2 \
+\
+		random_frequency_variation_proportion = 0 ;\
+		frequency_variation_response_time_in_seconds = 0.1 ;\
+		frequency_variation_distribution_curve_index = 2 ;\
+\
+\
+\
+\
+		\cf5 // A band of randomization is created around each \cf2 \
+		\cf5 //  bin's analyzed frequency. The band is determined by\cf2 \
+		\cf5 //  the proportion, which sets the limits above and below. \cf2 \
+		\cf5 //  A value of .1 creates a band spanning a 1/10th \cf2 \
+		\cf5 //  above/below the bin analysis frequency. The curve\cf2 \
+		\cf5 //  index controls the shape of the random distribution;\cf2 \
+		\cf5 //  positive values distribute the randomization closer \cf2 \
+		\cf5 //  to the center of the band, like a higher Q. The response \cf2 \
+		\cf5 //  time is a lowpass filter that smooths the randomization \cf2 \
+		\cf5 //  function, which slows the the random change in value.  \cf2 \
+\
+		\cf5 //.... (FREQ AND AMP) RANDOM VARIATION ROLLOFF .........\cf2 \
+		random_variation_rolloff_frequency = 5000 ;\
+		random_variation_cutoff_frequency = 500 ;\
+		random_variation_rolloff_shape_index = 0 ;\
+\
+		\cf5 //  Rolloff frequency is above cutoff frequency.\cf2 \
+		\cf5 //  Below the low cutoff frequency there is no variation. \cf2 \
+		\cf5 //  Above the rolloff frequency there is full variation. \cf2 \
+		\cf5 //  The rolloff shape index specifies the high-to-low, \cf2 \
+		\cf5 //  rolloff-frequency to cutoff-frequency curve: \cf2 \
+		\cf5 //  0 = linear rolloff, negative values = a slow rolloff, \cf2 \
+		\cf5 //  positive values = a sudden rolloff. \cf2 \
+\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //************** LOW/HIGH SHELF EQ *********************\cf2 \
+		low_shelf_eq_gain_in_decibels = -0 ;\
+		low_shelf_eq_frequency = 400 ;\
+\
+		high_shelf_eq_gain_in_decibels = 0 ;\
+		high_shelf_eq_frequency = 2000 ;\
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //************ AMPLITUDE STATISTICS ******************** \cf2 \
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1.0 ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "twarp "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -M"\cf2  ++ windowsize ++  \cf4 " -m"\cf2  ++ low_shelf_eq_frequency ++  \cf4 " -I"\cf2  ++ random_variation_rolloff_frequency ++ \
+			 \cf4 " -d"\cf2  ++ duration ++  \cf4 " -o"\cf2  ++ sampler_loop_mode__wrap_0__fold_1__clip_2 ++ \
+			 \cf4 " -A"\cf2  ++ gain_in_decibels ++  \cf4 " -Q"\cf2  ++ time_point_origin ++  \cf4 " -H"\cf2  ++ low_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -w"\cf2  ++ window_type ++  \cf4 " -v"\cf2  ++ normalize_loop_amplitudes__off_0__on_1 ++ \
+			 \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++  \cf4 " -F"\cf2  ++ input_analysis_file ++ \
+			 \cf4 " -l"\cf2  ++ attack_time_in_seconds ++  \cf4 " -Y"\cf2  ++ rate_multiplier ++  \cf4 " -R"\cf2  ++ high_shelf_eq_frequency ++ \
+			 \cf4 " -N"\cf2  ++ random_variation_rolloff_shape_index ++  \cf4 " -g"\cf2  ++ low_time_boundary ++ \
+			 \cf4 " -P"\cf2  ++ pitch_transposition_in_semitones ++  \cf4 " -B"\cf2  ++ decibels_of_variation ++ \
+			 \cf4 " -S"\cf2  ++ mode__sampler_loop_0__autostop_1 ++  \cf4 " -j"\cf2  ++ random_frequency_variation_proportion ++ \
+			 \cf4 " -T"\cf2  ++ timepoint_dither_window_in_seconds ++  \cf4 " -b"\cf2  ++ loop_smooth_time_in_seconds ++ \
+			 \cf4 " -K"\cf2  ++ time_point_change_response_time_in_seconds ++  \cf4 " -n"\cf2  ++ frequency_variation_distribution_curve_index ++ \
+			 \cf4 " -G"\cf2  ++ high_time_boundary ++  \cf4 " -D"\cf2  ++ frames_per_second ++  \cf4 " -W"\cf2  ++ spectrum_warpshape_index ++ \
+			 \cf4 " -r"\cf2  ++ onset_and_release_segment_mode__off_0__on_1 ++  \cf4 " -k"\cf2  ++ frequency_variation_response_time_in_seconds ++ \
+			 \cf4 " -C"\cf2  ++ output_channel ++  \cf4 " -J"\cf2  ++ random_variation_cutoff_frequency ++ \
+			 \cf4 " -e"\cf2  ++ random_variation_response_time_in_seconds ++  \cf4 " -f"\cf2  ++ frequency_change_response_time_in_seconds ++ \
+			 \cf4 " -="\cf2  ++ rescale_level_in_decibels ++  \cf4 " -X"\cf2  ++ high_shelf_eq_gain_in_decibels ++ \
+			 \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++  \cf4 " -a"\cf2  ++ frequency_shift ++ \
+			 \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++ \
+			 \cf4 " -L"\cf2  ++ release_time_in_seconds\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+twarp.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}

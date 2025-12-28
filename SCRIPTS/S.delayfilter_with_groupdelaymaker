@@ -1,0 +1,373 @@
+#!/bin/sh
+#******************************************************
+#* GROUP DELAY PHASE VOCODER RESYNTHESIS
+#* WITH SYNTHETIC GROUP DELAY SYNTHESIS
+#******************************************************
+
+#( Groupdelaymaker makes a response file of dB/delay-time pairs 
+# for each of the FFT's frequency bins (storing delay in place
+# of frequency). Like chordresponsemaker, it makes the response
+# using a multiple tone format, with the added feature of time  
+# delay for each tone. )
+
+
+#------------------------------------------------------
+#************ GROUP DELAY SYNTHESIS *****************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+groupdelayresponsefile=/tmp/groupdelayresponsefile
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+
+#................ EDGE DECIBELS .......................
+
+partial_band_edge_decibels=0
+
+#................ DATA FILE  ..........................
+
+data_file=/tmp/shift1_file
+
+#........ Partial Overlap Resolution Method ............
+
+OVERLAPPING_bin_method=6
+#( Use 1 or 2 to be safe.) 
+
+#  ( When multiple tones produce overlapping data, the
+#    bin settings are determined using one of the methods below.)
+
+# 0 = Use the one with the shortest delay.
+# 1 = Use the one with the longest delay.
+# 2 = Take averages of both time delay and loudness.
+# 3 = Use the loudest one.
+# 4 = Use the softest one.
+# 5 = Use the loudest one if it has the shortest delay.
+# 6 = Use the loudest one if it has the longest delay.
+
+#......... DEFAULT DB AND DELAY .......................
+
+# Bins not covered by the data file have their dB and
+# delay time set to the default values below.
+
+default_dB_level=-100.
+default_delay_time=0
+
+
+#..........GROUPDELAY RESPONSE PRINTOUT  ...............
+
+GROUPDELAY_SYNTHESIS_PRINTOUT_high_cutoff_frequency=10000
+# ( 0 = off )
+
+#........... DATA FILE FORMAT ............................
+
+# DATA FILE FORMAT: septuples
+# 1)  pitch/frequency  
+# 2)  number of partials (0 = all below Nyquist)
+# 3)  bandwidth 
+#        values <= 1. treated as proportion of fundamental frequency 
+#        values > 1. treated as Herz
+# 4)  dB of fundamental 
+# 5)  partial spacing as proportion of fundamental
+# 6)  top-partial dB relative to fundamental
+# 7)  delay time
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+echo \
+\
+197   1	  0.2  -0  1  -0  .1 \
+394   1	  0.2  -0  1  -0  .2 \
+591   1	  0.2  -0  1  -0  .3 \
+798   1	  0.2  -0  1  -0  .4 \
+985   1	  0.2  -0  1  -0  .5 \
+1182   1	  0.2  -0  1  -0  .6 \
+1379   1	  0.2  -0  1  -0  .7 \
+1576   1	  0.2  -0  1  -0  .8 \
+1773   1	  0.2  -0  1  -0  .9 \
+1971	  1	  0.2  -0  1  -0  1. \
+2167   1	  0.2  -0  1  -0  1.1 \
+2364   1	  0.2  -0  1  -0  1.2 \
+\
+> /tmp/shift1_file ; 
+
+
+
+#------------------------------------------------------
+#******************* FILTER  **************************
+#------------------------------------------------------
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/output.au
+
+# The following may be used to copy a formatted
+# sound file into the output location listed above.   
+
+#cp ~/32bit.BLANK.au $output_file
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+#................ RESCALE .............................
+
+rescale_level_in_decibels=0
+#(set to 1 to rescale to peak of input file)
+#(Don't use 1 here as analysis file levels are very low)
+
+#******************** INPUT ***************************
+
+input_analysis_file=~/pvanalysis
+# A pvanalysis file
+ 
+#................ DURATION .............................
+
+duration=0
+# Durations of 0 or less default to analysis duration. 
+# Extend duration past analysis duration as needed to 
+# accommodate delay times.  
+
+#======================================================
+#*** ANALYSIS PARAMETERS ******************************
+window_type=12
+windowsize=0
+
+frames_per_second=200
+
+#........... OUTPUT CHANNEL(S) .......................
+
+output_channel=0
+# (channels are numbered from 1-maximum)
+# (0 = all channels)
+
+#.............OSCIL THRESHOLD ........................
+
+oscillator_resynthesis_threshold_in_dB=-90
+
+#======================================================
+#.................. DATA TIME .........................
+time_point_origin=0  
+rate_multiplier=1
+
+
+#=======================================================
+#********** GROUP DELAY FILTER  (GDF) ******************
+
+GDF_delay_time_multiplier=1
+# (Master controller (multiplier) of delay time for
+# use in expanding and compressing group delay times. 
+# 0 = no delays.)
+
+#(For each bin, a random signal, smoothed by the response
+# time, is used to randomly vary the bin's delay time, either
+# shortening or lengthening it; bandwidth sets the  
+# maximum amount of shortening or lengthening. )
+
+GDF_random_diffusion_switch_off_0__on_1=0
+GDF_random_diffusion_bandwidth_in_seconds=0.1
+GDF_random_diffusion_response_time_in_seconds=0.05
+
+#......................................................
+
+GDF_transposition_in_semitones=0
+
+
+
+
+GDF_shift=0 
+GDF_spectrum_warpshape_index=0 
+
+#......................................................
+
+GDF_input_response_printflag=4000
+#( 0 = no, 1 = yes, values > 1 set hi freq cutoff )
+
+#......................................................
+
+# DELAY DECIBELS CURVE
+# The parameters below allow for additional shaping of
+# the amplitude of the spectrum as a function of delay time.
+# The parameters specify a dB mapping function; each bin's 
+# delay time is mapped into the function for a decibel value  
+# subsequently used to alter the bin's amplitude.
+
+GDF_zero_delay_decibels=-0
+
+GDF_maximum_delay_decibels=-0
+GDF_delay_decibels_curve_shape=0
+
+#******************************************************
+#********** SPECTRUM MODIFICATIONS ********************
+#******************************************************
+
+#............ SPECTRUM WARPSHAPE ......................
+spectrum_warpshape_index=0
+
+
+#............SPECTRUM COMPRESSION ......................
+
+spectrum_compression_threshold_in_decibels=-0
+spectrum_decibels_of_compression=-0
+
+#======================================================
+#******* FILTER LOW/HIGH SHELF EQ (pre-processing) ****
+
+FILTER_LOW_SHELF_EQ_gain_in_decibels=-0
+FILTER_LOW_SHELF_EQ_frequency=50
+
+FILTER_HIGH_SHELF_EQ_gain_in_decibels=0
+FILTER_HIGH_SHELF_EQ_frequency=1000
+
+#======================================================
+
+#=======================================================
+#****** POST DELAY MODIFICATIONS *********************
+#=======================================================
+# When controlled with time-varying functions, the
+# following global controls are uniquely delayed in 
+# time according to the corresponding bin's delay time. 
+# The decorrelating effect of the temporal diffusion
+# can be cancelled or scaled through the following 
+# function time scaling control, which scales the 
+# amount of delay time for functions controlling
+# post-delay modification parameters. 
+#   
+
+function_delay_time_scaler=1.0
+# 0: no delay
+# 1: functions synchronized with delayed bins
+# 0-1: interpolated degrees of scaling from none to full.
+
+#.................. DECIBELS ..........................
+
+gain_in_decibels=0
+
+#.................. PITCH .............................
+
+frequency_shift=0
+pitch_transposition_in_semitones=0
+
+#............ AMPLITUDE RESPONSE ......................
+
+release_time_in_seconds=0
+attack_time_in_seconds=0
+
+#............ FREQUENCY RESPONSE ......................
+
+frequency_change_response_time_in_seconds=0
+
+
+
+
+
+#********** AMPLITUDE STATISTICS ******************** 
+print_amplitude_statistics_0_no__1_yes=1
+amplitude_statistics_time_interval=.25
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+# FREQ REPSONSE SYNTHESIS
+synthesis_routine=groupdelaymaker
+
+PVFLAGS="\
+\
+-f$input_analysis_file \
+\
+-F$data_file \
+-D$partial_band_edge_decibels \
+-s$OVERLAPPING_bin_method \
+-v$GROUPDELAY_SYNTHESIS_PRINTOUT_high_cutoff_frequency \
+-i$default_dB_level \
+-I$default_delay_time \
+"
+
+echo "$synthesis_routine $PVFLAGS  $groupdelayresponsefile"
+
+$synthesis_routine $PVFLAGS  $groupdelayresponsefile
+
+if test $? -eq 0
+then
+
+#====================================================
+# SYNTHESIS
+pvroutine=delayfilter 
+
+PVFLAGS="\
+\
+-M$windowsize \
+-S$window_type \
+-D$frames_per_second \
+-d$duration \
+\
+-a$frequency_shift \
+-P$pitch_transposition_in_semitones \
+-A$gain_in_decibels \
+\
+-C$output_channel \
+-t$oscillator_resynthesis_threshold_in_dB \
+\
+\
+-F$input_analysis_file \
+\
+-Q$time_point_origin \
+-Y$rate_multiplier \
+\
+-T$GDF_delay_time_multiplier \
+-r$GDF_random_diffusion_response_time_in_seconds \
+-q$GDF_random_diffusion_bandwidth_in_seconds \
+\
+-L$release_time_in_seconds \
+-l$attack_time_in_seconds \
+-f$frequency_change_response_time_in_seconds \
+\
+-W$spectrum_warpshape_index \
+\
+-E$spectrum_compression_threshold_in_decibels \
+-c$spectrum_decibels_of_compression \
+\
+-H$FILTER_LOW_SHELF_EQ_gain_in_decibels \
+-m$FILTER_LOW_SHELF_EQ_frequency \
+\
+-X$FILTER_HIGH_SHELF_EQ_gain_in_decibels \
+-R$FILTER_HIGH_SHELF_EQ_frequency \
+\
+-p$print_amplitude_statistics_0_no__1_yes \
+-i$amplitude_statistics_time_interval \
+\
+-_$auto_output_sound_file_play__repetitions \
+-=$rescale_level_in_decibels \
+\
+-x$function_delay_time_scaler \
+\
+-B$groupdelayresponsefile \
+-Z$GDF_input_response_printflag \
+-b$GDF_transposition_in_semitones \
+-e$GDF_shift \
+-w$GDF_spectrum_warpshape_index \
+-v$GDF_random_diffusion_switch_off_0__on_1 \
+\
+-V$GDF_zero_delay_decibels \
+-y$GDF_maximum_delay_decibels \
+-z$GDF_delay_decibels_curve_shape \
+"
+echo "$pvroutine $PVFLAGS  $output_file" ; 
+
+$pvroutine $PVFLAGS  $output_file   ; 
+
+fi
+
+

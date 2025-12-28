@@ -1,0 +1,37 @@
+_fflush	fflushfloat.c	?^_fflush(iop)$?
+addprop	addprop.c	?^addprop(iop, name, value)$?
+bump	getheader.c	?^bump(iop, samplesize)$?
+cpioheader	cpioheader.c	?^cpioheader(ip, op)$?
+cpoheader	cpioheader.c	?^cpoheader(pl, op)$?
+delprop	rmprop.c	?^delprop(f, pl)$?
+fflushfloat	fflushfloat.c	?^fflushfloat(iop)$?
+fflushshort	fflushfloat.c	?^fflushshort(iop)$?
+fgetfbuf	fgetfbuf.c	?^fgetfbuf(fp, n, iop)$?
+fgetfloat	fgetfloat.c	?^fgetfloat(fp, iop)$?
+fgetsample	fgetsample.c	?^fgetsample(xp, iop)$?
+fgetsbuf	fgetsbuf.c	?^fgetsbuf(sp, n, iop)$?
+fgetshort	fgetshort.c	?^fgetshort(sp, iop)$?
+finitbuf	finitbuf.c	?^finitbuf(iop)$?
+fputfbuf	fputfbuf.c	?^fputfbuf(fp, n, iop)$?
+fputfloat	fputfloat.c	?^fputfloat(fp, iop)$?
+fputsbuf	fputsbuf.c	?^fputsbuf(sp, n, iop)$?
+fputshort	fputshort.c	?^fputshort(sp, iop)$?
+gchar	getheader.c	?^gchar(cp, iop)$?
+getheader	getheader.c	?^getheader(iop)$?
+getpaddr	getprop.c	?^getpaddr(iop, n)$?
+getpair	getheader.c	?^getpair(iop)$?
+getplist	getplist.c	?^getplist(iop)$?
+getprop	getprop.c	?^getprop(iop, n)$?
+mkprop	mkprop.c	?^mkprop(name, value)$?
+noautocp	fputfloat.c	?^noautocp()$?
+parseprop	getheader.c	?^parseprop(iop)$?
+pinit	fputfloat.c	?^pinit(iop)$?
+printprop	printprop.c	?^printprop(proplist, outp)$?
+putfc	putfc.c	?^putfc(ch, iop)$?
+putheader	putheader.c	?^putheader(iop)$?
+putplist	putplist.c	?^putplist(prop, iop)$?
+putprop	putprop.c	?^putprop(iop, name, value)$?
+rmprop	rmprop.c	?^rmprop(iop, n)$?
+set_sample_size	finitbuf.c	?^set_sample_size(size)$?
+stdheader	stdheader.c	?^stdheader(iop, name, srate, nchans, format)$?
+wprop	putheader.c	?^wprop(p, iop)$?

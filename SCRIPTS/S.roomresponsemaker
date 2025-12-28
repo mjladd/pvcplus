@@ -1,0 +1,864 @@
+#!/bin/sh
+#******************************************************
+#................ ROOM RESPONSE MAKER .................
+#******************************************************
+
+#******************** OUTPUT **************************
+
+output_file=/tmp/impulseResponse.au
+
+cp ~/output.32bit.BLANK.au $output_file
+
+
+#...............AUTO-PLAY OF OUTPUT FILE...............
+auto_output_sound_file_play__repetitions=-0
+#(-2 = interactive: (Play once, then prompts for more.)
+#(-1 = interactive: (Prompt for each play of file.)
+#( 0 = off)
+#( 1 or greater = Auto-repeat for specified repetitions.)
+
+
+
+
+#........... OUTPUT CHANNEL(S) .......................
+output_channel=0
+# (channels are numbered from 1 to the maximum.)
+# (0 = all channels)
+
+
+
+#******************************************************
+#............. POLYGON ROOM .........................
+#******************************************************
+# 
+# Room polygon may be input using coordinates, either Cartesian or polar,
+# or may be synthesized using the parameters below.  
+
+polygon_coordinates__synthesized_0__Cartesian_file_1__polar_file_2=0 
+
+polygonal_room_coordinates_file=/tmp/polygonCoordinates
+#
+# File of ascii room corner coordinates. Cartesian grid is oriented to listener
+# with positive Y to listener's front and negative and positive X dimensions
+# extending to the listener's respective left and right side. Polar coordinates 
+# are oriented with an angle of 0 degrees positioned to the listener's right side 
+# and positive angles rotating counter-clockwise. Successive coordinates are 
+# connected together, with the last connected back to the first, to make 
+# what must be a polygonal space; wall segments must not cross and the origin at [0, 0]
+# must be within the space, both of which will be checked and fatally flagged 
+# if in error. 
+
+
+echo 41.537048 41.537052 12.598829 57.915916 -20.609030 55.254917 -46.507881 34.815350 -58.019405 4.149616 -51.544830 -28.145624 -28.067408 -51.401630 4.260168 -59.564640 35.229183 -47.060665 56.186436 -20.956461 58.154140 12.650643 > /tmp/polygonCoordinates
+
+
+echo -300 5    300 5   300 -5   -300 -5 > /tmp/polygonCoordinates
+
+
+
+echo \
+-100 100 \
+-60 100 \
+-40 10 \
+-20 100 \
+100 100 \
+100 -100 \
+-100 -100 \
+\
+> /tmp/polygonCoordinatesConcave
+
+echo \
+\
+34 -40 \
+-34 -40 \
+-62 -15 \
+-62 15 \
+-34 40 \
+34  40 \
+62 15 \
+62 -15 \
+\
+> /tmp/church
+
+
+#******************************************************
+#.......POLYGON ROOM SYNTHESIS PARAMETERS ............
+#******************************************************
+# Room corners are synthesized using a collection of polar radii extending
+# out from the origin to the prospective corners of the room. Radial distance
+# to the corners is randomly determined by minimum and maximum distances, with 
+# the subtending angles being designed to be uniform or randomly different, 
+# with the degree of non-uniformity controlled through an angle regularity 
+# proportion. Polar orientation of synthesis region is with 0 degrees 
+# to the listener's right with positive angles extending counter-clockwise.
+# A rotation factor is available during the initial synthesis phase. 
+# Further modification of rooms coordinates, be they synthesized or specified, 
+# is available below. 
+
+number_of_walls=4
+
+room_synthesis_rotation_in_degrees=0
+
+minimum_distance_from_origin_to_corners=100
+maximum_distance_from_origin_to_corners=100
+
+origin_to_corners_angle_uniformity_0_to_1_proportion=1.0
+#
+# 1: maximum uniformity (all angles are the same).
+# 0: maximum variability 
+
+
+#******************************************************
+#...... ROOM MODIFICATION PARAMETERS ...........
+#******************************************************
+# (Applied in the order given.)
+
+ROOM__X_translation_factor=0
+ROOM__Y_translation_factor=0
+# X and/or Y value is added to respective axis. 
+
+ROOM__pre_rotation_negative_X_scale_factor=1
+ROOM__pre_rotation_positive_X_scale_factor=1
+ROOM__pre_rotation_negative_Y_scale_factor=1
+ROOM__pre_rotation_positive_Y_scale_factor=1
+# Value is used to scale the X or Y coordinate value of
+# points lying within the respective positive/negative
+# X/Y region. 
+
+ROOM_rotation_in_degrees=0
+# Rotation of all points around [0, 0] origin.
+
+ROOM_scale_factor=1.0
+# Value is used to scale size of room. 
+
+
+#******************************************************
+#......... LISTENER, SOURCE, AND SPEAKER POSITIONS ........
+#******************************************************
+
+listener_x_y_coordinate_positions_file=/tmp/listenerCoordinates
+#
+# NOTE: To simulate source sound movement between speakers (as in 
+# conventional stereo or surround sound setups), the listener position 
+# should be no closer to either of the adjacent speakers between which movement 
+# is to be simulated than the speakers are to each other. In other words,
+# for convincing movement panning, the listener should be no closer than 
+# the classic X/Y recording stereo listening sweet spot, often imagined 
+# as forming an equilateral or isosceles triangle with the speakers. 
+# (Closer positions will cause the amplitude of sources positioned in between
+# to increasingly dip and therefore destroy the illusion of a moving source sound.) 
+
+source_x_y_coordinate_positions_file=/tmp/sourceCoordinates
+
+speaker_x_y_coordinate_positions_file=/tmp/speakerCoordinatesStereo
+
+speaker_configuration__sequence_0__polygon_1=0
+#
+# To evaluate the validity of the listener placement, 
+# the sequence of speaker coordinates must be declared as either
+# a sequence with a beginning and end, as in a wave field array or 
+# stereo pair, or as a polygon designed to surround the listener 
+# with speakers. 
+
+
+echo 0 -10  > /tmp/listenerCoordinates
+
+echo 0 2 > /tmp/sourceCoordinates
+
+echo \
+\
+-1.75 -0 \
+-1.25 -0 \
+-.75 -0 \
+\
+-.25 -0 \
+.25 -0 \
+\
+.75 -0 \
+1.25 -0 \
+1.75 -0 \
+\
+ > /tmp/speakerCoordinates8
+
+echo \
+\
+-2.25 0 \
+-1.75 -0 \
+-1.25 -0 \
+-.75 -0 \
+\
+-.25 -0 \
+.25 -0 \
+\
+.75 -0 \
+1.25 -0 \
+1.75 -0 \
+2.25 0 \
+\
+ > /tmp/speakerCoordinates10
+
+
+echo \
+\
+-3.75 0 \
+3.75 -0 \
+\
+ > /tmp/speakerCoordinatesStereo
+
+
+echo \
+\
+-20 20 \
+20 20 \
+20 -20 \
+-20 -20 \
+\
+> /tmp/speakerCoordinatesQuad
+
+
+echo \
+\
+-3.75 -0 \
+-3.25 -0 \
+-2.75 -0 \
+-2.25 -0 \
+-1.75 -0 \
+-1.25 -0 \
+-.75 -0 \
+-.25 -0 \
+\
+.25 -0 \
+.75 -0 \
+1.25 -0 \
+1.75 -0 \
+2.25 0 \
+2.75 -0 \
+3.25 -0 \
+3.75 -0 \
+\
+ > /tmp/speakerCoordinates16
+
+
+
+
+
+#******************************************************
+#.. SPEAKER POSITION MODIFICATION PARAMETERS .......
+#******************************************************
+# (Applied in the order given.)
+
+SPEAKER__X_translation_factor=0
+SPEAKER__Y_translation_factor=0
+# X and/or Y value is added to respective axis. 
+
+SPEAKER__pre_rotation_negative_X_scale_factor=1
+SPEAKER__pre_rotation_positive_X_scale_factor=1
+SPEAKER__pre_rotation_negative_Y_scale_factor=1
+SPEAKER__pre_rotation_positive_Y_scale_factor=1
+# Value is used to scale the X or Y coordinate value of
+# points lying within the respective positive/negative
+# X/Y region. 
+
+SPEAKER_rotation_in_degrees=0
+# Rotation of all points around [0, 0] origin.
+
+SPEAKER_scale_factor=1
+# Value is used to scale size of speaker layout. 
+
+
+#******************************************************
+#......... SOURCE AND REFLECTION PARAMETERS ........
+#******************************************************
+# The final audio room impulse response may be written
+# to include both source and reflections or only one
+# of the two. Both gain and normalization controls are available 
+# for controlling the output amplitudes. Normalization is
+# convenient for exploration, but should not be used in cases 
+# where multiple responses are to be generated reflecting different 
+# source positions, since different responses need to remain in
+# scale with each other. Gain7parameters controlling the direct, 
+# reflected, and global sound are available for making the necessary
+# adjustments, which can be necessary depending on how parameters
+# are set. 
+
+ 
+# QW
+output_sound__all_0__direct_1__reflections_2=0
+
+# MASTER GAIN
+master_gain_in_decibels=0
+# DIRECT SOUND GAIN
+direct_sound_gain_in_decibels=0
+# REFLECTED SOUND GAIN
+reflected_sound_gain_in_decibels=-0
+
+
+
+highest_order_reflection=6
+lowest_order_reflection=1
+#
+# Reflection order represents the number of walls that a reflection
+# intersects on its path from source to speaker. The highest order
+# limits the extent of reflections computation; the lowest order
+# limits the which shorter reflections are included in the output. 
+# The two together can be used to output a band or single order of
+# reflections. 
+#
+# The speed of the routine is a result of the subsequent computation
+# required by the number of walls and the highest reflection order sought.
+# The two factors work together multiplicatively to compound the number 
+# of reflection paths to consider. While the routine is optimized, adding
+# an order or a few walls will geometrically expand the amount of computation,
+# as one quickly sees. High orders limits of 6 to 9 or 10 are generally reasonable 
+# with 3 to 7 walls. 
+
+
+listener_space_cross_reflections__include_0__exclude_1=1
+#
+# When the distance from the last reflection wall point to speaker
+# is greater than the distance from the same wall point to the 
+# specified listener position, the reflection is called a 
+# listener-space cross reflection; listener-space cross reflections
+# essentially cross implausibly through the listener space 
+# (coming close to the listener) before reaching their respective speaker, 
+# where they are translated from the virtual into the real space.
+# A simple example these reflections in stereo or in a front-spanning 
+# wave-field array would be those reflections whose last point of 
+# reflection is behind the listener, even though they are coming
+# from speakers placed in front of the listener--i.e. while originating
+# from behind, they are instead heard from in front. 
+#  
+# The parameter above allows these less plausible speaker reflections 
+# to be omitted, the choice of which reduces the field of reflections 
+# to those that follow a more or less direct path from last reflection wall
+# to speaker to listener.
+
+polygon_reflections_plot_file=/tmp/plot
+# Give a UNIX plot file name in which gnuplot room and sound path coordinates
+# will be written. Plot the file in gnuplot with the command:
+# 
+# plot "your_plot_file_path" with lines
+
+
+plot_mode__one_file_0__channel_files_1__channel_and_order_files_2=0
+#
+# Selecting separate files causes a separate file to be written for 
+# each channel, with each filename appended with a postfix channel number
+# beginning from channel 1, i.e. file.1 file.2 etc.   
+
+
+
+# ***** Air Absorption Exponents ********
+# QW
+
+air_absorption_exponent_for_virtual_space_source=1.5
+air_absorption_exponent_for_real_space_source=2
+air_absorption_exponent_for_reflections=2
+
+use_collapsed_threshold_amplitudes__no_0__yes_1=1
+
+source_minimum_distance_from_listener=6
+
+minimumReferenceDistanceInFeet=0.5
+#
+# The amplitude of both the reflections and source sound
+# decay exponentially as a factor of distance, much as they do in 
+# the acoustic world. The exponent for this decay can be set separately 
+# for both the source and reflections, with separate virtual space 
+# (i.e. behind speakers) and real space (i.e. in front of speakers) exponents
+# for the source position. 
+#
+# A value of 2.0 produces the standard distance-squared law associated
+# with unobstructed, unenclosed sound waves. Higher values increase
+# the rate of decay, and lesser values reduce it. A value of 0
+# will result in no decay, causing all source and reflection distances
+# to be of equal amplitude. Negative values will produce the opposite
+# effect, with longer distances being amplified compared to shorter.
+# Values between 1.0 and 2.0 tend to work well, although no combination 
+# of values is automatic, with experimentation being a must. 
+#
+# A minimum reference distance, which is required to calculate the decay,
+# serves as the physical distance at which a maximum unity gain of 0 dB
+# is produced. For sound path distances shorter than the reference minimum, 
+# such as with very close source to speaker paths, the amplitude is limited 
+# to unity gain.  
+ 
+source_orientation_mode__to_room_0__to_listener_1=1
+source_rotation_in_degrees=0
+source_dispersion_pattern_rolloff_in_decibels=-100.0
+
+# The source sound is conceptualized to have a front, the directionality of which can 
+# be revealed and accentuated by progressively rolling off its emitted amplitude toward its 
+# rear using the rolloff parameter above; the rolloff changes the otherwise
+# omni-directional source to one with a varyingly directional orientation. 
+# The directionality of the source effects the distribution of both 
+# direct and reflected sound. 
+#
+# The direction of the source is determined by the mode of orientation 
+# and the amount of rotation. Treating the current source position as a polar-Cartesian 
+# origin, orientation to the room aligns the zero degree angle with the
+# positive x-axis vector (i.e. the direction of the non-rotated source is 
+# always fixed along a vector running parallel to the room's pre-rotation 
+# x-axis--it faces positive x). When oriented to the listener--i.e. facing the listener, 
+# the directionality of the non-rotated source rotates around the listener, 
+# the effect of which changes the source's orientation to the room, while 
+# fixing its rotation orientation to the listener.  
+# 
+#
+# Non-zero source rotation values re-orient the directional source; positive values 
+# rotate the source in a counter-clockwise direction, and negative 
+# values rotate it to its right.
+#
+
+reflections_time_scaler=1
+# 
+# Time scaler is multiplied against the reflection delay time to increase or decrease 
+# the distribution of reflection times; reflection impulse responses are not changed. 
+
+
+
+impulse_inclusion_threshold_in_dB=-600
+
+# ------------------------------------------------------------------------
+# ************ REFLECTION ORDER (RO) IMPULSE RESPONSES *********************
+# ------------------------------------------------------------------------
+
+reflection_order_impulse_responses__off_0__on_1=0
+# Turns the reflection order impulse responses on or off. 
+
+# Roomresponsemaker's default mode is to place pulses at the reflection time
+# points, scaled in amplitude according to the absorption exponents, for later
+# use in convolution with a selected source sound. These raw pulses, which identify
+# the arrival of source and reflected sounds to the respective speaker, may be used
+# as-is or may be replaced or mixed with impulse responses or sounds read in from a 
+# multi-channel sound file. Using the parameters and files below, the channels of 
+# the sound file are assigned to the orders of reflection, then balanced against 
+# the default pulse (so as to control its presence), convolved with adjacent orders, 
+# filtered (either initially or successively) and then finally scaled in amplitude,
+# like the raw pulses, according to their specified air absorption exponents. 
+
+
+reflection_order_impulse_response_sound_file=/Users/koonce/WaveFieldSynthesis/vocal_plate.RO_IR.channels.ADDED.TAIL.au
+#
+# The multi-channel sound file. 
+
+reflection_order_impulse_response_channel_assignments_file=/tmp/reflectionOrderChannelAssignments
+# 
+# The ascii file of space-separated integers specified above determines how the 
+# channels of the reflection order impulse response sound file will be assigned
+# to the available reflection orders. Channels are numbered from 1. 
+
+echo  1 2 3 4 5 6 7       > /tmp/reflectionOrderChannelAssignments
+
+reflection_order_impulse_response_decibels_presence_file=/tmp/ROimpulseResponsePresenceLevels
+#
+# The space-separated decibel values, contained in the ascii file specified above, control the 
+# amplitude balance between the pulse and the imported impulse response. The file values 
+# represent the amplitudes of the imported impulse responses, with the pulses for each 
+# receiving the cross-fade amplitude remainder. Thus, a value of 0 dB contributes all impulse 
+# response and no pulse; -6 dB would assign half amplitude to each, -12 dB would assign 
+# .25 to the response and .75 to the pulse, etc.   
+# The file's values are assigned to orders beginning with the first order and proceeding to the
+# highest; sequences falling short of the number of orders are loop-assigned to the 
+# remaining orders. Decibel levels should not exceed 0dB. 
+#
+
+echo   -0    > /tmp/ROimpulseResponsePresenceLevels
+
+reflection_order_dB_gainscale_factors_file=/tmp/reflectionOrderGainscaleLevels
+#
+# The ascii file of space-separated decibel values, specified above, control the 
+# overall amplitude of the different reflection orders. The gain-scale levels 
+# are listed from low to high orders; sequences falling short of
+# the number of orders will be loop-assigned to the remaining orders. 
+# Decibel levels may exceed 0dB. 
+
+
+echo 0 0 0 0 0 0 0 > /tmp/reflectionOrderGainscaleLevels
+
+
+# *********** REFLECTION ORDER CONVOLUTION MODES ****************
+
+reflection_order_IR_convolution_mode=0
+#
+# The impulse response assigned to each reflection order can be used as-is, 
+# i.e. unmodified, or can be convolved with other responses adjacent to it
+# in the sequence of order-organized responses. A value of 0 for the parameter
+# above outputs the original response. A value of -1, however causes the response
+# to be convolved with the response of its immediately lesser order. Hence, 
+# with reflections limited to the 5 reflections (order 5), a mode setting of -1 would
+# convolve order 5 with 4, 4 with 3, 3 with 2, and 2 with 1, with 1 output as-is. 
+# A setting of -2 would expand the convolution sequences, adding another lesser order,
+# where available. (5 with 4 and 3, 4 with 3 and 2, etc.) Positive modes function 
+# similarly with the sequence of convolved responses progressing not to the lesser, 
+# but to the greater orders, when available. Hence, for a mode of 1, 
+# first-order reflections would be convolved with the second order response, i.e. 
+# 1 with 2, and 2 with 3. A mode of 2 would add greater orders to the sequence--1 with
+# 2 and 3, etc. 
+#
+# Convolution of an increasing number of adjacent orders will generally rarify the
+# spectral characteristics of the reflection while lengthening its response and 
+# increasing the homogeneity of the resulting reflection order responses and 
+# subsequent reverberation. Convolution of classic room impulse responses, especially
+# the same response applied to all orders, will produce a kind of increasingly 
+# metallic sound, which some may find interesting. 
+
+# ***** REFLECTION ORDER IMPULSE RESPONSE (RO_IR_BPF) BAND PASS FILTERING ****** 
+#
+# Reflection order impulse responses may be filtered using the following 
+# parameters, which allow a single pre-filtering of the input responses or
+# a compounded poselet-filtering of the successive convolution outputs (see above). 
+
+RO_IR_BPF_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3=0
+
+
+RO_IR_BPF_low_rolloff_frequency=500
+RO_IR_BPF_high_rolloff_frequency=4000
+# High boundary of 0 or less defaults to Nyquist. 
+
+RO_IR_BPF_low_edge_amplitude_rolloff_in_decibels_per_octave=-10
+RO_IR_BPF_high_edge_amplitude_rolloff_in_decibels_per_octave=-10
+
+# *** REFLECTION ORDER IMPULSE RESPONSE TRUNCATION AND AMPLITUDE SHAPING *****
+
+# Reflection order impulse responses may be truncated in duration 
+# and shaped by the duration and amplitude envelope specified below. 
+
+reflection_order_IR_truncate_duration=0
+# 0 = bypass
+
+reflection_order_IR_envelope_file=/tmp/reflectionOrderAmpEnv
+#
+# The envelope file should be in function file form, using either
+# ascii or binary values.  
+#
+#/tmp/ampEnv
+# 0 = No envelope.
+gen4 -L1024 0  0   -2       0.33 1  2        1 0 > /tmp/reflectionOrderAmpEnv
+
+
+
+# ********** SAMPLED REFLECTION ORDER (RO) IMPULSE RESPONSE MODE *******************
+#
+# The reflection order impulse response may be used in a special sampled mode
+# in which windowed samples of the response are taken from points in the response's time
+# corresponding to the reflection delay times. Used without sync, samples are taken
+# from an impulse response point computed as the average delay time for that order;
+# adding synchronization (i.e. with sync) causes windowed samples to be sampled at 
+# the reflection's exact delay time, which causes a synchronization of all reflection 
+# sample points that effectively replicates the original impulse response through its 
+# synchronized summed reconstruction. Without sync, each reflection order's 
+# sampled response window is shifted in time by according to its respective reflection time, 
+# which has the net effect of preserving each reflection's unique presence in time while
+# imparting the general characteristic of the original impulse response associated with
+# that delay point.  
+#
+# Scaling the convolved windowed samples further preserves the original
+# impulse response identity by conforming to the response's original amplitude levels. 
+
+# QW
+reflection_order_IR_window_sample_mode__off_0__on_1__on_with_sync_2=0
+
+scale_to_pre_envelope_window_sample_peak_amps__off_0__on_1=0
+
+#
+# The duration of the sampled response windows are equal to the sum of their
+# attack and release times, which are the only envelope stages used. The
+# parameters below determine the duration of those stages, specifying them
+# as a function of low to high reflection order. In addition, the shape of the
+# window's envelope may be warped using the envelope shape index; as with other 
+# applications of this index, positive values sharpen the window's peak and decrease
+# its underlying area, negative values do the opposite.  
+#
+low_order_attack_duration=0.001
+low_order_release_duration=0.3
+
+high_order_attack_duration=0.001
+high_order_release_duration=0.001
+
+envelope_shape_index=7
+# 0 equals linear gradients, increasing, positive values produce an 
+# increasingly pointed envelope and decreasing, negative values an
+# increasingly rounded or flat-topped envelope.
+
+# ------------------------------------------------------------------------
+# ******************* WALL IMPULSE RESPONSES *****************************
+# ------------------------------------------------------------------------
+#
+# Impulse responses may be used not only in conjunction with reflection orders, but 
+# with the walls of the space and the wall sequences that reflections produce.
+# Wall characteristics are convolved with reflection order impulse responses to make a 
+# rich array of options in which the range of reflection orders and array of wall 
+# sequence patterns become distinguished by differences of color and sound shape. 
+# The following parameters for specifying and controlling wall impulse responses, 
+# save some adjustments, function similarly to reflection order impulse response
+# parameters. 
+#
+# Walls, by default, are given a single pulse impulse response. The default pulse may be 
+# used as-is or be replaced by impulse responses read in from selected channels of a sound
+#  file, according to the parameters and file specifications supplied through the parameters below. 
+# Using the code specified in the wall convolution mode and the wall sequences it 
+# identifies, impulse response sequences may be convolved together to add distinguishing
+# colors to the reflection. 
+#
+# Band pass filtering may be applied to the wall impulse responses, be they file-determined 
+# or default pulses. Filtering may be applied either once, as an input pre-processing of the 
+# pulse or file-determined responses, or multiple times, following the successive convolutions,  
+# which in default pulse mode take the place of the wall impulse response convolution. 
+#
+# Sound file wall impulse responses may be balanced against the default pulse, which takes 
+# place in a pre-processing stage, the same as with reflection order impulse responses. 
+ 
+
+wall_IR_from_sound_file__off_0__on_1=0
+#
+# Switch to turn off any reading of wall impulses from a sound file. 
+
+wall_IR_sound_file=~/marimba.channels.48.au
+
+# Wall impulse response multi-channel sound file from which wall impulse response
+# assignments will be made. 
+
+wall_IR_channel_assignments_file=/tmp/wallChannelAssignments
+#
+# As with reflection order impulse responses, the channel assignments in the file above
+# are used to connect walls with sound file channels. The walls of user supplied room 
+# coordinates are numbered in the order in which they are listed and read. 
+# Synthesized walls are numbered relative to a counter-clockwise 
+# sequencing that begins at the zero degree point, which is positioned to the 
+# listener's right side. 
+
+#/tmp/wallChannelAssignments
+
+echo  8 21 23 24 28 29 40 41 42 43 48       > /tmp/wallChannelAssignments
+
+wall_dB_gainscale_factors_file=/tmp/wallGainscaleLevels
+# 
+# The code specified in the convolution mode (see below) determines the subset of reflection
+# walls that will be convolved together (if more than one) to create the reflection's 
+# impulse response; the final convolved response, once normalized, is scaled by the 
+# appropriate delay time absorption and by the sum of decibel gain-scale levels 
+# assigned to the subset of walls. 
+
+echo  -0  -0  -0  -0  -0  -0  -0 -0 -0     > /tmp/wallGainscaleLevels
+# 
+# Same as reflection orders except applied to numbered walls. 
+
+wall_impulse_response_decibels_presence_file=/tmp/wallimpulseResponsePresenceLevels
+#
+# These wall-assigned decibel levels are used, as they are with reflection orders, 
+# to balance (in a pre-processing stage) the wall impulse response against the unmodified pulse.
+ 
+echo   -20  -10 -40 -50 -30 -10 -40 -40 -40 -40 -40 > /tmp/wallimpulseResponsePresenceLevels
+
+wall_IR_convolution_mode=-1
+
+# The convolution of wall impulse responses functions in a way similar to reflection 
+# order responses, with significant changes. Wall reflection patterns are 
+# distinguished not only by their reflection order, but by the sequence of walls 
+# off of which the source sound is reflected on its way to the speaker. This sequence of 
+# wall impulse responses determines how particular reflections will be represented,
+# either through individual wall-identifying impulse responses or their reflection 
+# wall segment convolutions. 
+#
+# Unlike reflection orders, use of a single wall impulse response is designated by a
+# convolution mode number of either 1 or -1; for -1, the last wall of reflection 
+# reached before arrival at the speaker determines the impulse response used, for 1,
+# the selection is reversed, with the first reflection wall being used. 
+#
+# Convolution modes of greater magnitude, be they + or -, cause the respective last(-)
+# or first(+) reflection wall to be convolved with its respective previous or following 
+# wall sequence impulse responses. For example, a source-to-speaker reflection wall sequence 
+# pattern of [2 3 1 7 5 2] and a convolution mode of -2 would result in the convolution
+# and use of the impulse responses from walls 5 and 2, which occur at the end of the pattern.
+# Conversely, a mode of 2 would use the convolution of 2 and 3, which are the first 
+# two walls encountered. As many walls are convolved together for use by the reflection
+# as the mode and wall sequence pattern allow.  
+#
+# Convolution modes may exceed the reflection wall sequence length, which will not exceed
+# the high order limit; in such cases, every wall reflection sequence will convolve
+# all of its wall impulse responses together for use by the reflection in the output
+# impulse response. For simplicity, the convolution mode of 0 designates the same thing
+# for all high order limits. 
+
+# 
+# 0 = all walls
+# -1 = last wall, 1 = first wall, 
+# -2 = (up to) last 2, 2 = (up to) first 2. etc.
+# -n = (up to) last n, n = (up to) first n
+
+wall_IR_truncate_duration=0.2
+# 0 = bypass
+# Same as reflection orders except applied to wall impulse responses. 
+
+wall_IR_envelope_file=/tmp/wallAmpEnv
+# Same as reflection orders except applied to wall impulse responses. 
+
+#/tmp/ampEnv
+# 0 = No envelope.
+gen4 -L1024 0 1  0        1 0 > /tmp/wallAmpEnv
+
+
+#..... WALL IMPULSE RESPONSES BAND PASS FILTER ........
+wall_IR_BPF_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3=0
+#
+# Same as reflection orders except applied to wall impulse responses and their
+# convolution sequences. 
+
+
+wall_IR_BPF_low_rolloff_frequency=2000
+wall_IR_BPF_high_rolloff_frequency=4000
+# High boundary of 0 or less defaults to Nyquist. 
+
+wall_IR_BPF_low_edge_amplitude_rolloff_in_decibels_per_octave=-30
+wall_IR_BPF_high_edge_amplitude_rolloff_in_decibels_per_octave=-10
+
+# .............
+
+impulse_end_truncation_threshold_in_dB=-60
+impulse_end_truncation_release_time_in_seconds=0.25
+#
+
+#******************************************************
+#............ NORMALIZATION .........................
+#******************************************************
+
+normalization=2
+#
+# 0: Do not normalize. 
+# 1: Normalize channels independently.
+# 2: Normalize channels together against channel with greatest amplitude.
+# 3: Normalize channels together if any channel exceeds 0 decibels.
+
+
+#======================================================
+#========= SCRATCH SPACE ==============================
+#======================================================
+
+
+#====================================================
+# COMMAND LINE SETUP -- OFFICE USE ONLY
+#      (DO NOT WRITE BELOW THIS LINE)
+#====================================================
+pvroutine=roomresponsemaker
+
+PVFLAGS="\
+\
+-C$output_channel \
+-f$polygon_coordinates__synthesized_0__Cartesian_file_1__polar_file_2 \
+-c$polygonal_room_coordinates_file \
+-p$polygon_reflections_plot_file \
+-4$plot_mode__one_file_0__channel_files_1__channel_and_order_files_2 \
+-w$number_of_walls \
+-r$room_synthesis_rotation_in_degrees \
+-d$minimum_distance_from_origin_to_corners \
+-D$maximum_distance_from_origin_to_corners \
+-R$origin_to_corners_angle_uniformity_0_to_1_proportion \
+-L$listener_x_y_coordinate_positions_file \
+-i$source_x_y_coordinate_positions_file \
+-o$speaker_x_y_coordinate_positions_file \
+\
+-X$ROOM__X_translation_factor \
+-Y$ROOM__Y_translation_factor \
+-b$ROOM__pre_rotation_negative_X_scale_factor \
+-B$ROOM__pre_rotation_positive_X_scale_factor \
+-e$ROOM__pre_rotation_negative_Y_scale_factor \
+-E$ROOM__pre_rotation_positive_Y_scale_factor \
+-A$ROOM_rotation_in_degrees \
+-M$ROOM_scale_factor \
+\
+-F$SPEAKER__X_translation_factor \
+-g$SPEAKER__Y_translation_factor \
+-h$SPEAKER__pre_rotation_negative_X_scale_factor \
+-H$SPEAKER__pre_rotation_positive_X_scale_factor \
+-I$SPEAKER__pre_rotation_negative_Y_scale_factor \
+-j$SPEAKER__pre_rotation_positive_Y_scale_factor \
+-J$SPEAKER_rotation_in_degrees \
+-k$SPEAKER_scale_factor \
+\
+-S$speaker_configuration__sequence_0__polygon_1 \
+\
+-l$highest_order_reflection \
+-u$lowest_order_reflection \
+\
+-/o$listener_space_cross_reflections__include_0__exclude_1 \
+\
+-s$output_sound__all_0__direct_1__reflections_2 \
+-a$air_absorption_exponent_for_reflections \
+-/m$air_absorption_exponent_for_virtual_space_source \
+-/p$air_absorption_exponent_for_real_space_source \
+-/u$use_collapsed_threshold_amplitudes__no_0__yes_1 \
+\
+-/t$source_minimum_distance_from_listener \
+\
+-m$minimumReferenceDistanceInFeet \
+-G$master_gain_in_decibels \
+-N$normalization \
+-/q$source_orientation_mode__to_room_0__to_listener_1 \
+-O$source_rotation_in_degrees \
+-P$source_dispersion_pattern_rolloff_in_decibels \
+-3$impulse_inclusion_threshold_in_dB \
+\
+\
+-q$reflections_time_scaler \
+\
+-T$wall_IR_BPF_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3 \
+-x$wall_IR_BPF_low_rolloff_frequency \
+-y$wall_IR_BPF_high_rolloff_frequency \
+-z$wall_IR_BPF_low_edge_amplitude_rolloff_in_decibels_per_octave \
+-Z$wall_IR_BPF_high_edge_amplitude_rolloff_in_decibels_per_octave \
+\
+\
+-/c$RO_IR_BPF_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3 \
+-/d$RO_IR_BPF_low_rolloff_frequency \
+-/e$RO_IR_BPF_high_rolloff_frequency \
+-/f$RO_IR_BPF_low_edge_amplitude_rolloff_in_decibels_per_octave \
+-/g$RO_IR_BPF_high_edge_amplitude_rolloff_in_decibels_per_octave \
+\
+-/h$reflection_order_IR_truncate_duration \
+-/i$reflection_order_IR_envelope_file \
+\
+-/j$wall_impulse_response_decibels_presence_file \
+\
+-/k$reflected_sound_gain_in_decibels \
+-/l$direct_sound_gain_in_decibels \
+\
+-U$impulse_end_truncation_threshold_in_dB \
+-v$impulse_end_truncation_release_time_in_seconds \
+\
+-t$wall_IR_convolution_mode \
+\
+-6$wall_IR_truncate_duration \
+-7$wall_IR_envelope_file \
+\
+-K$wall_IR_sound_file \
+-5$wall_IR_from_sound_file__off_0__on_1 \
+\
+-8$reflection_order_impulse_responses__off_0__on_1 \
+-9$reflection_order_impulse_response_sound_file \
+-/b$reflection_order_IR_convolution_mode \
+\
+-V$reflection_order_impulse_response_channel_assignments_file \
+\
+-/a$reflection_order_dB_gainscale_factors_file \
+-/n$reflection_order_impulse_response_decibels_presence_file \
+\
+-Q$reflection_order_IR_window_sample_mode__off_0__on_1__on_with_sync_2 \
+-0$scale_to_pre_envelope_window_sample_peak_amps__off_0__on_1 \
+\
+-~$low_order_attack_duration \
+-=$low_order_release_duration \
+-@$high_order_attack_duration \
+-/v$high_order_release_duration \
+-:$envelope_shape_index \
+\
+-1$wall_IR_channel_assignments_file \
+-2$wall_dB_gainscale_factors_file \
+\
+\
+-_$auto_output_sound_file_play__repetitions \
+"
+echo "$pvroutine $PVFLAGS  $output_file "
+
+$pvroutine  $PVFLAGS $output_file
+

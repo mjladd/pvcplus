@@ -1,0 +1,687 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue191;\red96\green96\blue96;
+\red191\green0\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f0\fs24 \cf2 (\
+\
+\cf3 var\cf2  addCommand = \{ \cf3 arg\cf2  command ;\
+	command = command.replace( \cf4 "\\n"\cf2 , \cf4 " "\cf2  ).replace( \cf4 "\\t"\cf2 , \cf4 " "\cf2  ) ;  \
+	commands = commands ++ command ++ \cf4 " \\n"\cf2  ; \
+\} ; \
+\
+\
+\
+\cf3 var\cf2  runCommands = \{\
+	\cf3 var\cf2  homeDirectory ; \
+	homeDirectory =  \cf4 "HOME"\cf2 .getenv ;\
+	commands = commands.replace( \cf4 "~/"\cf2 , homeDirectory ++ \cf4 "/"\cf2  ) ;\
+	commands.replace(  \cf4 "\\n"\cf2 , \cf4 " ;\\n\\n"\cf2  ).postln  ; \
+	commands.runInTerminal ; \
+\} ; \
+\
+\cf3 var\cf2  commands=\cf4 ""\cf2  ;\
+\
+\cf3 var\cf2  chordmapperplus = \{ \cf3 arg\cf2  iterations=1 ; \
+\
+	\cf3 var\cf2  temp,\
+		dataString, \
+		commandLines=\cf4 ""\cf2 , \
+		vibrato_period_duration_deviation_threshold_as_proportion, \
+		synthetic_vibrato_rate, \
+		source_gain_in_db, \
+		input_channel, \
+		master_gain_in_decibels, \
+		frequency_shift, \
+		print_amplitude_statistics_0_no__1_yes, \
+		source_frequency_shift, \
+		fundamental_frequency_for_vibrato_periods_detection, \
+		time_point_origin, \
+		tone_source_point_analysis_adjustment_switch__off_0__on_1, \
+		partial_formant_auto_adjust_stopband_level_in_db, \
+		rate_correlated_tone_level_control_in_db, \
+		frequency_stasis_suppression_decibels, \
+		use_specified_time_boundaries_0__detected_vibrato_periods_1, \
+		synthetic_vibrato_randomization_prop, \
+		loop_smooth_time_in_seconds, \
+		window_type, \
+		gain_in_db, \
+		normalize_loop_amplitudes__off_0__on_1, \
+		partial_formant_auto_adjust__off_0__on_1, \
+		windowsize, \
+		source_pitch_transposition_in_semitones, \
+		source__off_0__on_1, \
+		auto_output_sound_file_play__repetitions, \
+		output_duration, \
+		noise_band_limit_level_rolloff_in_db, \
+		lower_time_boundary, \
+		rate_correlated_randomization_switch__off_0__on_1, \
+		frames_per_second, \
+		rate_multiplier, \
+		frequency_stasis_suppression_threshold_rise_response_time_in_seconds, \
+		amplitude_statistics_time_interval, \
+		rate_correlated_noise_level_control_in_db, \
+		partial_formant_auto_adjust_inclusion_threshold_in_db, \
+		upper_time_boundary, \
+		noise_band_frequency_change_suppression_threshold, \
+		oscillator_resynthesis_threshold_in_db, \
+		mode__sampler_loop_0__autostop_1, \
+		sampler_loop_mode__wrap_0__fold_1__clip_2, \
+		rate_correlated_force_suppression_switch__off_0__on_1, \
+		data_file, \
+		pitch_transposition_in_semitones, \
+		input_analysis_file, \
+		rescale_level_in_decibels, \
+		noise_band_limit_level_in_db, \
+		onset_and_release_segment_mode__off_0__on_1__onset_only_2, \
+		vibrato_period_durations__mechanical_0__natural_1, \
+		output_file\
+	; \
+		\cf5 // *** INTERNAL FUNCTION FOR SETTING ROUTINE VARIABLES ***\cf2 \
+\
+	\cf3 var\cf2  setRoutineVariables = \{\cf3 arg\cf2  iteration=0 ;  \
+\
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+		\cf5 //******************************************************\cf2 \
+		\cf5 //************** CHORDMAPPERPLUS ***********************\cf2 \
+		\cf5 //******************************************************\cf2 \
+\
+		\cf5 //******************** OUTPUT **************************\cf2 \
+\
+		output_file = \cf4 "/tmp/output.au"\cf2  ;\
+\
+		\cf5 // The following may be used to copy a formatted\cf2 \
+		\cf5 // sound file into the output location listed above.   \cf2 \
+\
+		\cf5 //cp ~/32bit.BLANK.au $output_file\cf2 \
+\
+\
+		\cf5 //......................................................\cf2 \
+\
+		\cf5 //...............AUTO-PLAY OF OUTPUT FILE...............\cf2 \
+		auto_output_sound_file_play__repetitions = 0 ;\
+		\cf5 //(-2 = interactive: Play once, then prompt for more.)\cf2 \
+		\cf5 //(-1 = interactive: Prompt for each play of file.)\cf2 \
+		\cf5 //( 0 = off)\cf2 \
+		\cf5 //( 1 or greater = Auto-repeat for specified repetitions.)\cf2 \
+\
+		\cf5 //................ RESCALE .............................\cf2 \
+\
+		rescale_level_in_decibels = 0 ;\
+		\cf5 // -96 to 0 dB.\cf2 \
+		\cf5 // Set to 2 to bypass rescale.\cf2 \
+		\cf5 // Do not use 1 (i.e. rescale to original level) as \cf2 \
+		\cf5 //     analysis file levels are very low.\cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** ANALYSIS PARAMETERS ******************************\cf2 \
+\
+		window_type = 8 ;\
+		windowsize = 0 ;\
+		\cf5 // (0 sets windowsize to 2 * FFT (or larger))\cf2 \
+\
+		frames_per_second = 1000 ;\
+\
+		\cf5 // For inexplicable reasons, it is best to set the frame rate\cf2 \
+		\cf5 // to a value >=  the frame rate used in the analysis.\cf2 \
+		\cf5 // Lesser frame rates create loss of amplitude and phasiness.\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //*** RESYNTHESIS PARAMETERS ***************************\cf2 \
+\
+\
+		\cf5 //........... ANALYSIS INPUT CHANNEL(S) .......................\cf2 \
+\
+		input_channel = 1 ;\
+\
+		\cf5 // Channels are numbered from 1-maximum.\cf2 \
+		\cf5 // 0 designates all channels, repeated in order as needed for \cf2 \
+		\cf5 // tone output channels, as specified in tone parameter field 23. \cf2 \
+\
+		\cf5 //........... OUTPUT DURATION .........................\cf2 \
+\
+		output_duration = 0 ;\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		master_gain_in_decibels = 0 ;\
+\
+		\cf5 //.............OSCIL THRESHOLD ........................\cf2 \
+\
+		oscillator_resynthesis_threshold_in_db = -96 ;\
+\
+		\cf5 //****************** MODIFICATIONS *********************\cf2 \
+\
+\
+		\cf5 //********** SOURCE ************************************\cf2 \
+		\cf5 // The analysis source sound may be included with the \cf2 \
+		\cf5 // tones and noise specified below; modifications are \cf2 \
+		\cf5 // limited to gain, frequency shift, and pitch transposition. \cf2 \
+\
+		source__off_0__on_1 = 0 ;\
+\
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+		source_gain_in_db = -0 ;\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		source_frequency_shift = 0 ;\
+		source_pitch_transposition_in_semitones = 0 ;\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //**************** DATA TIME **************************\cf2 \
+\
+		time_point_origin = 0.0 ;\
+\
+		\cf5 //....... AUTOMATIC VIBRATO PERIODS DETECTION AND RANDOMIZED SELECTION ..............\cf2 \
+\
+		use_specified_time_boundaries_0__detected_vibrato_periods_1 = 0 ;\
+\
+\
+		\cf5 // When set to 1, a fundamental pitch trajectory analysis is\cf2 \
+		\cf5 // performed on the data in order to identify vibrato pitch periods, which\cf2 \
+		\cf5 // are used to construct loop window time boundaries. If a sufficient number \cf2 \
+		\cf5 // of consecutive periods of similar duration are found, \cf2 \
+		\cf5 // the data is used to make new time boundaries for each wrap or fold loop\cf2 \
+		\cf5 // segment. If suitable periods are not found, synthesis is aborted; should this happen,\cf2 \
+		\cf5 // set above to use time boundaries. \cf2 \
+\
+		fundamental_frequency_for_vibrato_periods_detection = 70 ;\
+\
+		\cf5 // For vibrato periods detection, an approximate fundamental frequency \cf2 \
+		\cf5 // must be specified. The frequency is used to construct a half octave bandwidth \cf2 \
+		\cf5 // pitch track from which vibrato periods are then identified. Values of 12 or less are \cf2 \
+		\cf5 // treated as octave.pitchclass.  \cf2 \
+\
+		rate_multiplier = 1.0 ;\
+\
+		\cf5 // Rate Multiplier Modes:\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Seconds: \cf2 \
+		\cf5 // Rate input value or function scales the output time against the time of original sound.\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Vibrato Periods:\cf2 \
+		\cf5 // Rate input value or function scales time against the duration of the current vibrato period. \cf2 \
+		\cf5 // Onset and release stages, having no vibrato periods, use the average vibrato period duration. \cf2 \
+		\cf5 // Use of vibrato periods requires successful detection of useable vibrato periods; failure will abort \cf2 \
+		\cf5 // synthesis.\cf2 \
+\
+\
+\
+		vibrato_period_durations__mechanical_0__natural_1 = 0 ;\
+\
+		\cf5 //\cf2 \
+		\cf5 // When rate multiplier units are set to vibrato periods, time is scaled against either the\cf2 \
+		\cf5 // current period length, the average period length, or a normalized proportion of each. \cf2 \
+		\cf5 // Scaling time against the current period results in nearly identical length periods--i.e. mechanically \cf2 \
+		\cf5 // precise periods; scaled against the average duration preserves the original variance of those \cf2 \
+		\cf5 // identified periods--i.e. naturally varying periods. Values between 0 and 1 give respective proportions\cf2 \
+		\cf5 // of each. \cf2 \
+\
+		vibrato_period_duration_deviation_threshold_as_proportion = 0.1 ;\
+		\cf5 //\cf2 \
+		\cf5 // Identified vibrato periods are accepted or rejected based on the duration\cf2 \
+		\cf5 // deviation threshold; the deviation threshold represents the acceptable proportional\cf2 \
+		\cf5 // variance of the median duration, above or below. \cf2 \
+\
+\
+\
+		\cf5 //........... RATE-CORRELATED ADJUSTMENTS ...........\cf2 \
+\
+		rate_correlated_force_suppression_switch__off_0__on_1 = 0 ;\
+\
+		\cf5 // Switched on, playback rate multipliers less than 1 attenuate\cf2 \
+		\cf5 // force level while adjusting median stasis levels, in both tone and noise,\cf2 \
+		\cf5 // to compensate for the change in amplitude. A rate multiplier of\cf2 \
+		\cf5 // 0 (stationary time) neutralizes all force, resulting in a static, stasis\cf2 \
+		\cf5 // median sound, adjusted in level to correspond to the original force level.\cf2 \
+		\cf5 // Recommended for rate multipliers of less than .25. \cf2 \
+\
+		rate_correlated_noise_level_control_in_db = -0 ;\
+		rate_correlated_tone_level_control_in_db = -0 ;\
+\
+\
+		\cf5 // The principal purpose of this parameter is to allow adjustment of the noise level \cf2 \
+		\cf5 // as the rate multiplier approaches 1 and the overall sound becomes static as a result of force\cf2 \
+		\cf5 // suppression. (See Suppression Switch above.)\cf2 \
+		\cf5 // The amplitude of Noise/Residue banks are attenuated or gained in correlation with reduction in the \cf2 \
+		\cf5 // rate multiplier. A rate multiplier of 0 results in full noise attenuation/gain for the specified\cf2 \
+		\cf5 // level; a rate multiplier of 1 or greater produces no attenuation of noise. \cf2 \
+		\cf5 // Set to 0 to bypass.\cf2 \
+\
+\
+		rate_correlated_randomization_switch__off_0__on_1 = 1 ;\
+		\cf5 // Switched on, playback rate multipliers less than 1 introduce \cf2 \
+		\cf5 // rate-correlated amplitude and frequency randomization of \cf2 \
+		\cf5 // noise/residue bins; rate of 0 produces full randomization and rates\cf2 \
+		\cf5 // of 1 or greater introduce no randomization. Use to break up static \cf2 \
+		\cf5 // noise re-synthesis produced by slow to zero rates.\cf2 \
+\
+\
+		\cf5 //........... TIME BOUNDARIES AND SAMPLER LOOP MODE ..............\cf2 \
+\
+		\cf5 // The low/high data time boundaries serve as either auto-stop\cf2 \
+		\cf5 // boundaries that terminate synthesis at the crossing of a \cf2 \
+		\cf5 // data time boundary or as sampler loop points to which can \cf2 \
+		\cf5 // be added pre-loop and post-loop onset and release segments. \cf2 \
+\
+		lower_time_boundary = 0 ;\
+		upper_time_boundary = -1 ;\
+\
+\
+		\cf5 // -1 for low defaults to 0.0 and for high to analysis file duration.\cf2 \
+\
+\
+\
+		\cf5 //.....AUTOSTOP ........................................\cf2 \
+\
+		mode__sampler_loop_0__autostop_1 = 1 ;\
+\
+		\cf5 // In autostop mode, synthesis terminates with crossing of \cf2 \
+		\cf5 // a time boundary. In sampler loop mode, time boundaries \cf2 \
+		\cf5 // function as sampler loop points. \cf2 \
+\
+\
+		\cf5 //.....LOOP MODE .......................................\cf2 \
+\
+		sampler_loop_mode__wrap_0__fold_1__clip_2 = 1 ;\
+\
+		\cf5 // In Sampler Loop Mode, all timepoints are constrained to\cf2 \
+		\cf5 // region between boundaries using the specified method.  \cf2 \
+		\cf5 // 0: Wrap time into loop range. (/////)\cf2 \
+		\cf5 // 1: Fold time into loop range. (/\\/\\/\\/\\)\cf2 \
+		\cf5 // 2: Clip or limit time to the nearest boundary. (\\____)\cf2 \
+\
+		onset_and_release_segment_mode__off_0__on_1__onset_only_2 = 0 ;\
+\
+		\cf5 // Setting onset/release mode in Sampler Mode causes looping\cf2 \
+		\cf5 // to be preceded by a pre-loop/onset and a post-loop/release \cf2 \
+		\cf5 // segment. The data time origin is initialized to 0.0 and \cf2 \
+		\cf5 // progresses according to data time controls. The first entrance\cf2 \
+		\cf5 // into the loop region triggers loop mode, which is maintained\cf2 \
+		\cf5 // until trigger of the release segment. The release segment\cf2 \
+		\cf5 // progresses from the current loop point to the analysis data\cf2 \
+		\cf5 // end time, conforming to the data time rate control and specified\cf2 \
+		\cf5 // synthesis duration. If vibrato periods are being used, then \cf2 \
+		\cf5 // data time jumps upon to the end of the vibrato period section\cf2 \
+		\cf5 // at the next vibrato period boundary. In onset_only mode, the release\cf2 \
+		\cf5 // segment is prevented, leaving the data in loop mode.\cf2 \
+\
+		normalize_loop_amplitudes__off_0__on_1 = 0 ;\
+\
+		\cf5 // When set to 1, amplitudes in loop range are normalized to peak \cf2 \
+		\cf5 // amplitude of low/high boundary frames. Onset and release \cf2 \
+		\cf5 // segments are ramped in and out of loop range gain change \cf2 \
+		\cf5 // as needed.  \cf2 \
+\
+		loop_smooth_time_in_seconds = 0.2 ;\
+\
+		\cf5 // Loop junctures for wrapped and folded loops are smoothed\cf2 \
+		\cf5 // with a lowpass filter, the smooth time of which is ramped \cf2 \
+		\cf5 // up and down before and after the loop juncture points to \cf2 \
+		\cf5 // smooth any sudden change in amplitude and frequency values.\cf2 \
+		\cf5 // Too long a smooth time can introduce a bump something \cf2 \
+		\cf5 // like the one being smoothed. \cf2 \
+		\cf5 // Try .1 to .4. \cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 // ************* SYNTHETIC VIBRATO *********************\cf2 \
+		\cf5 //======================================================\cf2 \
+		\cf5 // For straight tones, a synthetic vibrato is available. \cf2 \
+		\cf5 // The vibrato is achieved through modulation of the \cf2 \
+		\cf5 // force level introduced into noise and tone components. \cf2 \
+		\cf5 // An on/off switch is included for each tone component. \cf2 \
+\
+		synthetic_vibrato_rate = 6 ;\
+\
+		synthetic_vibrato_randomization_prop = 0 ;\
+\
+		\cf5 // 0: no randomization\cf2 \
+		\cf5 // 1: full randomization\cf2 \
+\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //********** NOISE OR RESIDUAL SIGNAL ******************\cf2 \
+		\cf5 //======================================================\cf2 \
+		\cf5 // Remaining data lines, not selected by tones, are collected \cf2 \
+		\cf5 // together into a bank and identified with analysis noise or \cf2 \
+		\cf5 // residue. A separate copy of the noise bank is made for each \cf2 \
+		\cf5 // tone data line for use in the re-synthesis of that tone line.\cf2 \
+\
+		noise_band_limit_level_in_db = -0 ;\
+		\cf5 //  Try -40 to -60\cf2 \
+\
+		\cf5 // From frame-to-frame, noise bank channel amplitudes \cf2 \
+		\cf5 // are limited to the limit level specified above; limit levels \cf2 \
+		\cf5 // are set relative to the peak average amplitudes of the adjoining \cf2 \
+		\cf5 // tone band regions.\cf2 \
+\
+		noise_band_limit_level_rolloff_in_db = -0 ;\
+		\cf5 // 0 = off, try -10 to -40\cf2 \
+\
+\
+		\cf5 // The amplitude of noise band channels may be progressively rolled\cf2 \
+		\cf5 // off or on, beginning at their tone partial border edges and moving to \cf2 \
+		\cf5 // their center; rolloff is linear beginning at the limit level, \cf2 \
+		\cf5 // with each channel step toward the center accumulating more of \cf2 \
+		\cf5 // the specified rolloff.  \cf2 \
+		\cf5 //\cf2 \
+		\cf5 // Negative rolloff values can be used to create a trough-like suppression of\cf2 \
+		\cf5 // mid-partial noise channels. Suppressing the mid noise band channels while preserving\cf2 \
+		\cf5 // channels adjacent to the partial can add roughness to the partial\cf2 \
+		\cf5 // band; they may also be used in place of the partial, once it is \cf2 \
+		\cf5 // appropriately attenuated and the noise band amplified.\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // The trough-like attenuation of noise bands can be experimentally \cf2 \
+		\cf5 // inverted to make a peak-shaped noise band by first expanding \cf2 \
+		\cf5 // the noise band width and then using a low limit level with a \cf2 \
+		\cf5 // positive rolloff. For this application, try a tone bandwidth of \cf2 \
+		\cf5 // .01, a limit level of -90 or less, a positive rolloff (i.e. roll-on) \cf2 \
+		\cf5 // values of 0 to 20.\cf2 \
+\
+		noise_band_frequency_change_suppression_threshold = 0 ;\
+\
+		\cf5 // Try .3 to .6\cf2 \
+		\cf5 // The amplitude of pitched components occurring in the noise bands\cf2 \
+		\cf5 // may be reduced to some extent by suppression channel amplitude \cf2 \
+		\cf5 // in conjunction with the channel's frequency stasis. The \cf2 \
+		\cf5 // threshold, below which channels are suppressed, is a (0-1) proportion\cf2 \
+		\cf5 // of one channel bandwidth traversed over 1/10th of a second--the \cf2 \
+		\cf5 // channel bandwidths is equal to the FFT analysis fundamental.\cf2 \
+		\cf5 // With 0 representing no frequency change, the transition from\cf2 \
+		\cf5 // static to more noise-like frequency movement corresponds to \cf2 \
+		\cf5 // about .1 to .3.\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // This control is a relatively experimental feature, although it\cf2 \
+		\cf5 // might be used to remove pitched residue components or to accentuate\cf2 \
+		\cf5 // noise band roughness through selection of more transient frequency\cf2 \
+		\cf5 // components. \cf2 \
+\
+		frequency_stasis_suppression_decibels = 0 ;\
+\
+		\cf5 // Try -50 to -100\cf2 \
+		\cf5 // Suppression decibels determine degree of channel suppression,\cf2 \
+		\cf5 // applied according to the proportion of frequency change over the \cf2 \
+		\cf5 // suppression threshold. 0 is off. \cf2 \
+\
+		frequency_stasis_suppression_threshold_rise_response_time_in_seconds = 0.0 ;\
+\
+		\cf5 // Try .1 to 1.0\cf2 \
+		\cf5 // Increasing response times slow the rate of each channel's measured \cf2 \
+		\cf5 // increase in frequency change, thus allowing control of roughness\cf2 \
+		\cf5 // by lengthening the effect of frequency stasis.\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //**************** TONES *******************************\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+		\cf5 //.................. DECIBELS ..........................\cf2 \
+\
+		gain_in_db = 0 ;\
+\
+\
+		\cf5 //.................. PITCH .............................\cf2 \
+\
+		frequency_shift = 0 ;\
+		pitch_transposition_in_semitones = 0 ;\
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 // . . . TONE SOURCE POINT ADJUSTMENT . . . . . . . . . .\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+		tone_source_point_analysis_adjustment_switch__off_0__on_1 = 0 ;\
+\
+		\cf5 // Switched on, the control above causes the specified \cf2 \
+		\cf5 // Tone Source Points to be refined, through analysis, to \cf2 \
+		\cf5 // a frequency lying between four semitones above and below\cf2 \
+		\cf5 // the specified tone pitch or frequency.\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 // . . . PARTIAL FORMANT AUTOMATED ADJUSTMENT . \cf2 \
+		\cf5 //======================================================\cf2 \
+\
+		partial_formant_auto_adjust__off_0__on_1 = 0 ;\
+		\cf5 //\cf2 \
+		\cf5 // The partial formant auto adjust feature causes the user-specified\cf2 \
+		\cf5 // bandwidth (parameter field 6) to be independently modified at \cf2 \
+		\cf5 // each partial formant in accord with the decibel stopband\cf2 \
+		\cf5 // levels detected in the average spectrum relative to each \cf2 \
+		\cf5 // partial's peak amplitude. \cf2 \
+\
+		partial_formant_auto_adjust_stopband_level_in_db = -30 ;\
+		\cf5 //\cf2 \
+		\cf5 // Try -20 to -40\cf2 \
+\
+		partial_formant_auto_adjust_inclusion_threshold_in_db = -96 ;\
+\
+\
+		\cf5 //\cf2 \
+		\cf5 // In auto adjust mode, partial formants whose peak dB falls \cf2 \
+		\cf5 // below the threshold are omitted and, therefore, added to the \cf2 \
+		\cf5 // noise/residue component. Setting high thresholds (-10 to -40)\cf2 \
+		\cf5 // can make an interesting residue component as higher\cf2 \
+		\cf5 // low gain partials are combined in with noise bins.  \cf2 \
+\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 // . . . . ANALYSIS DATA FILE . . . . .  . . . . . . . . \cf2 \
+		\cf5 //======================================================\cf2 \
+\
+		input_analysis_file = \cf4 "~/pvanalysis"\cf2  ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 // . . . . TONES DATA FILE . . . . . . . . . . . . . . . \cf2 \
+		\cf5 //======================================================\cf2 \
+\
+		data_file = \cf4 "/tmp/data"\cf2  ;\
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //***** PARAMETER FIELDS OF DATA FILE "TONES" **********\cf2 \
+		\cf5 // ( Every 22 values in the data file represents a tone. )\cf2 \
+		\cf5 // ( The values fill parameter fields as seen below. )\cf2 \
+		\cf5 //\cf2 \
+		\cf5 // 1:  Tone Source Point, in frequency or octave.pitchclass. \cf2 \
+		\cf5 //	Values < 13 are treated as octave.pitchclass. \cf2 \
+		\cf5 // 2: Tone Transpose Point, in frequency or octave.pitchclass. (func)\cf2 \
+		\cf5 //	(Values < 13 are treated as octave.pitchclass.)  \cf2 \
+		\cf5 // 3: Lowest Partial Number \cf2 \
+		\cf5 // 4: Partial spacing as proportion of source point frequency\cf2 \
+		\cf5 //		negative = rejectmode \cf2 \
+		\cf5 // 5: Number of Partials (from lowest specified)  \cf2 \
+		\cf5 //	    (0 = all partials below Nyquist frequency)\cf2 \
+		\cf5 // 6: Partial Passband Bandwidth  \cf2 \
+		\cf5 //	 as proportion of source point frequency \cf2 \
+		\cf5 // 7: Partial Shift Factor (func)\cf2 \
+		\cf5 //	shift_in_Hz = shift_factor * source point frequency\cf2 \
+		\cf5 // 8: Spectral Stretch/Compress Factor (Partial Add/Subtract) (func)\cf2 \
+		\cf5 //	fund = source point frequency\cf2 \
+		\cf5 //   partial_freq = partial_freq + ((partial_number - 1) * fund * factor)\cf2 \
+		\cf5 //	positive values = spectral stretch\cf2 \
+		\cf5 //	negative values = spectral compress\cf2 \
+		\cf5 //	0 = no change\cf2 \
+		\cf5 //	Note: Stretch/compress is applied using the previously shifted\cf2 \
+		\cf5 //	partial frequency and number. \cf2 \
+		\cf5 // 9: Tone Decibel Level (func)\cf2 \
+		\cf5 // 10: Tone Amplitude Median Stasis Position in dB (-80dB to 0dB) (func)\cf2 \
+		\cf5 //	-80: minimum\cf2 \
+		\cf5 //	0: maximum \cf2 \
+		\cf5 // 11: Noise Decibel Level (func)\cf2 \
+		\cf5 // 12: Noise Stasis Median in dB (-80dB to 0dB) (func)\cf2 \
+		\cf5 //	-80: minimum\cf2 \
+		\cf5 //	0: maximum \cf2 \
+		\cf5 // 13: Noise Switch\cf2 \
+		\cf5 //	0 = noise off, 1 = noise on \cf2 \
+		\cf5 // 14: Noise Transpose Point, in frequency or octave.pitchclass. (func)\cf2 \
+		\cf5 //	(Values < 13 are treated as octave.pitchclass.)  \cf2 \
+		\cf5 //    (0 causes noise transposition to follow tone transposition.)\cf2 \
+		\cf5 // 15: Force Control (0-1 or 2 or...) (func)\cf2 \
+		\cf5 //	for both Tone and Noise\cf2 \
+		\cf5 //	0: tuned to partials and fixed to median amplitudes. \cf2 \
+		\cf5 //	1: original amp/freq deviation (full vibrato).  \cf2 \
+		\cf5 //	0 < values < 1: values in-between.\cf2 \
+		\cf5 //	Values greater than 1 increase frequency deviation; \cf2 \
+		\cf5 //		try up to 10. or more.\cf2 \
+		\cf5 //	f = f * (  (f/cf)**force - 1) \cf2 \
+		\cf5 //	where f = current frequency and cf = center frequency.\cf2 \
+		\cf5 // 16: Master Tone Transposition Switch \cf2 \
+		\cf5 //	for both Tone and Noise\cf2 \
+		\cf5 //	1 = use master transpose function,  \cf2 \
+		\cf5 //	0 = bypass transpose  \cf2 \
+		\cf5 // 17: Synthetic Vibrato Switch\cf2 \
+		\cf5 //	for both Tone and Noise\cf2 \
+		\cf5 //	1 = synthesize vibrato within force range\cf2 \
+		\cf5 //	0 = bypass synthetic vibrato\cf2 \
+		\cf5 // 18: Filter Center or Rolloff Point Frequency (func)\cf2 \
+		\cf5 //	for both Tone and Noise\cf2 \
+		\cf5 // 19: Filter Rolloff in dB/Octave (func)\cf2 \
+		\cf5 //	for both Tone and Noise\cf2 \
+		\cf5 // 20: Filter Buss Router Switch for Tone/Noise\cf2 \
+		\cf5 //	0 = filter off\cf2 \
+		\cf5 //	filter both tone and noise with:\cf2 \
+		\cf5 //	11 = band pass, 12 = high pass, 13 = lowpass\cf2 \
+		\cf5 //	filter only tone with:\cf2 \
+		\cf5 //	21 = band pass, 22 = high pass, 23 = lowpass\cf2 \
+		\cf5 //	filter only noise with:\cf2 \
+		\cf5 //	31 = band pass, 32 = high pass, 33 = lowpass\cf2 \
+		\cf5 // 21: Control Functions Delay Time Scalerswitch\cf2 \
+		\cf5 //	for both Tone and Noise\cf2 \
+		\cf5 // 22: Delay Time (func)\cf2 \
+		\cf5 // 23: Output Channel Number: 1 to ?, 0: Use on all output channels.\cf2 \
+\
+		\cf5 //*****************************************************************\cf2 \
+\
+		\cf5 // An "m" (for mute) at the beginning of a data set will comment it out. \cf2 \
+		\cf5 // A "!" (for solo)  at the beginning of a data set will mute all other data sets.\cf2 \
+		\cf5 // More than one data set may be set to solo at a time. \cf2 \
+\
+		\cf5 // Text/data between curly braces -- "\{ \}" -- is cut before input, thus allowing comments.  \cf2 \
+\
+		\cf5 //======================================================\cf2 \
+\
+		\cf5 //======================================================\cf2 \
+		\cf5 //========= SCRATCH SPACE ==============================\cf2 \
+		\cf5 //======================================================\cf2 \
+\
+		\cf5 // 1:  TONE SOURCE POINT, in frequency or octave.pitchclass. \cf2 \
+		\cf5 //  2: TONE TRANSPOSE POINT, in frequency or octave.pitchclass. \cf2 \
+		\cf5 //  3: LOWEST PARTIAL NUMBER \cf2 \
+		\cf5 //  4: PARTIAL SPACING as proportion of fundamental\cf2 \
+		\cf5 //  5: NUMBER OF PARTIALS (from lowest specified)  \cf2 \
+		\cf5 //  6: PARTIAL PASSBAND BANDWIDTH  \cf2 \
+		\cf5 //  7: PARTIAL SHIFT FACTOR\cf2 \
+		\cf5 //  8: SPECTRAL STRETCH/COMPRESS FACTOR (Partial Add/Subtract) \cf2 \
+		\cf5 //  9: TONE DECIBEL LEVEL \cf2 \
+		\cf5 //  10: TONE STASIS MEDIAN (-80dB to 0dB)\cf2 \
+		\cf5 //  11: NOISE DECIBEL LEVEL \cf2 \
+		\cf5 //  12: NOISE STASIS MEDIAN in dB (-80dB to 0dB) \cf2 \
+		\cf5 //  13: NOISE SWITCH\cf2 \
+		\cf5 //  14: NOISE TRANSPOSE POINT, in frequency or octave.pitchclass. \cf2 \
+		\cf5 //  15: FORCE CONTROL (0-1 or 2 or...) \cf2 \
+		\cf5 //  16: MASTER TONE TRANSPOSITION SWITCH \cf2 \
+		\cf5 //  17: SYNTHETIC VIBRATO SWITCH\cf2 \
+		\cf5 //  18: BANDPASS CENTER FREQUENCY \cf2 \
+		\cf5 //  19: BANDPASS ROLLOFF in dB/Octave \cf2 \
+		\cf5 //  20: FILTER BUSS ROUTER SWITCH for Tone/Noise\cf2 \
+		\cf5 //  21: CONTROL FUNCTIONS DELAY TIME SCALER SWITCH\cf2 \
+		\cf5 //  22: DELAY TIME\cf2 \
+		\cf5 //  23: OUTPUT CHANNEL NUMBER\cf2 \
+\
+\
+		addCommand.value(\
+			\cf4 "echo  \
+			\{1\} 9.02 \{2\} 9.02 \{3\} 1 \{4\} 1 \{5\} 0  \
+			\{6\} 0.5 \{7\} 0 \{8\} 0 \{9\} 0  \
+			\{10\} -80 \{11\} 0 \{12\} -80 \{13\} 1 \{14\} 0 \{15\} 1 \{16\} 1 \{17\} 0 \{18\} 10000 \{19\} 0 \{20\} 0 \{21\} 1.  \
+			\{22\} 0.0 \{23\} 0  \
+			 \
+			> /tmp/data  \
+			"\cf2 \
+		) ;\
+\
+\
+\
+\
+\
+\
+		\cf5 //********** AMPLITUDE STATISTICS ********************** \cf2 \
+\
+		print_amplitude_statistics_0_no__1_yes = 1 ;\
+		amplitude_statistics_time_interval = 1.0 ;\
+\
+		\cf5 //====================================================\cf2 \
+ 		\cf5 //\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\'95\cf2 \
+\
+	\} ;\
+	\cf5 //*********************************************************************************************************\cf2 \
+	\cf5 //************* COMMAND LINE SETUP -- OFFICE USE ONLY ***************************************\cf2 \
+	\cf5 //************* DO NOT CHANGE ANYTHING IN THE FUNCTION BELOW THIS LINE ***************\cf2 \
+	\cf5 //*********************************************************************************************************\cf2 \
+\
+	iterations.do(\{\cf3 arg\cf2  n; \
+		setRoutineVariables.value( iteration: n ) ; \
+\
+		\cf5 // ******** UNIX COMMAND LINE 0 ***********\cf2 \
+		addCommand.value(\
+\
+					\cf5 // * ROUTINE * \cf2 \
+			\cf4 "chordmapperplus "\cf2  ++ \cf4 " "\cf2  ++\
+\
+				\cf5 // * FLAGS * \cf2 \
+			 \cf4 " -U"\cf2  ++ vibrato_period_durations__mechanical_0__natural_1 ++  \cf4 " -Y"\cf2  ++ rate_multiplier ++ \
+			 \cf4 " -G"\cf2  ++ source_gain_in_db ++  \cf4 " -R"\cf2  ++ use_specified_time_boundaries_0__detected_vibrato_periods_1 ++ \
+			 \cf4 " -D"\cf2  ++ output_duration ++  \cf4 " -z"\cf2  ++ mode__sampler_loop_0__autostop_1 ++ \
+			 \cf4 " -h"\cf2  ++ frequency_stasis_suppression_threshold_rise_response_time_in_seconds ++ \
+			 \cf4 " -q"\cf2  ++ frequency_shift ++  \cf4 " -b"\cf2  ++ noise_band_limit_level_rolloff_in_db ++ \
+			 \cf4 " -r"\cf2  ++ synthetic_vibrato_rate ++  \cf4 " -a"\cf2  ++ source_frequency_shift ++  \cf4 " -C"\cf2  ++ input_channel ++ \
+			 \cf4 " -I"\cf2  ++ frames_per_second ++  \cf4 " -c"\cf2  ++ noise_band_frequency_change_suppression_threshold ++ \
+			 \cf4 " -T"\cf2  ++ rate_correlated_tone_level_control_in_db ++  \cf4 " -_"\cf2  ++ auto_output_sound_file_play__repetitions ++ \
+			 \cf4 " -l"\cf2  ++ partial_formant_auto_adjust_inclusion_threshold_in_db ++  \cf4 " -m"\cf2  ++ gain_in_db ++ \
+			 \cf4 " -s"\cf2  ++ source__off_0__on_1 ++  \cf4 " -A"\cf2  ++ master_gain_in_decibels ++  \cf4 " -S"\cf2  ++ frequency_stasis_suppression_decibels ++ \
+			 \cf4 " -L"\cf2  ++ noise_band_limit_level_in_db ++  \cf4 " -w"\cf2  ++ window_type ++  \cf4 " -k"\cf2  ++ upper_time_boundary ++ \
+			 \cf4 " -i"\cf2  ++ amplitude_statistics_time_interval ++  \cf4 " -F"\cf2  ++ data_file ++  \cf4 " -E"\cf2  ++ rate_correlated_noise_level_control_in_db ++ \
+			 \cf4 " -O"\cf2  ++ tone_source_point_analysis_adjustment_switch__off_0__on_1 ++  \cf4 " -u"\cf2  ++ fundamental_frequency_for_vibrato_periods_detection ++ \
+			 \cf4 " -@"\cf2  ++ onset_and_release_segment_mode__off_0__on_1__onset_only_2 ++  \cf4 " -V"\cf2  ++ vibrato_period_duration_deviation_threshold_as_proportion ++ \
+			 \cf4 " -/"\cf2  ++ loop_smooth_time_in_seconds ++  \cf4 " -g"\cf2  ++ lower_time_boundary ++  \cf4 " -n"\cf2  ++ partial_formant_auto_adjust__off_0__on_1 ++ \
+			 \cf4 " -Q"\cf2  ++ sampler_loop_mode__wrap_0__fold_1__clip_2 ++  \cf4 " -e"\cf2  ++ normalize_loop_amplitudes__off_0__on_1 ++ \
+			 \cf4 " -P"\cf2  ++ source_pitch_transposition_in_semitones ++  \cf4 " -="\cf2  ++ rescale_level_in_decibels ++ \
+			 \cf4 " -M"\cf2  ++ windowsize ++  \cf4 " -B"\cf2  ++ rate_correlated_force_suppression_switch__off_0__on_1 ++ \
+			 \cf4 " -v"\cf2  ++ synthetic_vibrato_randomization_prop ++  \cf4 " -x"\cf2  ++ time_point_origin ++ \
+			 \cf4 " -p"\cf2  ++ print_amplitude_statistics_0_no__1_yes ++  \cf4 " -X"\cf2  ++ pitch_transposition_in_semitones ++ \
+			 \cf4 " -H"\cf2  ++ rate_correlated_randomization_switch__off_0__on_1 ++  \cf4 " -o"\cf2  ++ partial_formant_auto_adjust_stopband_level_in_db ++ \
+			 \cf4 " -t"\cf2  ++ oscillator_resynthesis_threshold_in_db ++  \cf4 " -f"\cf2  ++ input_analysis_file\
+\
+				\cf5 // * INPUT/OUTPUT FILES * \cf2 \
+			 ++  \cf4 " "\cf2   ++ output_file\
+\
+		) ;\
+ \
+\
+\
+	\}) ;\
+\} ;\
+\
+\
+\
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\cf5 //         ---------- FUNCTION CALLS  ----------            \cf2 \
+\cf5 /////////////////////////////////////////////////////////////////////////////////////\cf2 \
+\
+\
+\cf5 // *** CLEAR SCREEN ***\cf2 \
+\cf3 Document\cf2 .listener.string=\cf4 ""\cf2 ; \
+\
+chordmapperplus.value( iterations: 1 ) ; \
+\
+runCommands.value ;\
+\
+\
+\cf4 "..........DONE!"\cf2  \
+)\
+}
