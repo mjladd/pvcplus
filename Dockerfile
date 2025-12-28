@@ -3,7 +3,7 @@
 
 FROM ubuntu:22.04
 
-LABEL maintainer="PVCplus"
+LABEL maintainer="mjladd"
 LABEL description="Phase Vocoder audio DSP toolkit"
 
 # Avoid interactive prompts during package installation
