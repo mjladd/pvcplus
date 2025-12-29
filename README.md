@@ -189,27 +189,6 @@ ls -la ~/pvctest/
 
 Use any audio player to verify the results sound correct.
 
-### Native Build (macOS/Linux)
-
-Requirements: C compiler, libsndfile
-
-```bash
-# macOS with MacPorts
-sudo port install libsndfile
-
-# Ubuntu/Debian
-sudo apt-get install build-essential libsndfile1-dev
-
-# Build
-cd cmusic_gen && make && cd ..
-cd pvc_lib && make && cd ..
-cd pvc_src && make all && make install && cd ..
-```
-
-The binaries are installed to the `bin/` directory. Add it to your PATH or run tools directly.
-
-You should be able to type any of the routines and see their flag information page. Try typing: `plainpv` for example.
-
 ## UNIX COMMAND-LINE FORMAT
 
 The routines are UNIX, command-line routines in the form of: `routine [flags] input_soundfile output_soundfile`
@@ -826,18 +805,18 @@ OUTPUT FILE: DURATION = 5.540771
 
 FFT SIZE = 1024
 *
-      FUNDAMENTAL ANALYSIS FREQUENCY = 43.066406
+FUNDAMENTAL ANALYSIS FREQUENCY = 43.066406
 *
 WINDOW SIZE = 2048
 FRAMES/SECOND = 400
-      DECIMATION SAMPLES (samples between analysis frames) = 110
+DECIMATION SAMPLES (samples between analysis frames) = 110
 
 ======================= RESYNTHESIS PARAMETERS ======================
 
 
 TIME EXPANSION/CONTRACTION FACTOR = 2
 *
-      INTERPOLATION SAMPLES (samples between resynthesis frames) = 220
+INTERPOLATION SAMPLES (samples between resynthesis frames) = 220
 *
 OSCILLATOR RESYNTHESIS THRESHOLD (in dB) = -96.000000
 *
