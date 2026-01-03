@@ -1,0 +1,24 @@
+{
+  "name": "PVCplus Devcontainer",
+  "build": {
+    "context": "..",
+    "dockerfile": "../Dockerfile"
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/usr/bin/zsh"
+          }
+        }
+      }
+    }
+  },
+  "remoteEnv": {
+    "SHELL": "/usr/bin/zsh"
+  },
+  "postCreateCommand": "bash .devcontainer/setup-zsh.sh"
+}

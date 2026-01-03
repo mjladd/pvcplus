@@ -13,6 +13,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     build-essential \
     libsndfile1-dev \
+    zsh \
+    git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
@@ -49,10 +52,14 @@ RUN cd pvc_src && make install
 # Add bin directory to PATH
 ENV PATH="/src/PVCplus/bin:${PATH}"
 
-# Create a directory for audio files to be processed
-RUN mkdir -p /audio
+# Create directories for audio input and output
+RUN mkdir -p /audio/input /audio/output
 
+# Declare volumes so hosts can mount local folders
+VOLUME ["/audio/input", "/audio/output"]
+
+# Set working directory to the parent for convenience
 WORKDIR /audio
 
 # Default command shows available tools
-CMD ["sh", "-c", "echo 'PVCplus tools available:' && ls /src/PVCplus/bin"]
+CMD ["sh", "-c", "echo 'PVCplus tools available:' && ls /src/PVCplus/bin && echo 'Input dir: /audio/input | Output dir: /audio/output'"]

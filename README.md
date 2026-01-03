@@ -106,41 +106,67 @@ Paul Koonce
 
 ## INSTALLATION
 
+### VS Code Dev Containers
+
+Use a ready-to-run developer container with zsh + oh-my-zsh:
+
+1. Install the "Dev Containers" extension in VS Code.
+2. Open this folder in VS Code.
+3. Run: Dev Containers: Reopen in Container.
+
+The devcontainer builds from the existing Dockerfile and configures zsh with oh-my-zsh, enabling the git plugin, autosuggestions, and syntax highlighting. New terminals open in zsh by default.
+
+Verify the shell setup:
+
+```bash
+# Inside the devcontainer terminal
+echo $SHELL          # should be /usr/bin/zsh
+zsh --version        # zsh present
+omz plugin list      # includes: git zsh-autosuggestions zsh-syntax-highlighting
+```
+
 ### Docker (Recommended)
 
-Build and run using Docker:
+Build and run using Docker with mounted input/output folders:
 
 ```bash
 # Build the container
 docker build -t pvcplus .
 
-# Run a PVC tool (mount your audio directory)
-docker run --rm -v /path/to/audio:/audio pvcplus plainpv -N1024 /audio/input.wav /audio/output.wav
+# Prepare local folders
+mkdir -p /path/to/audio/input /path/to/audio/output
+
+# Run a PVC tool using mounted input/output
+docker run --rm \
+  -v /path/to/audio/input:/audio/input \
+  -v /path/to/audio/output:/audio/output \
+  pvcplus plainpv -N1024 /audio/input/input.wav /audio/output/output.wav
 
 # List available tools
 docker run --rm pvcplus
 
-# Interactive shell
-docker run --rm -it -v /path/to/audio:/audio pvcplus /bin/bash
+# Interactive shell with input/output mounts
+docker run --rm -it \
+  -v /path/to/audio/input:/audio/input \
+  -v /path/to/audio/output:/audio/output \
+  pvcplus /bin/bash
 ```
 
 ### Verify Installation
 
 This walkthrough confirms the container is working correctly by processing a test audio file.
 
-**Step 1: Create a test directory and audio file**
+**Step 1: Create test input/output and a test tone**
 
 ```bash
-# Create a working directory
-mkdir -p ~/pvctest
-cd ~/pvctest
+mkdir -p ~/pvctest/input ~/pvctest/output
 
-# Generate a 2-second test tone (440Hz sine wave) using sox, ffmpeg, or your DAW
+# Generate a 2-second test tone (440Hz sine)
 # With sox:
-sox -n -r 44100 -c 1 test_input.wav synth 2 sine 440
+sox -n -r 44100 -c 1 ~/pvctest/input/test_input.wav synth 2 sine 440
 
 # Or with ffmpeg:
-ffmpeg -f lavfi -i "sine=frequency=440:duration=2" -ar 44100 test_input.wav
+ffmpeg -f lavfi -i "sine=frequency=440:duration=2" -ar 44100 ~/pvctest/input/test_input.wav
 ```
 
 **Step 2: Verify tools are available**
@@ -162,8 +188,10 @@ This displays the flag options for plainpv. No input file means it shows help.
 **Step 4: Process audio - Time stretch to 2x duration**
 
 ```bash
-docker run --rm -v ~/pvctest:/audio pvcplus \
-  plainpv -N1024 -I2 /audio/test_input.wav /audio/test_stretched.wav
+docker run --rm \
+  -v ~/pvctest/input:/audio/input \
+  -v ~/pvctest/output:/audio/output \
+  pvcplus plainpv -N1024 -I2 /audio/input/test_input.wav /audio/output/test_stretched.wav
 ```
 
 The `-I2` flag stretches time by 2x. The output file should be ~4 seconds.
@@ -171,8 +199,10 @@ The `-I2` flag stretches time by 2x. The output file should be ~4 seconds.
 **Step 5: Process audio - Pitch shift up 7 semitones (perfect fifth)**
 
 ```bash
-docker run --rm -v ~/pvctest:/audio pvcplus \
-  plainpv -N1024 -P7 /audio/test_input.wav /audio/test_pitched.wav
+docker run --rm \
+  -v ~/pvctest/input:/audio/input \
+  -v ~/pvctest/output:/audio/output \
+  pvcplus plainpv -N1024 -P7 /audio/input/test_input.wav /audio/output/test_pitched.wav
 ```
 
 The `-P7` flag transposes pitch up 7 semitones. Play the output to hear ~659Hz (E5).
@@ -180,11 +210,11 @@ The `-P7` flag transposes pitch up 7 semitones. Play the output to hear ~659Hz (
 **Step 6: Verify output files**
 
 ```bash
-ls -la ~/pvctest/
+ls -la ~/pvctest/input ~/pvctest/output
 # You should see:
-#   test_input.wav      (original 440Hz tone, ~2 sec)
-#   test_stretched.wav  (440Hz tone, ~4 sec)
-#   test_pitched.wav    (659Hz tone, ~2 sec)
+#   input/test_input.wav          (original 440Hz tone, ~2 sec)
+#   output/test_stretched.wav     (440Hz tone, ~4 sec)
+#   output/test_pitched.wav       (659Hz tone, ~2 sec)
 ```
 
 Use any audio player to verify the results sound correct.
