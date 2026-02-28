@@ -9,6 +9,14 @@ LABEL description="Phase Vocoder audio DSP toolkit"
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Fix GPG keys for Ubuntu repositories (common issue with ARM images)
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get update --allow-insecure-repositories && \
+    apt-get install -y --allow-unauthenticated ubuntu-keyring && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \

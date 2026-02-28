@@ -2,8 +2,10 @@
   "name": "PVCplus Devcontainer",
   "build": {
     "context": "..",
-    "dockerfile": "../Dockerfile"
+    "dockerfile": "../Dockerfile",
+    "options": ["--platform=linux/arm64"]
   },
+  "runArgs": ["--platform=linux/arm64"],
 
   "customizations": {
     "vscode": {
