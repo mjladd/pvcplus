@@ -33,32 +33,32 @@ COPY . .
 # Fix hardcoded MacPorts paths in Makefiles
 # Remove /opt/local/include from CFLAGS and /opt/local/lib from LDFLAGS
 # (libsndfile is installed in standard system locations in the container)
-RUN sed -i 's|-I/opt/local/include||g' pvc_lib/Makefile pvc_src/Makefile cmusic_gen/gen/Makefile && \
-    sed -i 's|-L/opt/local/lib/||g' pvc_lib/Makefile pvc_src/Makefile
+RUN sed -i 's|-I/opt/local/include||g' legacy/pvc_lib/Makefile legacy/pvc_src/Makefile legacy/cmusic_gen/gen/Makefile && \
+    sed -i 's|-L/opt/local/lib/||g' legacy/pvc_lib/Makefile legacy/pvc_src/Makefile
 
 # Fix library linking order: libpvoc depends on libsndfile and libm
 # On Linux, dependent libraries must come after the library that uses them
-RUN sed -i 's/LDFLAGS.*=.*/LDFLAGS = -lpvoc -lsndfile -lm/' pvc_src/Makefile
+RUN sed -i 's/LDFLAGS.*=.*/LDFLAGS = -lpvoc -lsndfile -lm/' legacy/pvc_src/Makefile
 
 # Add -fcommon flag to handle legacy C code with duplicate global definitions
 # (required for GCC 10+ which defaults to -fno-common)
-RUN sed -i 's/^CFLAGS =/CFLAGS = -fcommon/' cmusic_gen/lib/libran/Makefile
+RUN sed -i 's/^CFLAGS =/CFLAGS = -fcommon/' legacy/cmusic_gen/lib/libran/Makefile
 
 # Fix macOS-specific ranlib -s flag (Linux ranlib doesn't need it)
-RUN sed -i 's/ranlib -s/ranlib/' pvc_lib/Makefile
+RUN sed -i 's/ranlib -s/ranlib/' legacy/pvc_lib/Makefile
 
 # Build cmusic_gen libraries and generators
-RUN cd cmusic_gen && make
+RUN cd legacy/cmusic_gen && make
 
 # Build the PVC library
-RUN cd pvc_lib && make clean && make
+RUN cd legacy/pvc_lib && make clean && make
 
 # Build all PVC tools (explicitly run 'make all' as lib: is the first target)
-RUN cd pvc_src && make clean && make all
-RUN cd pvc_src && make install
+RUN cd legacy/pvc_src && make clean && make all
+RUN cd legacy/pvc_src && make install
 
-# Add bin directory to PATH
-ENV PATH="/src/PVCplus/bin:${PATH}"
+# Add bin directory to PATH (pvc_src Makefile installs to ../bin => legacy/bin)
+ENV PATH="/src/PVCplus/legacy/bin:${PATH}"
 
 # Create directories for audio input and output
 RUN mkdir -p /audio/input /audio/output
@@ -70,4 +70,4 @@ VOLUME ["/audio/input", "/audio/output"]
 WORKDIR /audio
 
 # Default command shows available tools
-CMD ["sh", "-c", "echo 'PVCplus tools available:' && ls /src/PVCplus/bin && echo 'Input dir: /audio/input | Output dir: /audio/output'"]
+CMD ["sh", "-c", "echo 'PVCplus tools available:' && ls /src/PVCplus/legacy/bin && echo 'Input dir: /audio/input | Output dir: /audio/output'"]
