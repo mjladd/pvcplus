@@ -1,6 +1,25 @@
 .DS_Store
 .claude
 
+# Hermes agent workspace (plans, session artifacts)
+.hermes/
+
+# Build artifacts
+build/
+*.o
+*.a
+bin/
+target/
+
+# Rust
+/rust/target/
+**/*.rs.bk
+
+# Test harness generated outputs
+tests/golden/expected/
+tests/golden/fixtures/*.wav
+tests/golden/fixtures/*.flac
+
 # Ignore common audio assets
 *.wav
 *.aiff
