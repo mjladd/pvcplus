@@ -63,7 +63,31 @@ jobs:
           cache-from: type=gha,scope=dev
           cache-to: type=gha,mode=max,scope=dev
 
+  golden:
+    name: golden harness (C oracle)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build + fixture dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libsndfile1-dev sox libsox-fmt-all
+
+      - name: Run every golden case against the legacy tools
+        run: bash tests/golden/run_legacy.sh
+
+      - name: Upload recorded expected/ (for inspection)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-expected
+          path: tests/golden/expected/
+          retention-days: 14
+
   # Added in Phase 2+ once rust/ exists:
   #   rust:   cargo fmt --check, cargo clippy --all-targets -- -D warnings, cargo test --workspace
-  # Added in Phase 1:
-  #   golden: build legacy tools, regenerate fixtures, run tests/golden comparisons
+  # Added in Phase 3+ once a ported tool exists to check with compare.py:
+  #   golden gets a second step that runs the candidate and compares it
+  #   against expected/ per case, instead of only proving every case still
+  #   runs clean against the C oracle (which is all there is to check today).

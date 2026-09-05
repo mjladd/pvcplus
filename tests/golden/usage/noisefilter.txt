@@ -1,0 +1,59 @@
+noisefilter:  phase vocoder spectrum remover 
+noisefilter   [flags] [input file] [output file (optional)]
+	    (values in brackets denote defaults)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	P:	pitch transposition in semitones (func) [0]
+	a:	frequency shift factor 
+		    (bin frequency adder, before pitch transposition )(func) [0.] 
+	A:	gain in decibels (func) [0.] 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	B:	NOISE RESPONSE ANALYSIS: begin time in seconds  [0.] 
+	E:	NOISE RESPONSE ANALYSIS: end time in seconds (0. = end of file) [0.] 
+	F:	NOISE RESPONSE ANALYSIS: method: 0 = average, 1 = peak  [0.] 
+	Z:	NOISE ANALYSIS FREQUENCY RESPONSE PRINTOUT:
+		     high cutoff frequency in Hz (0 = off) [0]
+	S:	NOISE THRESHOLD ADJUST: gain in dB (func) [0.] 
+		    Values > 0. increase the amount of noise reduction
+		    Values < 0. reduce the amount of noise reduction
+	x:	NOISE EXPANSION INDEX 0 - ? [3.] 
+		    This value controls the shape of the expansion curve.
+		    The expansion is increased with greater values.
+	Q:	NOISE RESPONSE ANALYSIS: bypass threshold in dB [1.]
+		    ( Bins in the normalized noise response whose amp is greater 
+			than the threshold are replaced with 0. letting 
+			those frequencies pass when filtered. Set to 1. to 
+			pass all frequencies through noise filter. )
+	l:      envelope attack time  (func) [0.]
+	L:      envelope release time   (func) [0.]
+	      SHELF EQ: (post-noise filtering,  pre-transposition/shift)
+	H:	shelf EQ: Low shelf gain in dB (func) [0.] 
+	X:	shelf EQ: High shelf gain in dB (func) [0.] 
+	m:	shelf EQ: Low shelf frequency in Hz (func) [200.] 
+	R:	shelf EQ: High shelf frequency in Hz (func) [2000.] 
+	t:	oscillator re-synthesis threshold in decibels [ -96 ]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	y:	ANALYSIS PRINTOUT high cutoff frequency [22050] 
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]

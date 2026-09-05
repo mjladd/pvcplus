@@ -1,0 +1,24 @@
+pvanalysis:  phase vocoder analysis
+pvanalysis [flags] [input file     ] [output analysis file (optional)]
+                    (default: pvanalysis.out)
+	    (values in brackets denote defaults)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+	D:	analysis frames per second [200]
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	A:	gain in decibels [0.] 
+	p:	print elapsed time (1 = on,  0 = off) [0]
+	P:	print average spectrum to stderr (1 = on,  0 = off) [0]
+		    ( values > 1 become hi cutoff frequency for printing
+	W:	warp index for reshaping frequency response (func) [0.] 
+		    values > 0 expand the dynamic range, 
+		    values < 0 compress the dynamic range 
+	H:	SHELF EQ: Low shelf gain in dB [0.] 
+	X:	SHELF EQ: High shelf gain in dB [0.] 
+	m:	SHELF EQ: Low shelf frequency in Hz [200.] 
+	R:	SHELF EQ: High shelf frequency in Hz [2000.] 

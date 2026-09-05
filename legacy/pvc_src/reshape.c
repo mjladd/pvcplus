@@ -365,11 +365,10 @@ if( itty ){
     sprintf( inputScratchFileName, "/tmp/inputScratchFile.%s.%d", user, (int)(rand()) ) ;
     while ( (inputScratchFile = fopen(inputScratchFileName, "r")) ) {
         fclose(inputScratchFile);
-    		sprintf( inputScratchFileName, "/tmp/inputScratchFile.%s.%d", user, (int)(rand()) ) ;    
+    		sprintf( inputScratchFileName, "/tmp/inputScratchFile.%s.%d", user, (int)(rand()) ) ;
 	} ;
-    fclose(inputScratchFile);
-	
-	filesToRemove( inputScratchFileName, 0 ); 
+
+	filesToRemove( inputScratchFileName, 0 );
     inputScratchFile = fopen( inputScratchFileName, "w" ); 
 	rewind( inputScratchFile ); 
 
@@ -404,11 +403,10 @@ if( ASCIIoutflag == -1) {
 sprintf( scratch, "/tmp/envelope.%s.%d", user, (int)(rand()) ) ;
 while ( (fscratch = fopen( scratch, "r")) ) {
 	fclose(fscratch);
-//	prs( scratch, "FAILED scratch" ) ; 
-    	sprintf( scratch, "/tmp/envelope.%s.%d", user, (int)(rand()) ) ;    
+//	prs( scratch, "FAILED scratch" ) ;
+    	sprintf( scratch, "/tmp/envelope.%s.%d", user, (int)(rand()) ) ;
 } ;
-fclose(fscratch);
-//prs( scratch, "SCRATCH FILE NAME FOR PIPED IN VALUES" ) ; 
+//prs( scratch, "SCRATCH FILE NAME FOR PIPED IN VALUES" ) ;
 fscratch = fopen( scratch, "w" ); 
 rewind( fscratch ); 
 filesToRemove( scratch, 0 );

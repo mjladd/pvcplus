@@ -1,0 +1,9 @@
+tool = "plainpv"
+input = "sine440_2s_44k.wav"
+description = "magnitude warp + shelf EQ, overlap-add path"
+legacy_steps = [
+    "plainpv -N1024 -W0.5 -H-6 -X6 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 1e-4 }
+notes = "No pitch/freq shift, so still overlap-add; exercises spectmagwarp + eq2."

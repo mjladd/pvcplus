@@ -1,0 +1,29 @@
+chordresponsemaker:  chordal frequency response synthesizer
+			(multiple harmonic tone format)  
+			(values in brackets represent defaults)
+chordresponsemaker   [flags]  [output freqresponse file]
+	N:	fft length [1024]
+	R:	sampling rate [44100]
+	F:	(ascii) DATA FILE of unordered sextuples:
+		     Each consisting of: 
+		     (1) pitch (octave.pitchclass) or frequency
+			   (Values of 12 or less are interpreted as 
+				octave.pitchclass; otherwise, units are in Hertz.)
+		     (2) number of partials (0 = all partials below Nyquist)
+		     (3) bandwidth as proportion of fundamental frequency
+			(Values of 1. or less are interpreted as proportions 
+				of the fundamental frequency; otherwise, units are in Hertz.
+		     (4) decibels
+		     (5) partial spacing as proportion of fundamental frequency
+		     (6) decibel rolloff (+ or -) per octave of partials 
+	s:	Frequency Response Accumulation Method: [0]
+		    (treatment of overlapping bin values)
+		    0 = peak response (uses highest of all)
+		    1 = sum response (uses sum of all)
+	D:	Band Window Type: 0 = triangle,  1 = rectangle [0]
+		    (As reflected in decibels)
+	i:	filter type: bandpass (0),  band reject (1) [0]
+	v:	frequency response stderr printout: high cutoff frequency in Hz [0]
+		    (0 = off)
+	a:	decibels spectrum plot file
+	h:	usage

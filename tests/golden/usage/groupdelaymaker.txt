@@ -1,0 +1,45 @@
+groupdelaymaker: group delay synthesizer
+groupdelaymaker   [flags]  [output  file]
+   (This routine makes a response file of dB/delay-time pairs for each of
+    the FFT's frequency bins (storing delay in place of frequency). 
+    Like chordresponsemaker, it makes the response using multiple tones, 
+	with the added feature of time delay for each tone. )  
+			(values in brackets represent defaults)
+	f:	pvanalysis data file (Use full path name.)
+		   (for determining sample rate and FFT length.)
+	F:	(ascii) DATA FILE of unordered septuples:
+		     Each consisting of: 
+		     (1) pitch or frequency
+				values <= 12 are interpreted as octave.pitchclass
+				values > 12 are interpreted as frequency
+		     (2) number of partials (0 = all partials below Nyquist)
+		     (3) bandwidth as proportion of fundamental frequency
+			      values <= 1. are interpreted as proportions of the fundamental
+				 frequency
+				values > 1. are interpreted as Hertz
+		     (4) dB
+		     (5) partial spacing as proportion of fundamental frequency
+		     (6) decibel of top partial relative to fundamental
+		     (7) time delay
+	D:	dB level at boundaries of partial band [0]
+		    (relative to partial dB) 
+	s:	GROUP DELAY: Partial Overlap Resolution Method: [2]
+		    ( When multiple tones produce overlapping data, the
+		      bin settings are determined using one of the methods below.)
+			methods specified below.)
+		    0 = Use the one with the shortest delay.
+		    1 = Use the one with the longest delay.
+		    2 = Take averages of both time delay and loudness. 
+		    3 = Use the loudest one.
+		    4 = Use the softest one.
+		    5 = Use the loudest one if it has the shortest delay.
+		    6 = Use the loudest one if it has the longest delay.
+	    DEFAULT DB AND DELAY:
+		( Bins not covered by the data file have their dB and delay time
+		  set to the default values below.)
+	i:	Default decibel level [0]
+	I:	Default delay time [0]
+	v:	GROUP DELAY RESPONSE PRINTOUT: high cutoff frequency in Hz [0.]
+	            (0. = off)
+
+

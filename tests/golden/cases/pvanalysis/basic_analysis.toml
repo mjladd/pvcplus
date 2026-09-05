@@ -1,0 +1,9 @@
+tool = "pvanalysis"
+input = "sine440_2s_44k.wav"
+description = "plain analysis file, default params"
+legacy_steps = [
+    "pvanalysis -N1024 {input} {output}",
+]
+output_ext = "pva"
+tolerance = { kind = "exact" }
+notes = "Compared via the legacy 32-float-header reader (pvc-io), not byte-for-byte - frame count/N/D/R/chans must match exactly."

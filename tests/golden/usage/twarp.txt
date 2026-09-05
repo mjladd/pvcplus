@@ -1,0 +1,84 @@
+twarp:  time-varying  phase vocoder resynthesis
+twarp   [flags]  [output file ]
+	    Pre-formatted output sound file required.
+	    (Values in brackets denote defaults.)
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	D:	analysis frames per second [200]
+	d:	output duration in seconds 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	P:	pitch transposition in semitones (func) [0]
+	a:	frequency shift factor (bin frequency adder, before -P )(func)[0.] 
+	A:	gain in decibels (func) [0.] 
+	    ANALYSIS DATA
+	F:	phase vocoder analysis file 
+	    DATA TIME
+	Q:	time point origin (func) [0.] 
+	Y:	rate multiplier (func) [1.]
+		    (1. = rate of original, 2. = twice as fast, etc.)
+		    (negative = reverse,  0 = stationary) 
+	T:	time point dither window size in seconds (0 (off) -> ? ) (func) [0.] 
+	K:	time point change response time in seconds (func) [0.] 
+	g:	time window: lower boundary (func) [0.] 
+	G:	time window: upper boundary (if < 0,  then analysis duration) 
+								(func) [end of file] 
+	S:	time window mode: 0 = autostop at boundary, 1 = sampler loop [0]
+	    SAMPLER
+	o:	loop mode: [0]
+		   0 = wrap time into window
+		   1 = fold time into window bounds
+		   2 = clip or limit time to nearest window boundary
+	r:	onset and release switch: 0 = off, 1 = on [0]
+	b:	peak loop seam lowpass filter smoothing time (func) [0]
+	v:	loop amplitude normalization switch (using boundary levels and interpolation)
+			0 = off, 1 = on [0]
+	    AMPLITUDE SHAPING
+	W:	warp index for reshaping magnitude response (func) [0.] 
+		    Values > 0 expand the dynamic range, 
+		    values < 0 compress the dynamic range. 
+	l:      amplitude attack time  (func) [0.]
+	L:      amplitude release time   (func) [0.]
+	     RANDOM AMPLITUDE VARIATION (SHIMMER) 
+	B:	decibels of variation (+ values) (func) [0.]
+	e:	random amplitude variation response time in seconds (func) [0.] 
+	     RANDOM FREQUENCY VARIATION
+	j:	random frequency variation peak +/- change as proportion of 
+		    frequency.  0 to ? (func) [0.] 
+	k:	random frequency variation response time in seconds (func) [0.] 
+	n:	random frequency variation distribution curve index (func) [0.] 
+		    ( The index controls the function curve that maps the
+		      random value into the range. 0 = linear, values > 0
+		      are increasingly exponential, weighting the distribution
+		      increasingly toward the non-varied center. )
+	     RANDOM AMPLITUDE AND FREQUENCY VARIATION ROLLOFF
+	I:	variation rolloff frequency  (func) [22050.]
+	J:	variation cutoff frequency  (func) [0.]
+		    (rolloff should be above cutoff.)
+	N:	shape index for rolloff-to-cutoff frequencies (func) [0.]
+	 	    0 = linear rolloff,
+		    negative = gradual rolloff, positive = sudden rolloff
+	f:      frequency change response time   (func) [0.]
+	     SHELF EQ:(post transpose/shift)
+	H:	shelf EQ: Low shelf gain in dB (func) [0.] 
+	X:	shelf EQ: High shelf gain in dB (func) [0.] 
+	m:	shelf EQ: Low shelf frequency in Hz (func) [200.] 
+	R:	shelf EQ: High shelf frequency in Hz (func) [2000.] 
+	t:	oscillator re-synthesis threshold in decibels [ -96 ]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]

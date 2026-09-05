@@ -1,0 +1,76 @@
+convolve:  phase vocoder spectral multiplier
+convolve   [flags] [input file] [output file]
+	    Most formats accepted. Output format copied from input file.
+	    (Values in brackets denote defaults.)
+	      (FFT and framerate/decimation are taken from Sound B analysis file)
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		      4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	P:	pitch transposition of output spectrum in semitones (func) [0]
+	a:	frequency shift  of output spectrum 
+		    (bin frequency adder, before -P )(func)[0.] 
+	A:	gain in decibels of output (func) [0.] 
+	F:	input analysis file - (sound B) 
+	B:	Sound B gain in decibels (func) [0.] 
+	q:	Sound A gain in decibels (func) [0.] 
+	Z:	Convolution gain in decibels (func) [0.] 
+	S:	CONVOLUTION PAN POT position between 
+		    convolved sounds (-1 to 1) (func) [0] 
+		    (-1 = A,  1 = B,  0 = convolution of A and B)
+	j:	CONVOLUTION PAN POT: Sound A domain warp [0.] 
+	J:	CONVOLUTION PAN POT: Sound B domain warp [0.] 
+	k:	data smoothing: 0 = polar, 1 = Cartesian [0]
+	L:	envelope release time  (func) [0.]
+	l:	envelope attack time  (func) [0.]
+	K:	SOUND B channel (1 -> ?) (0 = all) [0] 
+		   (0 = explicit time: Use -Q)
+		   (1 = rate mode: Use -Q as begin point, -Y as rate control) 
+	Q:	SOUND B time point (func) [0.] 
+	g:	SOUND B time window: lower boundary (func) [0.] 
+	G:	SOUND B time window: upper boundary (func) [end of file] 
+	o:	DATA time window: boundary flag  [0]
+		   0 = wrap time into window
+		   1 = fold time into window bounds
+		   2 = clip or limit time to nearest window boundary
+	r:	DATA time window: trigger entry mode flag [0]
+		   Begin or trigger use of time window boundaries with first entry
+		   of time point into window bounds. 0 = off, 1 = on
+		    (upper boundary < 0. defaults to end of file)
+	Y:	SOUND B rate multiplier (func) [1.]
+		    (1. = rate of original, 2. = twice as fast, etc.)
+		    (negative = reverse,  0 = stationary) 
+	y:	DATA auto stop: 0 = off,  1 = on [0]
+		    (When on,  auto stop will terminate synthesis when a
+		     time boundary in the SOUND B analysis is crossed.)
+	     CONVOLUTION OUTPUT LOW/HIGH SHELF EQ:(pre transpose/shift)
+	H:	FILTER SHELF EQ: Low shelf gain in dB [0.] 
+	X:	FILTER SHELF EQ: High shelf gain in dB [0.] 
+	m:	FILTER SHELF EQ: Low shelf frequency in Hz [200.] 
+	R:	FILTER SHELF EQ: High shelf frequency in Hz [2000.] 
+		FRAME NORMALIZATION: 
+	n:	Frame Normalization Decibel Limit: (0-?) 
+		Scale output frame amps to match or approach input frame amps
+		using the (sum of input amps)/(sum of output amps) limited to
+		the Decibel limit. 0 dB prevents normalization. [0]
+	v:	Frame Normalization Reference: 
+		0 = Input Sound, 1 = Filter Analysis [0]
+	t:	oscillator resynthesis threshold in decibels [-96.]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 AUTO OUTPUT SOUND FILE PLAY:
+		    0  = off 
+		    -1 = interactive: Prompt for each play.
+		    -2 = interactive: Play once, then prompt for more.
+                   1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 PEAK RESCALE LEVEL 0 to -96 dB 
+		    1 = Rescale to level of input file.
+		    2 = Bypass rescaling. [ 1 ]

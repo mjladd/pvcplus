@@ -1,0 +1,7 @@
+tool = "gen5"
+description = "gen5: harmonic sum from amp/phase pairs"
+legacy_steps = [
+    "gen5 -L1024 1 1 0 2 0.5 0 3 0.25 0 > {output}",
+]
+output_ext = "f32"
+tolerance = { kind = "exact" }

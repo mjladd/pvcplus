@@ -1,0 +1,92 @@
+tvfilter:  time-varying  cross-synthetic, phase vocoder filter
+tvfilter   [flags] [input file] [output file]
+	    Most formats accepted. Output format copied from input file.
+	    (Values in brackets denote defaults.)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		      4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	P:	pitch transposition in semitones (func) [0]
+	B:	TRANSPOSITION/SHIFT application FLAG [0]
+		 Apply -P and -a to:
+		  source only -- prefliter (0),
+		  or to  source and filter -- postfilter (1)
+	a:	frequency shift factor (bin frequency adder, before -P )(func)[0.] 
+	A:	gain in decibels (func) [0.] 
+	F:	FILTER time_varying, frequency response file analysis 
+	K:	FILTER analysis channel (1 -> ?) (0 = all) [0] 
+	q:	FILTER: filtering method: 
+		 0 = pass, 1 = invert response against 0 dB peak
+		    2 = invert response against peak amp in frame [0] 
+	u:	FILTER data access mode [1]
+		   (0 = explicit time: Use -Q)
+		   (1 = rate mode: Use -Q as begin point, -Y as rate control) 
+	Q:	FILTER time point (func) [0.] 
+	g:	FILTER time window: lower boundary (func) [0.] 
+	G:	FILTER time window: upper boundary (func) [end of file] 
+	o:	DATA time window: boundary flag  [0]
+		   0 = wrap time into window
+		   1 = fold time into window bounds
+		   2 = clip or limit time to nearest window boundary
+	r:	DATA time window: trigger entry mode flag [0]
+		   Begin or trigger use of time window boundaries with first entry
+		   of time point into window bounds. 0 = off, 1 = on
+		    (upper boundary < 0. defaults to end of file)
+	Y:	FILTER rate multiplier (func) [1.]
+		    (1. = rate of original, 2. = twice as fast, etc.)
+		    (negative = reverse,  0 = stationary) 
+	d:	DATA auto stop: 0 = off,  1 = on [0]
+		    (When on,  auto stop will terminate synthesis
+		      when a time boundary is crossed.)
+	j:	Loop Normalization Flag [0]
+	k:	peak Loop Smooth Time [.2]
+	E:	FILTER-spectrum compression threshold (in decibels) (func) [0] 
+	c:	FILTER-spectrum decibels of compression (func) [0] 
+	T:	FILTER frequency response transposition in semitones (func) [0]
+	V:	FILTER  response shifter (func) [0.] 
+	Z:      FILTER envelope envelope release time   (func) [0.]
+	z:      FILTER envelope envelope attack time   (func) [0.]
+	S:	FILTER source decibels (reduces filtered signal in proportion)(func) [-96] 
+	W:	FILTER warp index for reshaping filter frequency response (func) [0.] 
+		    values > 0 expand the dynamic range, 
+		    values < 0 compress the dynamic range 
+	l:      envelope attack time  (func) [0.]
+	L:      envelope release time   (func) [0.]
+	f:	FILTER FREQUENCY RESPONSE: smoothing bandwidth (in octaves or frequency) (func) [0]
+		  (The value for each peak is  replaced with the average
+		   value within the band, centered around the peak. Positive values
+		  are interpreted as frequency bandwidths and negative values as
+		    octave bandwidths, once made positive.
+	     FILTER FREQUENCY RESPONSE -- SHELF EQ: (pre-processing)
+	H:	FILTER SHELF EQ: Low shelf gain in dB  (func) [0.] 
+	X:	FILTER SHELF EQ: High shelf gain in dB  (func) [0.] 
+	m:	FILTER SHELF EQ: Low shelf frequency in Hz  (func) [200.] 
+	R:	FILTER SHELF EQ: High shelf frequency in Hz  (func) [2000.] 
+	t:	oscillator resynthesis threshold [.001]
+		FRAME NORMALIZATION: 
+	n:	Frame Normalization Decibel Limit: (0-?) 
+		Scale output frame amps to match or approach input frame amps
+		using the (sum of input amps)/(sum of output amps) limited to
+		the Decibel limit. 0 dB prevents normalization. [0]
+	v:	Frame Normalization Reference: 
+		0 = Input Sound, 1 = Filter Analysis [0]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 AUTO OUTPUT SOUND FILE PLAY:
+		    0  = off 
+		    -1 = interactive: Prompt for each play.
+		    -2 = interactive: Play once, then prompt for more.
+                   1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 PEAK RESCALE LEVEL 0 to -96 dB 
+		    1 = Rescale to level of input file.
+		    2 = Bypass rescaling. [ 1 ]

@@ -1,0 +1,1 @@
+Usage: gen2 -Llength [-o (default) or -c] a1 ... aN b0 ... bM N

@@ -1,0 +1,10 @@
+USAGE:
+
+   amptodB [ flags ] amplitude(s)
+	flags:
+	(Values in brackets denote defaults.)
+   :n	    normalization amplitude [1.]
+
+   Converts amplitude value(s) to decibels.
+   Specification of the -n flag (i.e. -n32000. ) causes the amplitude to first 
+   be normalized to the -n range ( i.e. amplitude / 3200. ). 

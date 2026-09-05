@@ -1,0 +1,9 @@
+tool = "plainpv"
+input = "stereo_two_tones_44k.wav"
+description = "stereo input, default settings"
+legacy_steps = [
+    "plainpv -N1024 -I1.5 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 1e-4 }
+notes = "Exercises per-channel processing/channel-count handling."

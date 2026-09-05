@@ -148,11 +148,23 @@ target_ptrans.L = 1. ; target_ptrans.n = 1. ; target_ptrans.A[ 0 ] = 1. ;
 target_harmadd.L = 1. ; target_harmadd.n = 1. ; target_harmadd.A[ 0 ] = 0. ; 
 
 // TARGET SPECTRUM WARPSHAPE INDEX
-target_warpshape.L = 1. ; target_warpshape.n = 1. ; target_warpshape.A[ 0 ] = 0. ; 
+target_warpshape.L = 1. ; target_warpshape.n = 1. ; target_warpshape.A[ 0 ] = 0. ;
+
+// DATA FILE MACRO MODIFIERS (-Y,-@,-U,-y,-o,-O,-Q,-r,-j,-n): usage() documents
+// the scalers as defaulting to 1 (identity) and the shifters to 0, but these
+// are plain globals with no initializer, so without passing every one of
+// these flags each scaler silently stayed 0 and zeroed out its entire data-
+// table column (frequency, dB, delay, ...) instead of passing values through.
+data_shift_factor_scaler = 1. ; data_shift_factor_shifter = 0. ;
+data_frequency_scaler = 1. ; data_frequency_shifter = 0. ;
+data_peak_dB_scaler = 1. ;
+data_stopband_dB_scaler = 1. ; data_stopband_dB_shifter = 0. ;
+data_time_delay_scaler = 1. ; data_time_delay_shifter = 0. ;
+data_Q_index_shifter = 0. ;
 
 
 
-if( argc < 2 )usage() ; 
+if( argc < 2 )usage() ;
 
 
     while( (ch= crack( argc, argv, 

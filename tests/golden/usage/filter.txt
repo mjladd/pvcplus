@@ -1,0 +1,92 @@
+filter:  fixed-spectrum,  phase vocoder filter
+filter   [flags] [input file] [output file]
+	    Most formats accepted. Output format copied from input file.
+	    (Values in brackets denote defaults.)
+	N:	FFT length (must be a power of 2) [1024]
+		FFT length match input freqresponse analysis length.
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	P:	pitch transposition in semitones (func) [0]
+	a:	frequency shift factor 
+		    (bin frequency adder, before pitch transposition )(func) [0.] 
+	B:	TRANSPOSITION/SHIFT application FLAG [0]
+		    Apply -P and -a to:
+		     source only -- prefilter (0),
+		     or to  source and filter -- postfilter (1)
+	A:	gain in decibels (func) [0.] 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	    SOURCE
+	r:	source pitch transposition in semitones (func) [0]
+	u:	source frequency shift factor 
+		    (bin frequency adder, before pitch transposition )(func) [0.] 
+	J:	source gain in decibels (func) [0.] 
+	U:	source time delay in seconds (func) [0.]
+	F:	FILTER: single channel frequency response file 
+	G:	FILTER: filtering method: (POST everything)
+		 0 = pass, 1 = reject (inverted response) [0] 
+	Z:	FREQUENCY RESPONSE PRINTOUT: high cutoff frequency in Hz [0]
+		     (0 = off)
+	T:	FILTER: frequency response transposition in semitones (func) [0]
+	V:	FILTER: frequency response shifter (func) [0.] 
+	S:	FILTER: source decibels floor 
+		     (reduces filtered signal in proportion)(func) [0.] 
+	     FILTER FREQUENCY RESPONSE -- SHELF EQ:(post transpose/shift)
+		(PRE-compression/expansion and transposition/shift)
+	H:	filter shelf EQ: Low shelf gain in dB (func) [0.] 
+	X:	filter shelf EQ: High shelf gain in dB (func) [0.] 
+	m:	filter shelf EQ: Low shelf frequency in Hz (func) [200.] 
+	R:	filter shelf EQ: High shelf frequency in Hz (func) [2000.] 
+	Z:	FILTER FREQUENCY RESPONSE: COMPRESSION/EXPANSION:
+		(POST-EQ and PRE-warp)
+	c:	compression threshold in decibels (0 to -96) [0]
+	d:	decibels of compression (0 to -96) [0]
+	E:	expansion threshold in decibels (0 to -96) [-96]
+	g:	decibels of expansion (0 to -96) [0]
+	W:	FILTER FREQUENCY RESPONSE: 
+		warp index for reshaping magnitude response (func) [0.]
+		(POST-compression/expansion and transposition/shift)
+		    values > 0 expand the response's dynamic range, 
+		    values < 0 compress the the response's dynamic range 
+		FILTER FREQUENCY RESPONSE PROCESSING CHAIN:
+		    EQ -> COMPANDING -> WARP -> INVERSION -> SMOOTHING -> NORMALIZATION
+	Q:	FILTER FREQUENCY RESPONSE: smoothing bandwidth (in octaves or frequency) (func) [0]
+		  (The value for each peak is  replaced with the average
+		   value within the band, centered around the peak. Positive values
+		  are interpreted as frequency bandwidths and negative values as
+		    octave bandwidths, once made positive.
+	h:	FILTER: time delay in seconds (func) [0]
+	x:	function delay time scaler (func) [0]
+	    FRAME NORMALIZATION: 
+	n:	Frame Normalization Decibel Limit: (0-?) 
+		  Scale output frame amps to match or approach input frame amps
+		  using the (sum of input amps)/(sum of output amps) limited to
+		  the Decibel limit. 0 dB prevents normalization. [0]
+	v:	Frame Normalization Reference: 
+		  0 = Changing Input Sound, 1 = Constant Filter [0]
+	l:      amplitude attack time  (func) [0.]
+	L:      amplitude release time   (func) [0.]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	q:	Optional Analysis Sound File Source (for playback comparison only) [none]
+	=:	 peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]
+	t:	oscillator re-synthesis threshold in decibels [ -96 ]

@@ -1,0 +1,44 @@
+envelope:  amplitude envelope tracker
+envelope [flags] [input file] [output envelope file (optional)]
+                    (default: envelope.out)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+	D:	analysis frames per second [200]
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (-1. = end of file) [0.] 
+	C:	analysis channel (1 -> ?) (0 = average of all) [0] 
+	X:	multiple channel method: [0] 
+		    0 = average,  1 = peak
+	Q:	DETECTION BAND: data type [0]
+		    0 = freq,  1 = octave.pitchclass
+	f:	DETECTION  BAND: lower freq/pitch boundary (func) [0]
+	F:	DETECTION  BAND: upper freq/pitch boundary (func) [Nyquist]
+		FILTERED ENVELOPE:
+		  (The envelope detected by the following settings can be removed
+		   with the cut proportion. Set to 1 for full removal,  0 for none.
+)	j:	FILTERED ENVELOPE: attack response time (0 to ?) (func) [-0]
+	k:	FILTERED ENVELOPE: release response time (0 to ?) (func) [-0]
+	m:	FILTERED ENVELOPE cut proportion (0 to 1) (func) [0.]
+	    COMPRESSOR/GATE
+	T:	compression threshold level in decibels (0 to -96) (func) [0]
+	G:	decibels of compression 
+		    (0 to -96) (0 = no compression)(func) [0(off)]
+	S:	gate threshold level in decibels (0 to -96) (func) [-96 (off)]
+	l:      envelope attack time  (func) [0.]
+	L:      envelope release time   (func) [0.]
+	W:	distribution warp index (post compression) [0]
+		    value of 0: no warp
+		    values > 0 warp the distribution downward
+		    values < 0 warp the distribution upward
+	p:	print elapsed time (1 = on,  0 = off) [0]
+	r:	output samples per second (interpolated) for non-soundfile data types [500.]
+	g:	output data type 0 = ascii,  1 = floats [0]
+	q:	output data format [0] 
+		    0 = 0 to 1 amplitude scale, 
+		    1 = -96 to -0 decibel scale
+		    2 = inverted amplitude scale (1. - amplitude) 
+		    3 = inverted  decibel scale (0. -  (dB + 96.))
+	P:	plot output 0 = no,  1 = yes [0]

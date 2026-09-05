@@ -1,0 +1,8 @@
+tool = "spectwarper"
+input = "sine440_2s_44k.wav"
+description = "spectral amplitude compression"
+legacy_steps = [
+    "spectwarper -o-40 -O20 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "spectral", max_db_error = 0.5 }

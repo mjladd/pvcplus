@@ -1,0 +1,69 @@
+spectwarper:  spectral amplitude compressor/expander
+spectwarper   [flags] [input file] [output file (optional)]
+	    (values in brackets denote defaults)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	P:	pitch transposition in semitones (func) [0]
+	a:	frequency shift factor 
+		    (bin frequency adder, before pitch transposition )(func) [0.] 
+	A:	gain in decibels (func) [0.] 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	o:	COMPRESSION: threshold in dB (0 to -96)(func) [-0.]
+	O:	decibels of compression  (0 to -96)(func) [-0.(off)]
+	q:	EXPANSION: threshold in dB (0 to -96)(func) [-96.]
+	Q:	decibels of expansion (0 to -96) (func) [-0.(off)]
+	W:	WARP CURVE INDEX: (0 to +?) (func) [0.]
+		    0 = linear,  + values make smoother transition
+	l:	COMPANDER peak following response time: attack (0 to +?) (func) [0.]
+	L:	COMPANDER peak following response time: release (0 to +?) (func) [0.]
+	r:	COMPANDER RESPONSE TIME: in seconds (0 to +?) (func) [0.]
+		    Positive values smooth the shift into the regions of 
+		    compression and expansion, negative values sharpen it.
+		COMPANDING FREQUENCY BAND:
+		    ( Companding is applied only to the band relative to its peak.)
+	c:	low cutoff frequency (func) [0]
+	d:	high cutoff frequency (func) [Nyquist]
+	f:	octaves of rolloff (func) [0.]
+	S:	COMPRESSION WINDOW SIZE in octaves 0. = off (func) [0.]
+		    (This is the octave bandwidth over which the peak value
+		      is obtained from which compression is applied. 
+		       0. uses one peak for all.)
+	g:	COMPLEMENT AMPLITUDE SPECTRUM proportion (0-1) (func) [0.]
+		    (Value of 1 produces the difference of the old and new bin amp.
+		      0 = no inversion. The sum of the old and new equals the original.)
+	    FRAME NORMALIZATION: 
+	n:	Frame Normalization Decibel Limit: (0-?) 
+		  Scale output frame amps to match or approach input frame amps
+		  using the (sum of input amps)/(sum of output amps) limited to
+		  the Decibel limit. 0 dB prevents normalization. [0]
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]
+	     SHELF EQ:(post transpose/shift)
+	H:	shelf EQ: Low shelf gain in dB (func) [0.] 
+	X:	shelf EQ: High shelf gain in dB (func) [0.] 
+	m:	shelf EQ: Low shelf frequency in Hz (func) [200.] 
+	R:	shelf EQ: High shelf frequency in Hz (func) [2000.] 
+	t:	oscillator re-synthesis threshold in decibels [ -96 ]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	Z:	print flag [0]

@@ -1,0 +1,94 @@
+inharmonator:  harmonic partials remapper
+inharmonator   [flags] [input file] [output file]
+	    	Most formats accepted. Output format copied from input file.
+	    	(Values in brackets denote defaults.)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	A:	master gain in decibels (func) [0.] 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	    SOURCE PARAMETERS:
+	Q:	frequency shift factor 
+		    (bin frequency adder, before pitch transposition )(func) [0.] 
+	u:	pitch transposition in semitones (func) [0]
+	J: SOURCE delay time (func) [0]
+	r:	gain in decibels (func) [0.] 
+	l:	amplitude attack time  (func) [0.]
+	L:	amplitude release time   (func) [0.]
+	    INHARMONATOR PARAMETERS:
+	f:	fundamental frequency of remapping scheme  (func) [60.] 
+
+	v:      envelope attack time  (func) [0.]
+	V:      envelope release time   (func) [0.]
+	Y:      frequency change response time  (func) [0.]
+
+	a:	NON TARGETS: frequency shift factor 
+		    (bin frequency adder, before -P )(func)[0.] 
+	P:	NON TARGETS: pitch transposition in semitones (func)[0]
+	G:	NON TARGETS: gain control in decibels (func) [0.] 
+
+	E: NON TARGETS decay time (func) [0]
+	K: NON TARGETS time delay randomization  0 = off 0, 1 = on [0]
+	j: NON TARGETS delay time (func) [0]
+	n: NON TARGETS time delay response time in seconds (func) [0]
+	q:	TARGETS: frequency shift factor 
+		    (bin frequency adder, before -P )(func)[0.] 
+	X:	TARGETS: pitch transposition in semitones (func)[0]
+	m:	TARGETS: gain control in decibels (func) [0.] 
+	S:	TARGETS: proportion of data file frequency shift (0-1)(func) [1.] 
+		    (0 = no shift,  1 = full shift)
+	W:	TARGETS: spectrum warp index for reshaping magnitude response (func) [0.] 
+		    Values > 0 expand the dynamic range, 
+		    values < 0 compress the dynamic range. 
+	H: TARGETS time delay randomization  0 = off 0, 1 = on [0]
+	c: TARGETS time delay response time in seconds (func) [0]
+	g: TARGETS decay time scaler (func) [0]
+	k: TARGETS decay time shifter (func) [0]
+	x: TARGETS partial bandwidth proportion (func) [0]
+	B:	dB level at boundaries of partial band [-96.]
+		    (relative to partial dB)
+		    (boundaries lie 1/2way between partials) 
+
+	F:	(ascii) DATA FILE of unordered, selected partial triples:
+		     Each consisting of: 
+			partial number, shift(see below), decibels, and delay time
+	Z:	SHIFT DATA FORMAT: [0]
+		     0 = transposition multiplier
+		     1 = frequency shift point
+		     2 = octave.pitch_class shift point
+		     3 = partial number of fundamental shift point
+
+	     INPUT DATA MACRO MODIFIERS:
+	z:	data partial number scaler, scaled relative to 1 and above [1]
+		  i.e. partial 1 remains constant. [1, 2, 3] becomes [1, 3, 5] with scaler of 2
+	R:	data partial number shifter [0]
+	y:	data decibels scaler [1]
+	o:	data delay time scaler [1]
+	O:	data delay time shifter [0]
+	U:	TARGETS: amplitude interpolation control (0-1): 0 = original, 1 = modified (func) [1] 
+	S:	TARGETS: frequency interpolation control (0-1): 0 = original, 1 = modified (func) [1] 
+	T:	TARGETS: time interpolation control (0-1): 0 = original, 1 = modified (func) [1] 
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]
+	t:	oscillator re-synthesis threshold in decibels [ -96 ]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]

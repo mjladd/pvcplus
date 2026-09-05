@@ -1,0 +1,69 @@
+delayfilter:  group delay  phase vocoder resynthesis
+delayfilter   [flags]  [output file ]
+	    	Pre-formatted output sound file required.
+	    (Values in brackets denote defaults.)
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	S:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		      4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+	D:	analysis frames per second [200]
+	d:	output duration in seconds 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	x:	function delay time scaler for post-delay modification parameters (fun)[0.]
+	P:	pitch transposition in semitones (func) [0]
+	a:	frequency shift factor (bin frequency adder, before -P )(func)[0.] 
+	A:	gain in decibels (func) [0.] 
+	F:	phase vocoder analysis file 
+	Q:	DATA time point (func) [0.] 
+	Y:	DATA rate multiplier (func) [1.]
+		    (1. = rate of original, 2. = twice as fast, etc.)
+		    (negative = reverse,  0 = stationary) 
+	B:	GROUP DELAY FILTER: group delay response file 
+		    (use groupdelaymaker to make file)
+	    ** GROUP DELAY FILTER **
+	Z:	GROUP DELAY FILTER: print group delay filter response file
+		    analysis average to standard error (1 = yes, 0 = no) [0]
+	b:	GROUP DELAY FILTER: frequency  transposition in semitones 
+			    of group delay response (func) [0]
+	e:	GROUP DELAY FILTER: frequency  shift of group delay response (func) [0.] 
+	w:	GROUP DELAY FILTER: warp index for reshaping  response [0.] 
+		    (values > 0 reduce integral of delay, < 0 increases it)
+	V:	GROUP DELAY FILTER: zero delay decibels (func) [0]
+	y:	GROUP DELAY FILTER: maximum delay decibels (func) [0]
+	z:	GROUP DELAY FILTER: delay decibels curve shape (func) [0]
+	T:	GROUP DELAY FILTER: delay time multiplier (func) [1.] 
+	v:	GROUP DELAY FILTER DIFFUSION: 
+			random variation switch (1 = on,  0 = off) [0]
+	q:	GROUP DELAY FILTER DIFFUSION: 
+			random variation bandwidth in seconds 
+				    (0 (off) -> ? ) (func) [0.] 
+	r:	GROUP DELAY FILTER DIFFUSION: 
+			random variation response time size in seconds 
+				    (0 (off) -> ? ) (func) [0.] 
+	    ****
+	E:	INPUT SPECTRUM compression threshold (in decibels) [0] 
+	c:	INPUT SPECTRUM  decibels of compression [0] 
+	W:	INPUT SPECTRUM warp index for reshaping magnitude response (func) [0.] 
+		    values > 0 close down response, < 0 open it up
+	l:      OUTPUT envelope attack time  (func) [0.]
+	L:      OUTPUT envelope release time   (func) [0.]
+	f:      OUTPUT frequency change response time   (func) [0.]
+	     FILTER FREQUENCY RESPONSE -- SHELF EQ: (pre-processing)
+	H:	FILTER SHELF EQ: Low shelf gain in dB [0.] 
+	X:	FILTER SHELF EQ: High shelf gain in dB [0.] 
+	m:	FILTER SHELF EQ: Low shelf frequency in Hz [200.] 
+	R:	FILTER SHELF EQ: High shelf frequency in Hz [2000.] 
+	t:	oscillator resynthesis threshold [.001]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 AUTO OUTPUT SOUND FILE PLAY:
+		    0  = off 
+		    -1 = interactive: Prompt for each play.
+		    -2 = interactive: Play once, then prompt for more.
+                   1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 PEAK RESCALE LEVEL 0 to -96 dB 
+		    1 = Rescale to level of input file.
+		    2 = Bypass rescaling. [ 1 ]

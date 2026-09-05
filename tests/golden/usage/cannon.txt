@@ -1,0 +1,26 @@
+usage: cannon [flags] function args...
+flags:
+ -LN	 set N output floatsams (1024)
+ -S[N]	 set seed for random number generator to N
+ 		 (or to time of day if no N)
+ -I	use standard input instead of internally generated noise
+ -F	use 1/f noise instead of white noise
+ -CN	use correlated noise; N=correlation factor: 0=white, -> 1=brownian
+ -sN	set sequence length for 1/f noise to N
+functions:  args:
+      	arcsin      no args     
+	beta        a (0.25) b (0.25)
+	cauchy      tau (0.01272) iopt (0.0)
+	exponential delta (2.0) 
+	gamma       nu (2.0)    
+	gauss       sigma (1.0) xmu (0.0)
+	hyperbolic  tau (0.48732), xmu (0.0
+	linear      g 1.0       
+	logistic    alpha (2.2021) beta (0.0)
+	laplace     tau (0.50723) xmu (0.0)
+	urand       lb (0.0) ub (1.0)
+	frand       lb (0.0) ub (1.0)
+	crand       lb (0.0) ub (1.0)
+	randfi      slow sRate (FDLOSR)  freq (440.0)
+	randfc      slow sRate (FDLOSR) freq (440.0)
+cannon: missing function name

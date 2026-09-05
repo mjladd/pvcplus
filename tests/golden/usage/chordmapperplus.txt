@@ -1,0 +1,112 @@
+chordmapperplus:  time-varying, mutiple harmonic tone mapper 
+chordmapperplus   [flags]  [output file ]
+	    Pre-formatted output sound file required.
+	    (Values in brackets denote defaults.)
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	I:	analysis frames per second [200]
+	D:	output duration in seconds 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	A:	gain in decibels (func) [0.] 
+	f:	phase vocoder analysis file 
+	    DATA TIME
+	x:	time point origin (func) [0.] 
+	Y:	rate multiplier (func) [1.]
+		    (1. = rate of original, 2. = twice as fast, etc.)
+		    (negative = reverse,  0 = stationary) 
+	g:	time window: lower boundary (func) [0.] 
+	k:	time window: upper boundary (if < 0,  then analysis duration) 
+								(func) [end of file] 
+	S:	time window mode: 0 = autostop at boundary, 1 = sampler loop [0]
+	    SAMPLER
+	z:	playback mode: 0 = sampler, 1 = autostop [0] 
+	Q:	loop mode: [0]
+		   0 = wrap time into window
+		   1 = fold time into window bounds
+		   2 = clip or limit time to nearest window boundary
+	@:	onset and release switch: 0 = off, 1 = on [0]
+	/:	peak loop seam lowpass filter smoothing time (func) [0]
+	e:	loop amplitude normalization switch (using boundary levels and interpolation)
+			0 = off, 1 = on [0]
+	    SYNTHETIC VIBRATO
+	r:	synthetic vibrato rate (func) [0.] 
+	v:	synthetic vibrato randomization control 0-1 (func) [0.]
+	    NATURAL VIBRATO
+	R:	automatic vibrato period detection and time boundary selection
+		randomization, 0 = off, 1 = on [0]
+	V:	vibrato period duration detection variance threshold as proportion [.05]
+	    SOURCE
+	s:	source switch:  0 = omit source, 1 = include source[0]
+	a:	source frequency shift factor 
+		    (bin frequency adder, before -P )(func)[0.] 
+	P:	source pitch transposition in semitones (func) [0.]
+	G:	source gain control in decibels (func) [0.] 
+	O:	source frequency analysis adjustment switch 0 = off, 1 = on [0.] 
+	h:	frequency stasis suppression threshold rise response time in seconds (func)[0.] 
+	    TONES
+	       Master Controls:
+	q:	tones master frequency shift (func) [0.] 
+	X:	tones master pitch transposition in semitones (func) [0.]
+	m:	tones master gain in decibels (func) [0.] 
+ 	       Parameter Field Interpolation Controls:
+	c:	tones amplitude interpolation control,  0-1 (func) [0]
+	B:	Rate-correlated force suppression/stasis compensation switch 0 = off, 1 = on [0]
+			Switched on, playback rate multipliers less than 1 attenuate
+			force level while adjusting median stasis levels, in both tone and noise,
+			to compensate for the change in amplitude. A rate multiplier of
+			0 (stationary time) neutralizes all force, resulting in a static, stasis
+			median sound, adjusted in level to correspond to the original force level.
+	F:	ASCII file of tone data (unordered groups of 20 parameters):
+		     Each consisting of: 
+			(1) source point (see -Q source point data format below)
+			(2, 3) shift factor or point: base, peak (see -Z shift data format below)
+			(4) lowest partial number
+			(5) partial spacing as proportion of fundamental frequency
+			(6) number of partials (0 = all partials below Nyquist frequency)
+				positive values: pass mode
+				    (include the selected partials)
+				negative values: reject mode
+				    (include all partials except the selected ones) 
+			(7) partial shift factor as proportion of fundamental frequency
+			(8) bandwidth as proportion of fundamental frequency
+			(9, 10) decibels: base, peak 
+			(11, 12) force: base, peak
+			(13, 14) stasis median position: base, peak
+			(15, 16) bandpass center frequency: base, peak
+			(17, 18) bandpass rolloff in dB/octave: base, peak
+			(15) transposition switch
+			    1 = use master tones transpose function,  0 = bypass transpose function
+			(16) synthetic vibrato switch: 0 = off, 1 = on
+	      Rate Correlated Controls:
+	B:	rate correlated force suppression switch: 0 = off, 1 = on [0]
+	T:	rate correlated tone level control in dB (func)[0]
+	E:	rate correlated noise level control in dB (func)[0]
+	H:	rate correlated randomization switch: 0 = off, 1 = on [0]
+	L:	noise band limit level in dB (func)[0]
+	b:	noise band limit level rolloff in dB per channel (func)[0]
+	u:	Fundamental frequency for vibrato periods detection. [0]
+	U:	vibrato period duration variation: [1]
+		    0 = mechanical synchronization
+		    1 = natural variation
+	n: 	auto-adjust partial positions and bandwidths 0 = off, 1 = on [0]
+	o:	auto-adjust decibel stopband level [-20.]
+	l:	auto-adjust partial inclusion threshold in dB [-100.]
+	t:	oscillator re-synthesis threshold in decibels [ -96 ]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]

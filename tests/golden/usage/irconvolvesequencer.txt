@@ -1,0 +1,43 @@
+irconvolvesequencer:  fast impulse response convolution  
+irconvolvesequencer   [flags] [input file] [output file]
+       Most formats accepted. Output format copied from input file.
+       (Values in brackets denote defaults.)
+	b:   begin time in seconds  [0.] 
+	e:   end time in seconds ( 0. = end of file) [0.] 
+	C:   resynthesis channel (1 -> ?) (0 = all) [0] 
+	I:	output directory 
+	J:	impulse channel [-0.]
+	d:	add ring time  0 = off, 1 = on [0]
+	v:	normalization code:  0, 1, 2, 3 [0]
+	M:   multi-channel output mode: standard = 0, alternate = 1 [0]
+	   Gain Controls:
+	A:   input source gain in dB, for mix with convolution output (func) [-0.]
+	r:   convolution source output gain in dB (func)[-0.]
+	** INPUT SOUND: BAND PASS FILTER
+	D:	low rolloff frequency (func) [-0.]
+	f:	high rolloff frequency (func) [-0.]
+	h:	low edge amplitude rolloff in decibels per octave (func) [-0.]
+	H:	high edge amplitude rolloff in decibels per octave (func) [-0.]
+	   *** IMPULSE RESPONSE FILTER BAND ***
+	s:   impulse response low frequency rolloff point [0.]
+	t:   impulse response high frequency rolloff point [Nyquist frequency]
+	g:   frequency band low edge amplitude rolloff in Decibels per octave [0.]
+	G:   frequency band low edge amplitude rolloff in Decibels per octave [0.]
+	**** Impulse Response Signal Shaping:
+	x:   impulse response shaping switch off = 0, on = 1 [0]
+	P:   peak amplitude level in dB (func)[0]
+	B:   function breakpoint in dB (func) [0]
+	F:   base or floor amplitude level in dB (func) [-96]
+	Z:   upper curve shape index (func) [0]
+	z:   lower curve shape index (func) [0]
+	p:   amplitude reports print mode: 0 = off, 1 = on [0]
+	i:   time interval between amplitude reports [.25]
+	_:    auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	=:    peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]

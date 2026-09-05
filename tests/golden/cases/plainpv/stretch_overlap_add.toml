@@ -1,0 +1,9 @@
+tool = "plainpv"
+input = "sine440_2s_44k.wav"
+description = "time stretch 2x, overlap-add path (no transposition)"
+legacy_steps = [
+    "plainpv -N1024 -I2 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 1e-4 }
+notes = "P stays 0 (no -P/-a), so plainpv picks overlap-add, not the oscillator bank."

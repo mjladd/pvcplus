@@ -1,0 +1,63 @@
+ratechanger:    
+ratechanger   [flags] <input sound> <pre-existing output sound file>
+	    Most formats accepted.
+	    (Values in brackets denote defaults.)
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	d:	output duration: 
+	D: 	Synthesize duration: off (0), on (1) [0]
+			In order to synchronize the completion of control functions with the output duration,
+			this flag invokes a preliminary search for an output duration that synchronizes with
+			the completion of control functions. (An iterative algorithm is used that converges on an
+			appropriate duration.) 
+
+		** Dynamic Control Via Input and Output Time **
+
+		The following flags allow for the dynamic control of rate and amplitude
+		as a function of either the current input or output sound time. The respective
+		controls may be used simultaneously, such as in a case in which a pitch
+		correction function is driven according to the input sound (correction needing
+		to be synchronized with the input sound) while a second function is used to apply
+		pitch changes as a function of the output time and a synthesized output duration.
+
+		** Rate Change Control **
+	O:	time point origin (func) [0.]
+	r:	rate multiplier as a function of input sound time. (func) [1.]
+	R:	rate multiplier as a function of output sound time. (func) [1.]
+	s:	semitone pitch shift as a function of input sound time. (func) [0.]
+	S:	semitone pitch shift as a function of output sound time. (func) [0.]
+
+		** Amplitude Control **
+	a:	amplitude envelope as a function of input sound time. (func) [0.]
+	A:	amplitude envelope as a function of output sound time. (func) [0.]
+		** Sinc Function Filter Specifications **
+	B:	sinc function truncation decibel level (-30 to -60) [-60]
+			The specified decibel level determines the sinc window truncation point
+			using the amount of dB rolloff; lower levels increase fidelity. Range: -10 to -96
+	t:	truncated and windowed (Blackman) sinc function using:
+				(0) math functions (slow), (1) lookup table with linear interpolation (fast) [1]
+	L:	Number of samples per Pi sine period for lookup table; value corresponds to the number of
+			computed table interpolation points between original samples. (e.g. 10-100) [100]
+		** Input Sound Time Boundaries **
+	b:	low time point boundary (func): [0.]
+	e:	high time point boundary (func) [end of file ]
+	X:	Synthesis modes: sinc summation (0), rectangular (1), linear interpolation (2) [0]
+			Modes 1 and 2, which produce digital artifacts--aliasing, etc.--are provided
+			here for demonstration purposes ONLY.
+		** Post-Synthesis Processing **
+	m:	new sample rate: Impose the new sample rate on the resulting data.
+			0 or less keeps the old sample rate. [0]
+		Note: For sample rate conversion (i.e. resampling of input signal according to a new sample rate),
+		 specify, along with a new sample rate (-m), a rate change multiplier that resamples
+		 the signal in accord with the new and old sample rates (i.e. for either -r or -R, 
+		specify a value equal to [old-sample-rate / new-sample-rate] ).
+	n:	Normalization: 
+			0: Do not normalize. 
+			1: Normalize channels to input levels (default).
+			2: Normalize channels independently.
+			3: Normalize channels together against channel with peak amplitude.
+			4: Normalize channels together if any channel exceeds 0 decibels.[1]
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]

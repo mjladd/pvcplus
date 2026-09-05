@@ -1,0 +1,7 @@
+tool = "gen6"
+description = "gen6: default table"
+legacy_steps = [
+    "gen6 -L1024 > {output}",
+]
+output_ext = "f32"
+tolerance = { kind = "exact" }

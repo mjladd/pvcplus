@@ -1,0 +1,14 @@
+
+ROUTINE: /opt/pvc-legacy/bin/reshape
+
+
+
+
+UNIX COMMAND:
+/opt/pvc-legacy/bin/reshape 
+
+
+INPUT FILE IS ASCII
+
+FILE VALUE: 0.000000 			CANNOT RESHAPE ONE INPUT VALUE. BYE.
+

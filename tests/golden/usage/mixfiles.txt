@@ -1,0 +1,27 @@
+mixfiles:    
+mixfiles   [flags] [input files]
+	    Most formats accepted.
+	    (Values in brackets denote defaults.)
+	o:	output file
+	n:	Normalization: 
+			0: off
+			1: Normalize channels independently.
+			2: Normalize channels together against channel with peak amplitude.
+			3: Normalize channels together if any channel exceeds 0 decibels.[0]
+	l:	Number of Output Channels  (optional) 
+			When  left unspecified, the number of channels corresponds to the file with the largest number 
+				of channels. Values less than the largest found output the specified number of channels
+				in order from the first. [largest number found]
+	f:	Delay Times File
+			The values of the specified ASCII file are matched, in order, with the input sound file
+			list and treated as delay times, in seconds, for those files. The number of file values
+			need not match the number of sound files; files not matched to
+			delay times (short lists) are assigned a delay time of zero.[no delays]
+	c:	Concatenate Files
+			Delay files as though sequenced in concatenation. 
+			The -c flag overrides any specified delay times file.
+	g:	Audio Gain Modifiers File (in decibels)
+			The values of the specified ASCII file are matched, in order, with the input sound file
+			list and treated as gain level modifiers, treated as decibels, for those files. The number of file values
+			need not match the number of sound files; files not matched to
+			a level modifier (short lists) are not modified.[no change]

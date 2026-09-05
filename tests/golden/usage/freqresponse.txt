@@ -1,0 +1,49 @@
+freqresponse:  analysis-driven frequency response maker 
+freqresponse   [flags] [input sound file] [output freqresponse file]
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	D:	analysis frames per second [200]
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+		Output Spectrum Type:
+	c:	0 = average amplitude, 1 = peak amplitude
+	W:	average amplitude weighting: 0 = off,  1 = on [0] 
+		    (For -c0, -c2, and -c3, the average is weighted by the frame's
+			sum,  thus causing amplitude to bias toward the louder frames.)
+	p:	Spectrum Formant Normalization Flag
+	 	   Normalize spectrum according to formant peaks; bins inbetween formants
+		   use cross-faded gain from respective bounding formants
+		   0 = off, 1 = on [0]
+	E:      Warp index for mid-formant amplitude compression/expansion.
+		   Values > 0: expand dynamic range between formants,
+		   values < 0 compress dynamic range.[0]
+	L:   low frequency limit [0.]
+	j:   high frequency limit [nyquist]
+	A:	minimum formant peak amplitude in dB [-96.]
+	g:   formant selection threshold, 0-1 [.5]
+			Higher thresholds produce fewer formants by selecting
+			for stronger spikes.
+	B:	EQ with normalization (0 = yes, 1 = no) [0] 
+		 (This is an administrative flag for silent use with 
+		   noisefilter and compander. All other uses of freqresponse)
+		   normalize the output response.)
+	     SHELF EQ:(post transpose/shift)
+	H:	shelf EQ: Low shelf gain in dB (func) [0.] 
+	X:	shelf EQ: High shelf gain in dB (func) [0.] 
+	m:	shelf EQ: Low shelf frequency in Hz (func) [200.] 
+	R:	shelf EQ: High shelf frequency in Hz (func) [2000.] 
+	a:	Decibels Spectrum Plot File
+	o:	Formants Bar Plot File 
+	i:	Formants ACII Data File 
+	F:	Formants Data Output File (binary)
+	P:	FREQUENCY RESPONSE PRINTOUT: high cutoff frequency in Hz [0]
+		     (0 = off)

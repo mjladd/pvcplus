@@ -1,0 +1,55 @@
+compander:  amplitude compressor/expander
+compander   [flags] [input file] [output file]
+	    Most formats accepted. Output format copied from input file.
+	    (Values in brackets denote defaults.)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		      4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	P:	pitch transposition in semitones (func) [0]
+	a:	frequency shift factor (bin frequency adder, before -P )(func)[0.] 
+	A:	gain in decibels (func) [0.] 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	F:	PEAKS FREQUENCY RESPONSE FILE 
+	S:	PEAKS RESPONSE: smoothing bandwidth (in octaves or frequency) [0]
+		    (The value for each peak is  replaced with the average
+		     value within the band, centered around the peak. Positive values
+			are interpreted as frequency bandwidths and negative values as
+			    octave bandwidths, once made positive.
+	Z:	(SMOOTHED) PEAKS FREQ RESPONSE PRINTOUT: high cutoff frequency in Hz [0]
+		    (0 = off)
+	o:	COMPRESSION: threshold in dB (0 to -96)(func) [-0.]
+	O:	decibels of compression  (0 to -96)(func) [-0.(off)]
+	q:	EXPANSION: threshold in dB (0 to -96)(func) [-96.]
+	Q:	decibels of expansion (0 to -96) (func) [-0.(off)]
+		COMPANDING FREQUENCY BAND:
+	c:	low cutoff frequency (func) [0]
+	d:	high cutoff frequency (func) [Nyquist]
+	f:	octaves of rolloff from freq band (func) [0.]
+	l:	COMPANDER envelope attack time  (func) [0.]
+	L:	COMPANDER envelope release time  (func) [0.]
+	_:	 AUTO OUTPUT SOUND FILE PLAY:
+		    0  = off 
+		    -1 = interactive: Prompt for each play.
+		    -2 = interactive: Play once, then prompt for more.
+                   1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 PEAK RESCALE LEVEL 0 to -96 dB 
+		    1 = Rescale to level of input file.
+		    2 = Bypass rescaling. [ 1 ]
+	t:	oscillator resynthesis threshold in decibels [ -96 ]
+	     SHELF EQ: (post transpose/shift) 
+	H:	SHELF EQ: Low shelf gain in dB (func) [0.] 
+	X:	SHELF EQ: High shelf gain in dB (func) [0.] 
+	m:	SHELF EQ: Low shelf frequency in Hz (func) [200.] 
+	R:	SHELF EQ: High shelf frequency in Hz (func) [2000.] 
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
