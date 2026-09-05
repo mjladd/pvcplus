@@ -706,8 +706,8 @@ fvec( layerTimeStartPoint, numberOfLayers ) ;
 fvec( layerTimeFallPoint, numberOfLayers ) ; 
 
 
-layerMode[2] = 1 ;
-layerTimeStartPoint[0] = 0. ; 
+layerMode[0] = 1 ;
+layerTimeStartPoint[0] = 0. ;
 layerRiseTimeDur[0] = 0. ; 
 layerHoldTimeDur[0] = outputDuration ; 
 layerFallTimeDur[0] = 0. ;

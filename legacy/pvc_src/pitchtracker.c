@@ -233,6 +233,7 @@ struct  func  lowfreq ;
 
 //  HIGH FREQUENCY BOUND
 struct  func  hifreq ; 
+int hifreqUserSet = 0 ; // set in case 'F': tracks whether the user overrode the default (nyquist) high-frequency bound
 
 
 //  BIN AMP ENVELOPE RELEASE TIME
@@ -274,7 +275,7 @@ analysis.L = 1. ; analysis.n = 0. ; analysis.A[ 0 ] = 0. ;
 lowfreq.L = 1. ; lowfreq.n = 1. ; lowfreq.A[ 0 ] = 0. ; 
 
 //  HIGH FREQUENCY BOUND
-hifreq.L = 1. ; hifreq.n = 1. ; hifreq.A[ 0 ] = nyquist ; ; 
+hifreq.L = 1. ; hifreq.n = 1. ; hifreq.A[ 0 ] = 0. ; ; // real default (nyquist) is not yet known here; set below once R is read
 
 
 //  BIN AMP ENVELOPE RELEASE
@@ -367,6 +368,7 @@ while( (ch= crack( argc, argv, "a|b|B|c|C|d|D|e|E|f|F|g|G|H|j|J|L|l|m|M|N|o|O|p|
 	    case 'F':   strcpy(tempstring, arg_option);
 			hifreq.fp = crackstring( tempstring, 
 			    &hifreq );
+			hifreqUserSet = 1 ;
 			break;
 
 	    case 'G':   strcpy(tempstring, arg_option);
@@ -464,7 +466,8 @@ if( readffthead(  &analysis_N,  &analysis_D,  &analysis_R,  &analysis_chan, &k, 
 	idur = analysis_dur ; 
 
 	// SET/INTERPRET BEGIN/END TIMES. 
-	if( endt <= 0. ) endt = idur ; if( begint <= 0. ) begint = 0. ; 
+	if( endt <= 0. ) endt = idur ;
+	if( begint <= 0. ) begint = 0. ;
 
 		// TEST BEGIN AND END TIMES.
 	if( (endt <= begint)){
@@ -587,6 +590,7 @@ N2 = N>>1 ;
 Nw2 = Nw>>1 ;
 freqdiff = (float) R / (float) N  ;
 nyquist = (float) R / 2.0;
+if( !hifreqUserSet ) hifreq.A[ 0 ] = nyquist ;
 ar_dB =  (double) pow( (double) 10.0, (double) ( -60. / 20.) );	
 fundamental =  ((float) R / (float) N) ; 
 frametprop = (float) D / (float) R ; 
@@ -1149,7 +1153,7 @@ if( amplitude_weighted_oversampling__factor >= 1. ){
 	    	//*************************************************
 
 
-if( DEBUGFLAG ) prf( frame_count, "frame_count" ); 
+		if( DEBUGFLAG ) prf( frame_count, "frame_count" );
 		if( frame_count == 0 ){
 			// NORMALIZE
 			for( i = 0; i < max_buffsize; i++ ){
@@ -1215,11 +1219,11 @@ if( DEBUGFLAG ) prt( "AT END");
 			// IF THE FIRST FRAME, SET OLD FREQ TO ANALYZED MEDIAN. 
 			if( old_freqnow == -1. ) old_freqnow = mode ;
 		}
-if( DEBUGFLAG ) prf( t,  "TIME" ) ; 
+		if( DEBUGFLAG ) prf( t,  "TIME" ) ;
 		// HERE GOES... FIND THE MOST COMMON FREQ IN BUFFER
 		// (freqprop IS THE THRESHOLD OF COMMONMESS PROPORTION DEFINED UP TOP
-		freqnow = find_common_freq( freqprop, fbuff, collectedfbuffvalues, abuff, max_buffsize,  begin_buffsize,  note_ampthresh ) ; 
-if( DEBUGFLAG ) prf( freqnow,  "HERE->                          NOTE FREQUENCY" ) ; 
+		freqnow = find_common_freq( freqprop, fbuff, collectedfbuffvalues, abuff, max_buffsize,  begin_buffsize,  note_ampthresh ) ;
+		if( DEBUGFLAG ) prf( freqnow,  "HERE->                          NOTE FREQUENCY" ) ;
 
 if( DEBUGFLAG ) pri( notestate_flag,  "notestate_flag" ) ; 
 if( DEBUGFLAG ) prf( freqnow,  "NONADJUSTED FREQ" ) ; 
@@ -1278,7 +1282,7 @@ if( DEBUGFLAG ) prt( "// IN BOUNDS FREQ,  A GOOD FREQ" ) ;
 	    
 		}
 
-if( DEBUGFLAG ) prf( freqnow,  "ADJUSTED FREQ" ) ; 
+		if( DEBUGFLAG ) prf( freqnow,  "ADJUSTED FREQ" ) ;
 
 
 		// SET notestate_flag FOR NEXT ROUND
@@ -1783,7 +1787,7 @@ float find_common_freq(
 				//prt( "USING MEDIAN VALUE FROM THRESHOLD_MEETING VALUES" ) ; 
 				n = 0 ; 
 				for( i = 0; i < max_buffsize ; i++ ){
-					if( abuff[i] >= ampthresh ) collectedfbuffvalues[n] = fbuff[i] ;  n++ ; 
+					if( abuff[i] >= ampthresh ) { collectedfbuffvalues[n] = fbuff[i] ;  n++ ; }
 				} ; 
 				// IF BUFFER HAS VALUES, THEN SORT AND FIND MEDIAN.
 				if(n > 0){

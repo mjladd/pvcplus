@@ -54,6 +54,7 @@ struct  func  lowfreq ;
 
 //  HIGH FREQUENCY BOUND
 struct  func  hifreq ; 
+int hifreqUserSet = 0 ; // set in case 'F': tracks whether the user overrode the default (nyquist) high-frequency bound
 
 
 //  BIN AMP ENVELOPE RELEASE TIME
@@ -76,7 +77,7 @@ struct  func  warp ;
 lowfreq.L = 1. ; lowfreq.n = 1. ; lowfreq.A[ 0 ] = 0. ; 
 
 //  HIGH FREQUENCY BOUND
-hifreq.L = 1. ; hifreq.n = 1. ; hifreq.A[ 0 ] = nyquist ; ; 
+hifreq.L = 1. ; hifreq.n = 1. ; hifreq.A[ 0 ] = 0. ; ; // real default (nyquist) is not yet known here; set below once R is read
 
 
 //  BIN AMP ENVELOPE RELEASE
@@ -138,6 +139,7 @@ if( argc < 2 )usage() ;
 	    case 'F':   strcpy(tempstring, arg_option);
 			hifreq.fp = crackstring( tempstring, 
 			    &hifreq );
+			hifreqUserSet = 1 ;
 			break;
 
 	    case 'L':   strcpy(tempstring, arg_option);
@@ -254,6 +256,7 @@ if( tpinc > 1. ){
     Nw2 = Nw>>1 ;
     freqdiff = (float) R / (float) N  ;
     nyquist = (float) R / 2.0;
+if( !hifreqUserSet ) hifreq.A[ 0 ] = nyquist ;
     ar_dB =  (double) pow( (double) 10.0, (double) ( -60. / 20.) );	
     fundamental =  (float) R / (float) N  ; 
     frametprop = (float) D / (float) R ; 

@@ -2159,7 +2159,7 @@ void usage()
 	"	       Values between 1 and 2 generally work best. [2.]\n"
 
 	"	/p:	air absorption exponent for real space source (i.e. sound in front\n"
-	"						of speakers) [2]\n"
+	"						of speakers) [2]\n"
 	"	a:  reflections air-absorption exponent: \n"
 	"  	       amplitude of reflection = (reference distance / reflection distance)**exponent\n"
 	"	       Positive/negative values produce distance-correlated decrease/increase\n"
@@ -3064,13 +3064,13 @@ prt( "~~~~~~~~~~~~~~~~~~~~~~~~> TEST OF MIRROR POLYGON WALL BLOCKAGES FAILED" ) 
                if( viableReflectionCount[ outputFileChannelNumber ] >= reflectionNumberLimit ){
                   prt( ". . . EXPANDING MEMORY" ) ;
                   reflectionNumberLimit += reflectionMemoryExpansionSize ; 
-                  realloc( reflectionDistances, reflectionNumberLimit * sizeof( float ) ) ;
-                  realloc( reflectionTimes, reflectionNumberLimit * sizeof( float ) ) ;
-                  realloc( reflectionOrders, reflectionNumberLimit * sizeof( int ) ) ;
-                  realloc( sourceOrientationToReflectionAngleDifference, 
-                            reflectionNumberLimit * sizeof( float ) ) ; 
-                  realloc( reflectionWalls_lastToFirst, 
-                     reflectionNumberLimit * highOrderLimit * sizeof( int ) ) ; 
+                  reflectionDistances = realloc( reflectionDistances, reflectionNumberLimit * sizeof( float ) ) ;
+                  reflectionTimes = realloc( reflectionTimes, reflectionNumberLimit * sizeof( float ) ) ;
+                  reflectionOrders = realloc( reflectionOrders, reflectionNumberLimit * sizeof( int ) ) ;
+                  sourceOrientationToReflectionAngleDifference = realloc( sourceOrientationToReflectionAngleDifference,
+                            reflectionNumberLimit * sizeof( float ) ) ;
+                  reflectionWalls_lastToFirst = realloc( reflectionWalls_lastToFirst,
+                     reflectionNumberLimit * highOrderLimit * sizeof( int ) ) ;
 
                } ;
                reflectionDistances[ reflectionDataSetChannelPointer[ outputFileChannelNumber ] + 
@@ -9024,7 +9024,7 @@ void preConvolveReflectionOrderImpulseResponsesWithIrconvolver()
             fprintf( stderr, "%d ", reflectionOrderCVOrderSequences[(index * highOrderLimit) + i] ) ; 
 
          // MAKE EMPTY COMMAND
-         sprintf( command, "" ) ; 
+         command[0] = '\0' ;
 
          sprintf( command, "%scp /tmp/soundFile%d.au /tmp/tempOutput.au ; ", 
             command, reflectionOrderCVOrderSequences[ (index * highOrderLimit) + 0 ] ) ;          
