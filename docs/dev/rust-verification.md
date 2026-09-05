@@ -110,3 +110,29 @@ latency or an inherent (non-bug) precision ceiling that the test's
 comparison needs to account for - verify with the smallest oracle that
 can isolate it (an impulse, a single known input) before touching the
 implementation.
+
+## `legacy/tools/dumputils.c`
+
+Same idea as `dumpwin.c`, for `legacy/pvc_lib/miscellania.c`'s
+`dB_to_amp()`/`amp_to_dB()`/`semitones_to_mult()` - needed for Task 3.2's
+`pv` tool. `dB_to_amp` and `semitones_to_mult` are 5000-entry lookup
+tables with linear interpolation, not the exact formula (`10^(dB/20)`,
+`2^(semitones/12)`) - real, deliberate approximation error the tool's
+actual output depends on (`dB_to_amp(0.0)` is `0.997791529`, not `1.0`).
+
+```bash
+cmake --build build --target pvoc -j
+gcc -Ilegacy/pvc_lib -Ilegacy/pvc_src -o /tmp/dumputils legacy/tools/dumputils.c build/libpvoc.a -lsndfile -lm
+/tmp/dumputils
+```
+
+Caught the same class of bug as `trans`'s `denom` (Task 3.1): the
+table-construction expressions (`temp = (192. * ((float)i / 4999.)) -
+96.;`) mix a `float` with the C's bare double-literal constants, which
+promotes the *entire* expression to double precision, narrowed to
+`float` only on assignment. A first draft computed these in `f32`
+throughout and matched the real `dB_to_amp(0.0)` to only 6 significant
+figures, not bit-for-bit - go expression-by-expression checking which
+literals are bare (`96.`, promotes) vs already-`float` operands
+(nothing added here); don't assume a whole function is uniformly one
+precision just because most of its literals are.
