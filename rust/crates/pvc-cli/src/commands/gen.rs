@@ -1,4 +1,4 @@
-//! `pvc fn gen1..gen5`: dispatches to `pvc_core::gen`'s ported generators
+//! `pvc fn gen1..gen6`: dispatches to `pvc_core::gen`'s ported generators
 //! and writes the resulting table via `pvc_io::write_control_file`.
 
 use anyhow::{ensure, Result};
@@ -70,6 +70,10 @@ pub fn run(cmd: FnCommand) -> Result<()> {
             output,
         } => {
             let table = pvc_core::gen5(length, closed, &partials);
+            pvc_io::write_control_file(&output, &table)?;
+        }
+        FnCommand::Gen6 { length, output } => {
+            let table = pvc_core::gen6(length);
             pvc_io::write_control_file(&output, &table)?;
         }
     }

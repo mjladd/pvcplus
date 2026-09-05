@@ -8,14 +8,10 @@
 //! gen1 gen2 gen3 gen4 gen5`), not just re-derived by hand - see the test
 //! module.
 //!
-//! Not yet ported: `gen6` (uniform noise via glibc's exact `rand()`
-//! sequence - deterministic since the C never calls `srand()`, but
-//! replicating that PRNG bit-for-bit is a separate, self-contained piece
-//! of work not worth bundling here), `cspline` (cubic spline
-//! interpolation, 319 lines), `cannon`, and `reshape` (2486 lines, many
-//! modes - the plan's own note says to port only the modes
-//! `utilities/*`/`S.*` scripts use first). All four remain available via
-//! `pvc legacy`.
+//! Not yet ported: `cspline` (cubic spline interpolation, 319 lines),
+//! `cannon`, and `reshape` (2486 lines, many modes - the plan's own note
+//! says to port only the modes `utilities/*`/`S.*` scripts use first).
+//! All three remain available via `pvc legacy`.
 //!
 //! `sin`/`exp` in the C are called on a `float` angle that gets implicitly
 //! widened to `double` (C promotes a `float` argument to `double` for a
@@ -190,6 +186,87 @@ pub fn gen5(length: usize, closed: bool, partials: &[(f32, f32, f32)]) -> Vec<f3
     out
 }
 
+/// glibc's default `random()`/`rand()` sequence: the "TYPE_3" nonlinear
+/// additive feedback generator (degree 31, separation 3) in the state
+/// `rand()` is in when a program never calls `srand()` - as if
+/// `srandom(1)` had been called. `gen6.c` never seeds it, so its output
+/// is fully deterministic and reproducible bit-for-bit by replicating
+/// this exactly, which is what makes an "exact float compare" test
+/// meaningful for a *noise* generator at all.
+///
+/// Ported from glibc's `__srandom_r`/`__random_r` (verified against the
+/// real compiled `gen6` binary's output for 40 consecutive values - well
+/// past this generator's 31-entry state array - in this module's tests,
+/// not reproduced from memory alone).
+struct GlibcRandom {
+    state: [u32; Self::DEG],
+    fptr: usize,
+    rptr: usize,
+}
+
+impl GlibcRandom {
+    const DEG: usize = 31;
+    const SEP: usize = 3;
+
+    fn seeded(seed: u32) -> Self {
+        let seed = if seed == 0 { 1 } else { seed };
+        let mut state = [0u32; Self::DEG];
+        state[0] = seed;
+        // Park-Miller minimal-standard LCG, glibc's `__srandom_r` state
+        // initialization: computed in `int32_t` range with an explicit
+        // wraparound add rather than a modulus, matching the C exactly.
+        let mut word = seed as i64;
+        for s in state.iter_mut().take(Self::DEG).skip(1) {
+            let hi = word / 127_773;
+            let lo = word % 127_773;
+            word = 16_807 * lo - 2836 * hi;
+            if word < 0 {
+                word += 2_147_483_647;
+            }
+            *s = word as u32;
+        }
+        let mut rng = GlibcRandom {
+            state,
+            fptr: Self::SEP,
+            rptr: 0,
+        };
+        // __srandom_r discards the first `deg * 10` outputs to mix the
+        // state before any are used.
+        for _ in 0..Self::DEG * 10 {
+            rng.next_raw();
+        }
+        rng
+    }
+
+    /// `__random_r`: one raw 31-bit output in `[0, 0x7fffffff]`.
+    fn next_raw(&mut self) -> u32 {
+        self.state[self.fptr] = self.state[self.fptr].wrapping_add(self.state[self.rptr]);
+        let result = (self.state[self.fptr] >> 1) & 0x7fff_ffff;
+        self.fptr = (self.fptr + 1) % Self::DEG;
+        self.rptr = (self.rptr + 1) % Self::DEG;
+        result
+    }
+}
+
+/// Ports `gen6.c`: `length` uniform-noise samples in `[-1.0, 1.0)`, using
+/// the exact `rand()` sequence the C gets by never seeding one.
+pub fn gen6(length: usize) -> Vec<f32> {
+    let mut rng = GlibcRandom::seeded(1);
+    (0..length)
+        .map(|_| {
+            let r = rng.next_raw();
+            // `2.0 * ((float) rand() / (float) 0x7fffffff) - 1.0`: the
+            // division happens in float (both operands explicitly cast),
+            // but the `2.0 *`/`- 1.0` literals are `double`, promoting
+            // the rest of the expression to double precision before it's
+            // narrowed back to float on assignment - not float
+            // throughout, confirmed to matter by this module's tests.
+            let divided = (r as f32 / 0x7fff_ffffu32 as f32) as f64;
+            (2.0 * divided - 1.0) as f32
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -359,6 +436,65 @@ mod tests {
             -0.7071065306663513,
         ];
         assert_eq!(got, want);
+    }
+
+    #[test]
+    #[allow(clippy::excessive_precision)] // deliberately transcribed at full C float32 precision
+    fn gen6_matches_c_oracle_across_two_state_array_periods() {
+        // gen6 -L40 - deliberately longer than the 31-entry state array,
+        // so this also exercises the fptr/rptr wraparound.
+        let got = gen6(40);
+        let want: [f32; 40] = [
+            0.6803754568099976,
+            -0.21123415231704712,
+            0.566198468208313,
+            0.5968800783157349,
+            0.8232947587966919,
+            -0.6048972606658936,
+            -0.3295544981956482,
+            0.53645920753479,
+            -0.4444505572319031,
+            0.1079399585723877,
+            -0.045205891132354736,
+            0.2577418088912964,
+            -0.2704310417175293,
+            0.02680182456970215,
+            0.9044594764709473,
+            0.8323901891708374,
+            0.27142345905303955,
+            0.43459391593933105,
+            -0.7167948484420776,
+            0.21393775939941406,
+            -0.9673988819122314,
+            -0.5142264366149902,
+            -0.7255368232727051,
+            0.6083534955978394,
+            -0.6866418123245239,
+            -0.19811123609542847,
+            -0.7404191493988037,
+            -0.7823823690414429,
+            0.9978489875793457,
+            -0.5634862184524536,
+            0.025864839553833008,
+            0.6782244443893433,
+            0.22527968883514404,
+            -0.4079367518424988,
+            0.2751045227050781,
+            0.04857432842254639,
+            -0.012834012508392334,
+            0.9455500841140747,
+            -0.4149664044380188,
+            0.5427154302597046,
+        ];
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn gen6_is_deterministic_across_calls() {
+        // gen6.c never seeds rand(), so every process run gets the same
+        // sequence - confirmed directly against the real binary (two
+        // separate `gen6 -L4` runs produced identical output).
+        assert_eq!(gen6(10), gen6(10));
     }
 
     #[test]
