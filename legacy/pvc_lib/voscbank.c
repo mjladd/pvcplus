@@ -20,7 +20,6 @@ float C[],  O[], P; int N, Nw,  R, I;
 		n,
 		chan;
   float 	a0;
-  char		*space();
 
 
     if ( first ) {

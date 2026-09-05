@@ -25,7 +25,6 @@ void noscbank( float C[], int N, int R, int Nw, int I, float P, float O[] )
 		n,
 		chan;
   
-  char		*space(); 
 
 /* first pass: allocate memory to hold previous values
    of amplitude and frequency for each channel, the table

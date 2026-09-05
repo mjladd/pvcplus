@@ -14,7 +14,6 @@ float C[], S[]; int N2, I, R, Bins[]; float fundamental ;
 		freq;
   float 	mag,
 		phase;
-  char		*space();
 
 /* first pass: allocate memory and compute constants */
 
@@ -60,7 +59,6 @@ float C[], S[]; int N2, I, R, Bins[]; float fundamental ;
 		freq;
   float 	mag,
 		phase;
-  char		*space();
 
 /* first pass: allocate memory and compute constants */
 
@@ -106,7 +104,6 @@ float C[], S[]; int N2, I, R, Bins[]; float fundamental ;
 		freq;
   float 	mag,
 		phase;
-  char		*space();
 
 /* first pass: allocate memory and compute constants */
 

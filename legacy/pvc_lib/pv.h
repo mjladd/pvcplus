@@ -368,6 +368,7 @@ extern float semitones_to_mult( float semidev ) ;
 extern float dB_to_amp( float dB ) ;
 extern float amp_to_dB( float amp ) ;
 extern char *pvc_user_tag( void ) ;
+extern char *space( int sz, int obsz ) ;
 extern float smooth_setup( float t, float *c, float *minusc, float IR ) ; 
 
 extern float smooth_one_value(

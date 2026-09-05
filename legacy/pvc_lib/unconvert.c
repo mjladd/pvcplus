@@ -20,7 +20,6 @@ void unconvert( float C[], float S[], int N2, int I, int R )
 		freq;
   float 	mag,
 		phase;
-  char		*space();
 
 /* first pass: allocate memory and compute constants */
 
@@ -66,7 +65,6 @@ void unconvert1( float C[], float S[], int N2, int I, int R )
 		freq;
   float 	mag,
 		phase;
-  char		*space();
 
 /* first pass: allocate memory and compute constants */
 
@@ -113,7 +111,6 @@ void unconvert2( float C[], float S[], int N2, int I, int R )
 		freq;
   float 	mag,
 		phase;
-  char		*space();
 
 /* first pass: allocate memory and compute constants */
 
@@ -160,7 +157,6 @@ void unconvert3( float C[], float S[], int N2, int I, int R )
 		freq;
   float 	mag,
 		phase;
-  char		*space();
 
 /* first pass: allocate memory and compute constants */
 
