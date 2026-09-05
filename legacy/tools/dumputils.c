@@ -98,5 +98,21 @@ int main(void) {
         printf("smooth_setup(t=0, IR=0.005) c=%.9g minusc=%.9g\n", c, minusc);
     }
 
+    /* getthresh(arr, Nplus2, tgen): peak amplitude among bins 1.. (bin 0
+       excluded) times tgen. Not declared in pv.h - called in plainpv.c
+       via a bare `float getthresh();` forward declaration (K&R-style
+       "unspecified arguments", not "no arguments"), matching this old-
+       style-defined function's actual calling convention. Declaring a
+       *real* prototype here instead (`float getthresh(float*,int,float)`)
+       was tried first and silently produced wrong values - it makes the
+       caller pass `tgen` as a plain float, but the K&R definition's
+       calling convention expects the default float->double promotion
+       an unprototyped call applies. */
+    {
+        extern float getthresh();
+        float sp[10] = {9.0, 0, 2.0, 0, 7.0, 0, 4.0, 0, 1.0, 0};
+        printf("getthresh(peak-excl-bin0, tgen=0.5) = %.9g\n", getthresh(sp, 10, 0.5));
+    }
+
     return 0;
 }
