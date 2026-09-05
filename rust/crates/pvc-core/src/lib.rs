@@ -12,7 +12,7 @@ pub use control::ControlFn;
 pub use eq::{eq2, ShelfEq};
 pub use fft::rfft;
 pub use gen::{gen1, gen2, gen3, gen4, gen5, gen6, trans};
-pub use pvoc::{phaselock, Analyzer, Frame, OscBank, Synthesizer};
+pub use pvoc::{getthresh, phaselock, Analyzer, Frame, OscBank, Synthesizer};
 pub use smooth::{smooth_setup, Smoother};
 pub use units::{amp_to_db, DbToAmp, SemitonesToMult};
 pub use warp::{curve, spectmagwarp};

@@ -146,3 +146,28 @@ standalone dumper needs its own `int frame_count = 0;`) to drive
 these matched on the first try once written against the precision
 rules established above - worth noting as the payoff: the rules
 generalize once you've been burned by them a couple of times.
+
+## A different kind of gotcha: calling an unprototyped K&R function
+
+`getthresh()` (`legacy/pvc_lib/getthresh.c`, used by `noscbank`'s
+threshold) surfaced a new failure mode. It's defined old-K&R-style
+(`float getthresh( arr, Nplus2, tgen ) float *arr, tgen; int Nplus2;`)
+and has no prototype anywhere - every real caller forward-declares it as
+`float getthresh();` (empty parens mean "unspecified arguments" in C,
+not "no arguments": this suppresses argument type-checking and applies
+default promotion, e.g. `float` args get passed as `double`).
+
+The first version of this test declared a real, fully-typed prototype
+(`extern float getthresh(float *arr, int Nplus2, float tgen);`) before
+calling it - compiles fine, links fine, and silently returned `0` for
+every input. A real prototype tells the compiler to pass `tgen` as a
+plain `float`; the K&R-style *definition*'s actual calling convention
+still expects the default float-to-double promotion an unprototyped
+call site applies, so the two disagree about how the argument is
+passed and the callee reads garbage. Matching the real callers' bare
+`extern float getthresh();` declaration fixed it immediately.
+
+Worth remembering for anything else in `pvc_lib`/`pvc_src` reached via
+an old bare forward declaration rather than a `pv.h` prototype: don't
+"upgrade" the call site to a modern typed signature just because the
+compiler will accept it - match how the real code actually calls it.

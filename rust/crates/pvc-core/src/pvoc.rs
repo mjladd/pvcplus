@@ -319,6 +319,25 @@ impl Synthesizer {
     }
 }
 
+/// Ports `getthresh()`: the [`OscBank`] threshold for one frame - the
+/// peak amplitude among bins *1..* (bin 0, the DC bin, is excluded from
+/// the search, matching the C's loop starting at array index 2, i.e.
+/// skipping `amp[0]`) times a linear ratio `tgen` (typically
+/// `10^(dB/20)`, computed exactly - not the `DbToAmp` lookup-table
+/// approximation). Recomputed fresh every frame in the legacy tool (it's
+/// a `static`-free plain function there, unlike this port's other
+/// per-channel state), hence a plain function here too rather than a
+/// method needing an instance.
+pub fn getthresh(frame: &Frame, tgen: f32) -> f32 {
+    let peak = frame
+        .bins
+        .iter()
+        .skip(1)
+        .map(|&(amp, _)| amp)
+        .fold(0.0f32, f32::max);
+    peak * tgen
+}
+
 /// Oscillator-bank resynthesizer (`noscbank.c`): used instead of
 /// overlap-add when frequencies have been modified (pitch/frequency
 /// shift), since overlap-add doesn't cleanly reproduce a changed spectrum.
@@ -332,7 +351,6 @@ pub struct OscBank {
     sample_rate: u32,
     n: usize,
     pitch: f32,
-    threshold: f32,
     last_amp: Vec<f32>,
     last_freq: Vec<f32>,
     index: Vec<f32>,
@@ -348,17 +366,7 @@ impl OscBank {
     /// amplitude scale, matching the legacy `Nw >= N ? N : 8*N`).
     /// `i_factor`: samples synthesized per frame (legacy `I`). `pitch`:
     /// frequency scaling factor (legacy `P`; `1.0` = no transposition).
-    /// `threshold`: bins with magnitude below this are skipped (legacy
-    /// `synt`, already converted from dB to linear amplitude by the
-    /// caller).
-    pub fn new(
-        n: usize,
-        nw: usize,
-        sample_rate: u32,
-        i_factor: usize,
-        pitch: f32,
-        threshold: f32,
-    ) -> Self {
+    pub fn new(n: usize, nw: usize, sample_rate: u32, i_factor: usize, pitch: f32) -> Self {
         let twopi: f32 = (8.0f64 * 1.0f64.atan()) as f32;
         let l = Self::TABLE_LEN;
         let tabscale = if nw >= n { n as f32 } else { 8.0 * n as f32 };
@@ -374,7 +382,6 @@ impl OscBank {
             sample_rate,
             n,
             pitch,
-            threshold,
             last_amp: vec![0.0; num_bins],
             last_freq: vec![0.0; num_bins],
             index: vec![0.0; num_bins],
@@ -383,8 +390,14 @@ impl OscBank {
 
     /// Synthesizes `i_factor` samples from one (mag, freq-in-Hz) frame,
     /// linearly interpolating amplitude/frequency from the previous
-    /// frame's values across the hop, per bin.
-    pub fn synthesize(&mut self, frame: &Frame) -> Vec<f32> {
+    /// frame's values across the hop, per bin. `threshold`: bins with
+    /// magnitude below this are skipped (legacy `synt`, a *global*
+    /// re-derived fresh every frame from that frame's own peak amplitude
+    /// via `getthresh()` - not a fixed value, so it's a per-call argument
+    /// here rather than fixed at construction like the rest of this
+    /// struct's parameters). Already linear amplitude, not dB - the
+    /// caller converts.
+    pub fn synthesize(&mut self, frame: &Frame, threshold: f32) -> Vec<f32> {
         let l = self.l as f32;
         let iinv = 1.0 / self.i_factor as f32;
         let pinc = self.pitch * l / self.sample_rate as f32;
@@ -397,7 +410,7 @@ impl OscBank {
 
         let mut out = vec![0.0f32; self.i_factor];
         for (chan, &(amp0, freq0)) in frame.bins.iter().enumerate().take(np) {
-            if amp0 < self.threshold {
+            if amp0 < threshold {
                 continue;
             }
             let freq_scaled = freq0 * pinc;
@@ -477,6 +490,16 @@ pub fn phaselock(frame: &mut Frame) {
 mod tests {
     use super::*;
     use crate::window::{make_windows, Window};
+
+    #[test]
+    fn getthresh_excludes_bin_zero_matches_c_oracle() {
+        // Bin 0's amplitude (9.0, the largest) must not win the peak
+        // search - confirmed against the real compiled getthresh().
+        let frame = Frame {
+            bins: vec![(9.0, 0.0), (2.0, 0.0), (7.0, 0.0), (4.0, 0.0), (1.0, 0.0)],
+        };
+        assert_eq!(getthresh(&frame, 0.5), 3.5);
+    }
 
     /// The plan's explicit Task 2.5 acceptance test: analysis -> synthesis
     /// with I == D (unmodified time/pitch) should reproduce the input
