@@ -71,7 +71,7 @@ outputoff=1;
     endchan = beginchan + ochan ; 
 
     // GET NAME OF USER
- 	user = getlogin(); 
+ 	user = pvc_user_tag(); 
   
 // **** SET UPS *****
     R = isr ; // SAMPLE RATE EQUALS INPUT FILE

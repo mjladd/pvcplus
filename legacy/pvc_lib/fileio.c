@@ -43,9 +43,8 @@ void bannero(){
 int getInputFileDataToSetOutputChannels(int argc, char **argv)
 {
 
-    static int first=1; 
-    char scratchString[ STRING_SIZE ] ;
-    SF_INFO inputSFinfo ; 
+    static int first=1;
+    SF_INFO inputSFinfo ;
 
 
     if( first == 0 ) return(0) ; 
@@ -112,16 +111,17 @@ int getInputFileDataToSetOutputChannels(int argc, char **argv)
     	prbanner( "INPUT SOUNDFILE",  69 ) ; 
 	prs( ifile,  "INPUT FILE: FILENAME " );
 
-	fprintf( stderr, "\n" ) ; 
-	sprintf( scratchString, "sndfile-info %s | head -n14 | tail -n11", ifile ) ; 
-	system( scratchString  ) ; 
+	fprintf( stderr, "\n" ) ;
+	{
+		SF_FORMAT_INFO format_info ;
+		format_info.format = inputSFinfo.format ;
+		if( sf_command( NULL, SFC_GET_FORMAT_INFO, &format_info, sizeof( format_info ) ) == 0 && format_info.name != NULL ){
+			prs( (char *) format_info.name, "INPUT FILE: FORMAT" ) ;
+		}
+	}
+	pri( (int) inputSFinfo.frames, "INPUT FILE: FRAMES" ) ;
 
-//	fprintf( stderr, "INPUT FILE: DATA ENCODING = " ) ; 
-//	sprintf( scratchString, "sndfile-info %s | head -n14 | tail -n1", ifile ) ; 
-//	system( scratchString  ) ; 
-
-//	fprintf( stderr, "INPUT FILE: SAMPLE RATE = %d", isr ) ; 
-	pri( isr,  "INPUT FILE: SAMPLE RATE" ) ; 
+	pri( isr,  "INPUT FILE: SAMPLE RATE" ) ;
 	pri( ichan,  "INPUT FILE: NUMBER OF CHANNELS" ) ; 
 
 //        fprintf( stderr, "INPUT FILE: FORMAT = 0x%08X\n", inputSFinfo.format) ;
@@ -259,9 +259,9 @@ void setupfiles(int argc, char **argv)
 
 
 	// OPEN /tmp INPUT FILES--ONE FOR EACH CHANNEL BEING PROCESSED (EITHER ALL OR ONE.)
-	user = getlogin(); 
+	user = pvc_user_tag(); 
 	for(thisoutchan = beginchan; thisoutchan < endchan; thisoutchan++ ){
- 	    	sprintf( scratchString, "/tmp/%s.InputChan.%d", user, thisoutchan ) ;
+ 	    	sprintf( scratchString, "/tmp/%s.%d.InputChan.%d", user, (int) getpid(), thisoutchan ) ;
 		inputTempChanFiles[ thisoutchan ] = fopen( scratchString, "wb" );
         		strcpy( inputTempChanFileNames[ thisoutchan ], scratchString ) ; 
 	} ; 	
@@ -351,7 +351,7 @@ void setupfiles(int argc, char **argv)
 //	   fprintf( stderr, "\n size: %ld", size );  
 	   fseek( inputFilePointer, 0, SEEK_SET );
 
-    	   sprintf( scratchString, "/tmp/%s.tempChan", user ) ;  
+    	   sprintf( scratchString, "/tmp/%s.%d.tempChan", user, (int) getpid() ) ;  
 	   tempFilePointer = fopen( scratchString, "wb" ) ;  
 
 	   while( sizeCopy > 0 ){
@@ -370,7 +370,7 @@ void setupfiles(int argc, char **argv)
  
 
 	   for(thisoutchan = beginchan; thisoutchan < endchan; thisoutchan++ ){
- 	      sprintf( scratchString, "/tmp/%s.InputChan.%d", user, thisoutchan ) ;
+ 	      sprintf( scratchString, "/tmp/%s.%d.InputChan.%d", user, (int) getpid(), thisoutchan ) ;
         	      strcpy( inputTempChanFileNames[ thisoutchan ], scratchString ) ;
 	      inputTempChanFiles[ thisoutchan ] = fopen( inputTempChanFileNames[ thisoutchan ], "wb" );
  
@@ -394,7 +394,7 @@ void setupfiles(int argc, char **argv)
 
 
 /*
-	   sprintf( tempFileName, "/tmp/%s.tempChan", user ) ;  
+	   sprintf( tempFileName, "/tmp/%s.%d.tempChan", user, (int) getpid() ) ;  
 	   sprintf( scratchString, "mv %s %s", 
 	      inputTempChanFileNames[ beginchan ], tempFileName
 	   ) ;
@@ -405,7 +405,7 @@ void setupfiles(int argc, char **argv)
 	   beginchan = 0 ; endchan = beginchan + ochan ; 
                 for( thisoutchan = beginchan; thisoutchan < endchan; thisoutchan++ )
  	   {
-	      sprintf( thisFileName, "/tmp/%s.InputChan.%d", user, thisoutchan ) ;
+	      sprintf( thisFileName, "/tmp/%s.%d.InputChan.%d", user, (int) getpid(), thisoutchan ) ;
 	      strcpy( inputTempChanFileNames[ thisoutchan ], thisFileName ) ;
 //	      prs( thisFileName, "### thisFileName" ) ; 
 	      sprintf( scratchString, "%s ; cp %s %s", scratchString, tempFileName, thisFileName ) ; 
@@ -544,9 +544,9 @@ void setupfiles(int argc, char **argv)
 // END OF POSSIBLE TEST MOVE
 
    // CREATE AND CLOSE /tmp OUTPUT FILES--ONE FOR EACH CHANNEL.
-   user = getlogin(); 
+   user = pvc_user_tag(); 
    for(thisoutchan = beginchan; thisoutchan < endchan; thisoutchan++ ) {
-	sprintf( scratchString, "/tmp/%s.OutputChan.%d", user, thisoutchan ) ;
+	sprintf( scratchString, "/tmp/%s.%d.OutputChan.%d", user, (int) getpid(), thisoutchan ) ;
 //	fprintf( stderr, "FILE: %s\n", scratchString ) ;
         outputTempChanFiles[ thisoutchan ] = fopen( scratchString, "wb" ); 
 	strcpy( outputTempChanFileNames[ thisoutchan ], scratchString ) ; 
@@ -1414,9 +1414,9 @@ int outfile_setup(int argc, char **argv )
     pri( ochan,  "OUTPUT FILE: NUMBER OF CHANNELS" ) ; 
 
    // CREATE /tmp OUTPUT FILES--ONE FOR EACH CHANNEL; LEAVE OPEN FOR WRITING.
-   user = getlogin(); 
+   user = pvc_user_tag(); 
    for(thisoutchan = beginchan; thisoutchan < endchan; thisoutchan++ ) {
-	sprintf( scratchString, "/tmp/%s.OutputChan.%d", user, thisoutchan ) ;
+	sprintf( scratchString, "/tmp/%s.%d.OutputChan.%d", user, (int) getpid(), thisoutchan ) ;
 //fprintf( stderr, "\n1. scratchString: %s\n", scratchString ) ;  
        outputTempChanFiles[ thisoutchan ] = fopen( scratchString, "wb" ); 
        strcpy( outputTempChanFileNames[ thisoutchan ], scratchString ) ; 

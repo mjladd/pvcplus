@@ -122,7 +122,7 @@ prbanner( "MIXFILES", 69 ) ;
 prline( 69,  "-" ) ; 
 
 // GET NAME OF USER
-user = getlogin(); 
+user = pvc_user_tag(); 
 
 
 if( strcmp( fileDelayTimesFileName, "") != 0  ){
@@ -331,7 +331,7 @@ if( argc > 1   ){ 	//
 	for(i = 0; i < BLOCKSIZE; i++)silentBuffer[i] = 0. ; 
 
 	for(chan = 0; chan < largestNumberOfInputChannels; chan++ ){
-		sprintf( tempstring, "/tmp/%s.InputChan.%d", user, chan ) ; // MAKE FILE NAME
+		sprintf( tempstring, "/tmp/%s.%d.InputChan.%d", user, (int) getpid(), chan ) ; // MAKE FILE NAME
 		prs( tempstring, "\t/tmp FILE NAME" ) ; 
 		filesToRemove( tempstring, 0 ) ; 
 		inputTempChanFiles[ chan ] = fopen( tempstring, "wb+" ); 

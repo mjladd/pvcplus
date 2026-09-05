@@ -364,9 +364,10 @@ extern int readffthead( int *N, int *D, int *R, int *chans, int *win_type,  floa
 extern float PI;
 extern float TWOPI;
 
-extern float semitones_to_mult( float semidev ) ; 
-extern float dB_to_amp( float dB ) ; 
-extern float amp_to_dB( float amp ) ; 
+extern float semitones_to_mult( float semidev ) ;
+extern float dB_to_amp( float dB ) ;
+extern float amp_to_dB( float amp ) ;
+extern char *pvc_user_tag( void ) ;
 extern float smooth_setup( float t, float *c, float *minusc, float IR ) ; 
 
 extern float smooth_one_value(

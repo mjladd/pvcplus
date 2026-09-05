@@ -18,8 +18,8 @@ FILE *crackstring(char  s[], struct func *p )
 	float	t ;  
 	FILE	*fopen();  
 	struct       stat st;
-	char c, scratch[ STRING_SIZE ]; 
- 
+	char c;
+
 
     // TEST s FOR CHARACTERS. IF NOT CHARACTERS, TREAT AS A  
     // NUMBER CONSTANT, PUTTING IT IN A[ 0 ], AND SETTING N TO 1.
@@ -46,9 +46,10 @@ FILE *crackstring(char  s[], struct func *p )
 		sscanf( s,  "%s",  p->fname ) ;
 
 		// OPEN AND COUNT VALUES
-		prt( "EXAMINING FILE:    " ) ; 
-		snprintf( scratch, sizeof(scratch), "ls -l %s", p->fname ) ;
-		system( scratch ) ; 
+		prt( "EXAMINING FILE:    " ) ;
+		if( stat( p->fname, &st ) == 0 ){
+			fprintf( stderr, "%s  (%ld bytes)\n", p->fname, (long) st.st_size ) ;
+		}
 		if( (p->fp = fopen( p->fname, "r")) == NULL ){
 	    		// NULL FILE
 	    		fprintf( stderr, "\n----> %s <---- NO SUCH FILE. BYE.\n\n\n",  p->fname ) ; 

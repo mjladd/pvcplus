@@ -133,7 +133,7 @@ prbanner( "CHANNELCOLLECT", 69 ) ;
 prline( 69,  "-" ) ; 
 
 // GET NAME OF USER
-user = getlogin(); 
+user = pvc_user_tag(); 
 
   
 
@@ -283,7 +283,7 @@ if( argc > 1   ){ 	//
 
 			// MAKE NAME AND OPEN /tmp FILES FOR ALL CHANNELS.
 			for(chan = 0; chan < numberOfInputChannels; chan++ ){
-				sprintf( tempstring, "/tmp/%s.InputChan.%d", user, thisTempFile + chan ) ; 
+				sprintf( tempstring, "/tmp/%s.%d.InputChan.%d", user, (int) getpid(), thisTempFile + chan ) ; 
 				prs( tempstring, "\t/tmp FILE NAME" ) ; 
 				filesToRemove( tempstring, 0 ) ; 
 				inputTempChanFiles[ thisTempFile + chan ] = fopen( tempstring, "wb" ); 
@@ -594,7 +594,7 @@ if( argc > 1   ){ 	//
 	// OPEN TEMP FILES
 	prt( "\nOPENING TEMP FILES . . .\n" ) ; 
 	for(chan = 0; chan < totalNumberOfInputChannels; chan++ ){
-		sprintf( tempstring, "/tmp/%s.InputChan.%d", user, chan ) ; 
+		sprintf( tempstring, "/tmp/%s.%d.InputChan.%d", user, (int) getpid(), chan ) ; 
 		inputTempChanFiles[ chan ] = fopen( tempstring, "rb" ); 
 		fprintf( stderr, "%d ", chan ) ; 
 	} ; 

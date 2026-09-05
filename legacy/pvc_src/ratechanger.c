@@ -391,7 +391,7 @@ prline( 69,  "-" ) ;
 
 
     // GET NAME OF USER
- user = getlogin(); 
+ user = pvc_user_tag(); 
   
 
 
@@ -769,7 +769,7 @@ for(chan = beginchan, outputChan = 0; chan <= endchan; chan++, outputChan++ ){
 	
 
 	// MAKE /tmp OUTPUT FILE
-	sprintf( tempstring, "/tmp/%s.OutputChan.%d", user, outputChan ) ; // MAKE FILE NAME
+	sprintf( tempstring, "/tmp/%s.%d.OutputChan.%d", user, (int) getpid(), outputChan ) ; // MAKE FILE NAME
 		
 	filesToRemove( tempstring, 0 ) ; 
 	inputTempChanFiles[ outputChan ] = fopen( tempstring, "wb+" ); 

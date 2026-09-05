@@ -214,7 +214,7 @@ prline( 69,  "-" ) ;
     endchan = beginchan + ochan ; 
 
     // GET NAME OF USER
- 	user = getlogin(); 
+ 	user = pvc_user_tag(); 
   
 // **** SET UPS *****
     R = isr ; // SAMPLE RATE EQUALS INPUT FILE
@@ -313,7 +313,7 @@ if( write_ascii != 0 ){
 	exit(EXIT_FAILURE) ; 
     }
 	
-	sprintf( scratch, "/tmp/%s.ascii.out", user ) ;
+	sprintf( scratch, "/tmp/%s.%d.ascii.out", user, (int) getpid() ) ;
 	tdata  = fopen( scratch, "w") ;
 
 }

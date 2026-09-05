@@ -405,7 +405,7 @@ prline( 69,  "-" ) ;
 prbanner( "PITCH TRAJECTORY TRACKER", 69 ) ; 
 prline( 69,  "-" ) ; 
 
-user = getlogin(); 
+user = pvc_user_tag(); 
 
     
 minamp = dB_to_amp( mindB ) ; // pow( (double) 10.0, (double) (mindB/20.) );

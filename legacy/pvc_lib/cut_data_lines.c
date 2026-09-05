@@ -24,10 +24,10 @@ int i, parenopen,  sendout ;
  // MAKE TEMP NAME
   
  //    cuserid( user ) ;   
- 	name = getlogin(); 
+ 	name = pvc_user_tag(); 
 
 
-    sprintf( namet, "/tmp/%s.temp_data_file2", name ) ;
+    sprintf( namet, "/tmp/%s.%d.temp_data_file2", name, (int) getpid() ) ;
 
     // OPEN TEMP FILE
 
@@ -96,10 +96,10 @@ int i, parenopen,  sendout ;
  // MAKE TEMP NAME 
 
  //   cuserid( name ) ; 
-    name = getlogin(); 
+    name = pvc_user_tag(); 
 
    
-    sprintf( new_datafile, "/tmp/%s.temp_data_file", name ) ;
+    sprintf( new_datafile, "/tmp/%s.%d.temp_data_file", name, (int) getpid() ) ;
    
 
 // CREATE THE FILE

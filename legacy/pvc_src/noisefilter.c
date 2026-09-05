@@ -223,7 +223,7 @@ for(outchan = beginchan,  channow = 0; outchan < endchan; outchan++,  channow++ 
 {
       // MAKE AN AVERAGE OR PEAK FREQRESPONSE  USING SYSTEM CALL TO freqresponse.
 
-      sprintf( tempResponseFile, "/tmp/%s.noiseResponseFile.chan%d", getlogin(), outchan ) ; 
+      sprintf( tempResponseFile, "/tmp/%s.%d.noiseResponseFile.chan%d", pvc_user_tag(), (int) getpid(), outchan ) ; 
 
 
 
@@ -231,7 +231,7 @@ for(outchan = beginchan,  channow = 0; outchan < endchan; outchan++,  channow++ 
       filesToRemove( tempResponseFile, 0 ); 
 
 
-      sprintf( responsePlotFile, "/tmp/%s.noiseResponsePlotFile.chan%d", getlogin(), outchan ) ; 
+      sprintf( responsePlotFile, "/tmp/%s.%d.noiseResponsePlotFile.chan%d", pvc_user_tag(), (int) getpid(), outchan ) ; 
 
       fprintf( stderr, "\nAnalyzed noise response plot file written to: %s\n", responsePlotFile ) ; 
 
@@ -414,8 +414,8 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
 
 
    // OPEN RESPONSE FILE
-   sprintf( tempResponseFile, "/tmp/%s.noiseResponseFile.chan%d", getlogin(), outchan ) ; 
-//   sprintf( tempResponseFile, "/Users/koonce/%s.noiseResponseFile.chan%d", getlogin(), outchan ) ; 
+   sprintf( tempResponseFile, "/tmp/%s.%d.noiseResponseFile.chan%d", pvc_user_tag(), (int) getpid(), outchan ) ; 
+//   sprintf( tempResponseFile, "/Users/koonce/%s.noiseResponseFile.chan%d", pvc_user_tag(), outchan ) ; 
 
 
 

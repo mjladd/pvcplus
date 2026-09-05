@@ -1258,7 +1258,7 @@ prf( sourceRotationInDegrees,
 
 
 // GET NAME OF USER
-user = getlogin(); 
+user = pvc_user_tag(); 
 
 prline( 69,  "/" ) ; 
 prline( 69,  "-" ) ; 
@@ -1781,7 +1781,7 @@ for( channel = beginChannel, outputFileChannelNumber = 0;
    prf( outputChannelPeakAmps[ outputFileChannelNumber ], "outputChannelPeakAmps" ) ; 
 
    // MAKE /tmp OUTPUT FILE
-   sprintf( tempstring, "/tmp/%s.OutputChan.%d", user, outputFileChannelNumber ) ; // MAKE FILE NAME
+   sprintf( tempstring, "/tmp/%s.%d.OutputChan.%d", user, (int) getpid(), outputFileChannelNumber ) ; // MAKE FILE NAME
 	
    prs( tempstring, "TEMP OUTPUT FILE" ) ; 
  	
@@ -1885,7 +1885,7 @@ k = sf_command(outfile, SFC_FILE_TRUNCATE, &frames, sizeof (frames)) ;
 // REWIND TEMP FILES
 for( channel = beginChannel, outputFileChannelNumber = 0; 
    channel <= endChannel; channel++, outputFileChannelNumber++ ){
-   sprintf( tempstring, "/tmp/%s.OutputChan.%d", user, outputFileChannelNumber ) ; 
+   sprintf( tempstring, "/tmp/%s.%d.OutputChan.%d", user, (int) getpid(), outputFileChannelNumber ) ; 
    // MAKE FILE NAME     
 //   prs( tempstring, "TEMP OUTPUT FILE" ) ; 
 //   prt( "OPENING FILE TO READ BINARY" ); 

@@ -281,9 +281,9 @@ if( tpinc > 1. ){
 }
 // MAKE /tmp ENVELOPE SCRATCH SPACE
 // MAKE UNIQUE NAME
-	user = getlogin(); 
+	user = pvc_user_tag(); 
 
-    sprintf( scratch, "/tmp/%s.envelope", user ) ;
+    sprintf( scratch, "/tmp/%s.%d.envelope", user, (int) getpid() ) ;
 // OPEN IT
     fscratch = fopen( scratch, "w" ); 
 	filesToRemove( scratch, 0 ) ;

@@ -30,10 +30,24 @@ int autoplay(
 
             if( (autoplayreps == -2) || (autoplayreps == -1) || (autoplayreps >= 1) ){ // 2
                 fprintf( stderr, "\nOUTPUT FILE: %s", ofile ) ; 
-			fprintf( stderr, "\n" ); 
+			fprintf( stderr, "\n" );
 
-			snprintf( commandString, sizeof(commandString), "sndfile-info %s | head -n14 | tail -n9", ofile ) ;
-			system( commandString  ) ; 
+			{
+				SNDFILE *infoFile ;
+				SF_INFO infoSFinfo ;
+				infoSFinfo.format = 0 ;
+				if( (infoFile = sf_open( ofile, SFM_READ, &infoSFinfo )) != NULL ){
+					SF_FORMAT_INFO format_info ;
+					format_info.format = infoSFinfo.format ;
+					if( sf_command( NULL, SFC_GET_FORMAT_INFO, &format_info, sizeof( format_info ) ) == 0 && format_info.name != NULL ){
+						prs( (char *) format_info.name, "OUTPUT FILE: FORMAT" ) ;
+					}
+					pri( (int) infoSFinfo.frames, "OUTPUT FILE: FRAMES" ) ;
+					pri( infoSFinfo.samplerate, "OUTPUT FILE: SAMPLE RATE" ) ;
+					pri( infoSFinfo.channels, "OUTPUT FILE: NUMBER OF CHANNELS" ) ;
+					sf_close( infoFile ) ;
+				}
+			}
 
 			if( formatSwitchflag == 1 ){
                		fprintf (stderr, "\n\nFORMAT-SUPPLYING OUTPUT SOUND FILE %s  WAS NOT FOUND.\n", ofile ) ;

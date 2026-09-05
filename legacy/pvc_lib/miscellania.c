@@ -1,6 +1,28 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include "pv.h"
+
+// getlogin() returns NULL when there is no controlling terminal (e.g. in a
+// Docker container), which several tools pass straight into sprintf("%s",...)
+// to build /tmp temp-file names, producing a literal "(null)" filename that
+// then breaks any shell command built from it. This never returns NULL.
+char *pvc_user_tag( void ){
+
+    static char tag[ 64 ] ;
+    char *login = getlogin() ;
+    char *env ;
+
+    if( login != NULL && login[ 0 ] != '\0' ) return( login ) ;
+
+    env = getenv( "USER" ) ;
+    if( env != NULL && env[ 0 ] != '\0' ) return( env ) ;
+
+    snprintf( tag, sizeof(tag), "uid%d", (int) getuid() ) ;
+    return( tag ) ;
+
+}
 
 float amp_to_dB( float amp ){
     

@@ -937,7 +937,7 @@ for( i = 0; i < NUMBER_OF_WRITE_NUMBERS; i++ ){
 */
 
 // GET NAME OF USER
-user = getlogin(); 
+user = pvc_user_tag(); 
 
 // DEBUG FLAG
 debugFlag = 0 ; 
@@ -5815,7 +5815,7 @@ float find_fundamental_frequency(
    // FIND FUNDAMENTAL FOR USE WITH UNSPECIFIED SOURCE POINTS
 
 
-	user = getlogin() ; 
+	user = pvc_user_tag() ; 
 
 // FROM HERE ------------------
 

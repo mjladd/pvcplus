@@ -332,7 +332,7 @@ itty = isatty(0);		/* 0 == stdin */
 
 
 // GET NAME OF USER
-user = getlogin(); 
+user = pvc_user_tag(); 
 
 
 //******************

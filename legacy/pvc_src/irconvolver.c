@@ -259,7 +259,7 @@ prline( 69,  "-" ) ;
    
 
     // GET NAME OF USER
-    user = getlogin(); 
+    user = pvc_user_tag(); 
 
 if( (multichannel_output_mode__standard_0__alternate_1 == 1) && (channelout == 0) )
 {

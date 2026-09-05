@@ -241,7 +241,7 @@ if( tpinc > 1. ){
 }
 // MAKE /tmp ENVELOPE SCRATCH SPACE
 // MAKE UNIQUE NAME
-    sprintf( scratch, "/tmp/envelope.%s.%d", getlogin(), (int)(random()) ) ;
+    sprintf( scratch, "/tmp/envelope.%s.%d", pvc_user_tag(), (int)(random()) ) ;
 	filesToRemove( scratch, 0 ) ; 
 // OPEN IT
     fscratch = fopen( scratch, "w" ); 
