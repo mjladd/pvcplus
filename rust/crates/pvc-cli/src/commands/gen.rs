@@ -1,9 +1,11 @@
-//! `pvc fn gen1..gen6`: dispatches to `pvc_core::gen`'s ported generators
-//! and writes the resulting table via `pvc_io::write_control_file`.
+//! `pvc fn ...` dispatch: `gen1..gen6` go to `pvc_core::gen`'s ported
+//! generators (written out via `pvc_io::write_control_file`); `plot`
+//! delegates to the `plot` module.
 
 use anyhow::{ensure, Result};
 
 use crate::cli::FnCommand;
+use crate::commands::plot;
 
 pub fn run(cmd: FnCommand) -> Result<()> {
     match cmd {
@@ -76,6 +78,7 @@ pub fn run(cmd: FnCommand) -> Result<()> {
             let table = pvc_core::gen6(length);
             pvc_io::write_control_file(&output, &table)?;
         }
+        FnCommand::Plot { input, width } => plot::run(&input, width)?,
     }
     Ok(())
 }

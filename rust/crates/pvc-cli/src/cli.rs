@@ -234,6 +234,23 @@ pub enum FnCommand {
 
         output: PathBuf,
     },
+
+    /// Plot a control/data file as a terminal sparkline - replaces the
+    /// legacy `showme`/`showmeb`/`showmed`/... family, whose actual job
+    /// (confirmed by reading them: `reshape -A1 $1 > /tmp/$USER`, then
+    /// `gnuplot` on that file) is exactly "convert a binary or ASCII
+    /// float file to something plottable, then plot it" - not any of
+    /// `reshape.c`'s ~40 other transformation flags, none of which any
+    /// script in this repo actually uses. No `gnuplot` dependency needed.
+    Plot {
+        /// An ASCII (.txt) or binary f32 control/data file.
+        input: PathBuf,
+
+        /// Number of columns to downsample to (default: 120, or the
+        /// file's own length if shorter).
+        #[arg(long)]
+        width: Option<usize>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
