@@ -71,6 +71,34 @@ int main(void) {
                sp[0], sp[2], sp[4], sp[6], sp[8]);
     }
 
+    /* eq(SP, N, dBlow, dBhi, freqlow, freqhi, fundamental, pmult, freqadd, normflag) */
+    {
+        float sp[10] = {1.0, 100, 1.0, 200, 1.0, 300, 1.0, 400, 1.0, 500};
+        frame_count = 0;
+        eq(sp, 10, -12.0, 6.0, 150.0, 350.0, 100.0, 1.0, 0.0, 0);
+        printf("eq(shelf) mags = %.9g %.9g %.9g %.9g %.9g\n",
+               sp[0], sp[2], sp[4], sp[6], sp[8]);
+    }
+    {
+        /* gain-only mode: dBlow == dBhi != 0 */
+        float sp[10] = {1.0, 100, 1.0, 200, 1.0, 300, 1.0, 400, 1.0, 500};
+        frame_count = 0;
+        eq(sp, 10, 6.0, 6.0, 150.0, 350.0, 100.0, 1.0, 0.0, 0);
+        printf("eq(gain-only) mags = %.9g %.9g %.9g %.9g %.9g\n",
+               sp[0], sp[2], sp[4], sp[6], sp[8]);
+    }
+    {
+        /* wider bin range, non-trivial N and shelf so the transition
+           region has more than one bin. */
+        float sp[22];
+        for (int i = 0; i < 11; i++) { sp[2*i] = 1.0; sp[2*i+1] = (float)(i*44); }
+        frame_count = 0;
+        eq(sp, 22, -18.0, 9.0, 50.0, 400.0, 44.0, 1.0, 0.0, 0);
+        printf("eq(wide) mags =");
+        for (int i = 0; i < 11; i++) printf(" %.9g", sp[2*i]);
+        printf("\n");
+    }
+
     /* smooth(A, old_A, Nplus2, att, matt, rel, mrel) across 3 frames */
     {
         float a1[6] = {1.0, 0, 2.0, 0, 3.0, 0};

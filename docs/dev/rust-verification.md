@@ -240,3 +240,73 @@ when a whole-file comparison shows a clean, constant ratio or a
 suspiciously large-but-uniform error, look for a *global* post-process
 step (a final rescale, a fixed makeup gain) before assuming the bug is
 in the per-frame DSP math itself.
+
+## Task 3.3's `.pva` reader: a bug `plainpv`'s parity work never exercised
+
+While reading `pvanalysis.c` to port `pvc analyze`, tracing its
+per-channel output loop turned up a real bug in `pvc-io::pva`'s
+`read_legacy_pva`, dating back to Task 2.3 and never caught by Task
+3.2's `plainpv` work (which never reads a multi-channel `.pva` file -
+`plainpv` doesn't consume `.pva` files at all). `pvanalysis.c` re-seeks
+to the start of the frame data on *every* channel's pass and writes that
+channel's frame into slot `k` among `ochan` slots per frame - so a
+multi-channel legacy `.pva` file interleaves frames across channels
+(frame 0 ch0, frame 0 ch1, frame 1 ch0, ...), not laid out as one
+channel's frames followed by the next's. The reader assumed the latter,
+and the only existing real-oracle test used a *mono* fixture, which
+can't distinguish the two layouts at all - worse, the hand-built test
+fixture writer encoded the same wrong sequential order, so the original
+unit test passed without ever exercising the real bug. Confirmed against
+a freshly-built `pvanalysis` run on a real stereo fixture (an alternating
+dominant-bin/peak-amplitude pattern across consecutive frame-blocks,
+consistent with interleaving) before fixing the reader, the fixture
+writer, and adding a byte-level cross-check test
+(`legacy_reader_deinterleaves_real_stereo_output_correctly`) that
+re-derives the layout independently from raw file bytes rather than
+hardcoding expected values. Landed as its own PR ahead of the rest of
+Task 3.3, on the theory that a correctness fix to already-merged code is
+worth shipping separately from new feature work.
+
+## Task 3.3's `pvc analyze`: `eq()` is not `eq2()`, and near-silent bins have no "correct" frequency
+
+`pvanalysis.c` calls a different shelf-EQ function than `plainpv.c`
+does: `eq()` (`legacy/pvc_lib/eq.c`), not `eq2()`. Where `eq2` computes
+each bin's *actual* frequency (via a per-bin drift factor accumulated
+frame to frame) and compares that against the shelf frequencies every
+frame, `eq` converts the shelf frequencies to a fixed *bin-index* range
+once (`ilow`/`ihigh`, from `freqlow`/`freqhi` and `fundamental` alone)
+and gains by array position instead - a bin's gain depends only on where
+it sits in the array, never on any frame-to-frame frequency drift. Ported
+as a separate `eq()` function in `pvc-core::eq` rather than folded into
+`eq2`, verified against a real oracle build across three cases (a shelf
+transition, the `dBlow == dBhi` "gain only" fast path, and a wider
+transition region spanning several bins) via `legacy/tools/dumputils.c`.
+
+Also confirmed by reading the flag parser: none of `pvanalysis.c`'s
+per-frame-look ing parameters (`-H`/`-X`/`-m`/`-R` shelf EQ, `-W`
+warpshape, `-A` gain) are actually control-function strings - every one
+is read with a plain `atof`, never `crackfloat`/`fval()`. So unlike
+`plainpv`, `pvanalysis` has nothing that varies per frame, and
+`timenow(dur)`'s per-frame `t` (which drives `plainpv`'s control
+functions) is genuinely dead code here - worth stating explicitly since
+it's an easy wrong assumption to import by analogy from the `pv` port.
+Also confirmed by reading the loop body directly: no `phaselock` call
+either - phase-locking is a resynthesis-quality concern `pvanalysis`
+(analysis only, no resynthesis) has no use for.
+
+The golden-harness comparison for `pvc analyze` needed one more
+adjustment past what `plainpv`'s did: it reads both files through
+`pvc_io::pva` and compares decoded frame content directly (not
+`compare.py`'s byte-exact check, which can't apply here - `pvc analyze`
+only ever writes the new `PVA1` format, never the legacy layout, by
+design). The first run showed one 200Hz-scale frequency outlier out of
+several hundred thousand compared values, traced to a single bin with
+expected magnitude ~2.2e-10 - essentially silence. `convert()`'s
+frequency estimate for a bin that quiet comes from `atan2` of
+near-zero real/imaginary parts, which is hugely sensitive to
+floating-point rounding noise; the C and a faithfully-ported Rust rfft
+can legitimately disagree by hundreds of Hz on such a bin without either
+being "wrong." Fixed by only checking frequency error on bins with
+non-negligible magnitude (magnitude error has no such floor and is
+checked everywhere) - not by loosening the tolerance blindly, which
+would have hidden a real regression just as easily as this noise.

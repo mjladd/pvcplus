@@ -1,3 +1,4 @@
+pub mod analyze;
 pub mod gen;
 pub mod info;
 pub mod legacy;
