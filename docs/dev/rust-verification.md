@@ -62,3 +62,51 @@ something derived from real DSP math - `convert()`/`unconvert()` output,
 `noscbank` synthesis, `phaselock`, etc. - dump the real C value with a
 small addition to `dumpwin.c` (or a new tiny tool alongside it) rather
 than computing the expected value by hand.
+
+## What Task 2.5 caught: a structural test can mislead too
+
+The lesson above is about wrong *numeric* expectations, but Task 2.5's
+`pvoc.rs` round-trip test (`Analyzer` -> `Synthesizer` with `I == D`
+should reproduce the input within -60dB) shows the same trap can hide
+inside a "structural" property test that looks self-evidently correct.
+
+The first draft compared `output[i]` directly to `input[i]` (after
+skipping a hop-count's worth of warm-up) and got -17dB - looked like a
+real bug. It wasn't the math; it was the comparison. Any block-based
+overlap-add processor delays its output relative to its input by
+`Nw - D` samples (the window has to finish sliding across a sample
+before that sample's contribution is fully summed) - on top of the
+hop-granularity warm-up latency the code already handles (matching
+`shiftout`'s `n >= 0` write gate, which silently drops the first few
+hops' output rather than write bad/incomplete samples). The test's
+naive alignment was off by exactly that missing `Nw - D` term.
+
+This was diagnosed the same way as the Task 2.4 issues - not by
+re-deriving the arithmetic harder, but by building a smaller oracle:
+feed a single impulse through the real `Analyzer`/`Synthesizer` pair
+and look at *where* it comes back out. It reappeared at
+`input_position + (Nw - D)` samples, at ~0.997 amplitude - unambiguous
+proof the reconstruction itself was already correct and only the
+test's alignment was wrong. That impulse check is now a standalone
+test (`impulse_reappears_after_nw_minus_d_samples_at_unity_gain`) so
+this doesn't need re-deriving next time.
+
+A second, smaller finding from the same session: the fixed hop
+`Nw/D = 220` used in Task 2.4's `dumpwin` fixture is a fine choice for
+sampling window *values*, but it is not a great choice for a
+reconstruction-fidelity test - Hamming's squared window only satisfies
+constant-overlap-add (COLA) to within ~0.3% at that hop, capping
+reconstruction around -49dB regardless of how correct the code is.
+Confirmed directly against the window arrays (`analysis[i]*synthesis[i]`
+summed at stride 220 ranges 0.9966-1.0001 across phases, vs. dead-on
+1.0 at every phase for stride `Nw/4 = 256`). The round-trip test uses
+`Nw/4` for exactly this reason - when a fidelity test has a target dB
+threshold, pick a hop the window is actually well-behaved at, or the
+test will fail for reasons that have nothing to do with a bug.
+
+**Takeaway for Task 2.6+:** before concluding a round-trip/identity
+test has found a bug, ask whether the pipeline has an inherent fixed
+latency or an inherent (non-bug) precision ceiling that the test's
+comparison needs to account for - verify with the smallest oracle that
+can isolate it (an impulse, a single known input) before touching the
+implementation.
