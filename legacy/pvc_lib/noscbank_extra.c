@@ -24,7 +24,7 @@ void noscbank_extra( float C[], int N, int R, int Nw, int I, float P, float O[] 
 		freq,
 		n,
 		chan;
-  float		a0;
+  
   char		*space(); 
 
 /* first pass: allocate memory to hold previous values

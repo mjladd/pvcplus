@@ -878,69 +878,66 @@ int main( argc, argv )
     int argc ; char *argv[] ;
 {
 
-int L, N ; 
+ 
 
 int numberWritten ; 
-int numsamps ; 
-int numSampsBufferedIn, arg_index_Save, normalizeFlag=0 ; 
+ 
+int normalizeFlag=0 ; 
 long int numFramesLeft ; 
-int numFramesBufferedIn, maxNumFramesBufferedIn, numFramesBufferedOut, blockFrame ; 
+int numFramesBufferedIn, maxNumFramesBufferedIn, numFramesBufferedOut; 
 
 float masterGainInDecibels=0. ;
 
-int i,j, k, l,  m, n, nnn=0, i1, i2, np ;
+int i, k,  m, n;
 int outputChannelNumber=0 ;
 int polygonCoordinatesSource=0 ;
 int numberOfOutputChannels ; 
 int beginChannel, endChannel, channel ; 
-int speaker_configuration__line_0__polygon_1=1 ; 
+ 
 
 int *channelOffSwitches; 
 
-int tempChannel ;
 
-float randomlyModifiedReflectionTime ; 
-int windowSizeInSamples ; 
-float start, end ; 
 
-float duration, outputDuration=0., 
-	outputChannelPeakAmps[ MAXIMUM_CHANNELS ], inputChannelPeakAmps[ MAXIMUM_CHANNELS ], 
-	peakInputChannelAmp=0., peakOutputChannelAmp=0., finalOutputChannelPeakAmps[ MAXIMUM_CHANNELS ],
+ 
+ 
+ 
+
+float outputChannelPeakAmps[ MAXIMUM_CHANNELS ], peakOutputChannelAmp=0., finalOutputChannelPeakAmps[ MAXIMUM_CHANNELS ],
 	finalOutputChannelPeakAmp=0. ; 
 
-float frac ; 
-int R=44100, in, on;
+ 
+int R=44100;
 FILE *fopen() ;
-char ch,  tempstring[ STRING_SIZE ],  
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ],  *user ;
-float  temp, temp1,  temp2,  pm,  IR  ;  
+char ch,  tempstring[ STRING_SIZE ],  *user ;
+  
 
 float tempBlock[ BLOCKSIZE ], *allChanOutputBlock ; 
 
 int  frameNow ; 
 
 
-int numberOfFrames, maxNumberOfOutputSampleFrames=0 ;
+int maxNumberOfOutputSampleFrames=0 ;
 
-SF_INFO inputSFinfo ;  
+  
 SF_INFO outputSFinfo ; 
 
 
-bool useTableLookup=true ;
+
 
 //
 int outputFileChannelNumber ; 
 
 int corner ; 
 
-float *PP ;
 
-float speedOfSoundInFeetPerSecond=1280 ; // 1280
-float maxDelay ;
 
-float angleAdd, distance  ;
+ // 1280
 
-float peakAmp ; 
+
+
+
+ 
 
 //
 //  WALL IMPULSE RESPONSE ENVELOPE
@@ -2267,7 +2264,11 @@ void usage()
 	"	Z:   wall impulse response filter high amplitude rolloff per octave in dB [?]\n"
 
 
-	"	/t:	source minimum distance from listener \n"	"	/u:	use collapsed threshold amplitudes  0 = no, 1 = yes [0]\n"	"	3:	impulse inclusion threshold in dB [-96]\n"	"	U:	impulse end truncation threshold in dB [-96]\n"	"	v:	impulse end truncation release time in seconds [0]\n"
+	"	/t:	source minimum distance from listener \n"
+	"	/u:	use collapsed threshold amplitudes  0 = no, 1 = yes [0]\n"
+	"	3:	impulse inclusion threshold in dB [-96]\n"
+	"	U:	impulse end truncation threshold in dB [-96]\n"
+	"	v:	impulse end truncation release time in seconds [0]\n"
 
 
 	"	G: master gain in decibels (pre-normalization) [0]\n"
@@ -2386,7 +2387,7 @@ void mirrorPointAroundLineSegment(
 
    double outX, outY ;
    double lineSlope, interceptY ;
-   double outLineSlope, outInterceptY, temp ;
+   double outLineSlope, outInterceptY;
    double mirrorLineIntersectionX, mirrorLineIntersectionY ; 
 
    int l0, l1, l2, l3 ;
@@ -2458,7 +2459,7 @@ bool examineSegmentsForIntersection(
 
    float x, y ;
    bool segmentsIntersect ;
-   float mw, mp, bw, bp, temp ;
+   float mw, mp, bw, bp;
    float  wxlow, wxhigh, wylow, wyhigh, pxlow, pxhigh, pylow, pyhigh  ;
    
    if( (w[ 2 ] - w[ 0 ]) == 0.0 ){
@@ -2554,7 +2555,7 @@ void mirrorPolygonCoordinatesAroundAllSides(
    float mirrorSegAngleLimitsLow,
    float mirrorSegAngleLimitsHigh
 ){
-   float pair[ 2 ] ;
+   
    float mirrorSegCoordinates[ 4 ] ;
    float mirrorSegCoordinatesAngles[ 2 ] ;
    float reflectionSegmentCoordinates[ 4 ] ;
@@ -2563,7 +2564,7 @@ void mirrorPolygonCoordinatesAroundAllSides(
    bool reflectionSegmentInsidePolygonWallTest ;
    bool intersectionTestOutput ;
    int viableReflectionsForThisOrder=0 ;
-   int thisPolygonSide ;
+   
 
    bool mirrorSegmentTest ;
    float mirrorSegAngleLimitsTempLow ;
@@ -2574,11 +2575,11 @@ void mirrorPolygonCoordinatesAroundAllSides(
    int mirrorSide, segIndex, corner ;
    float temp, angleAdd, distance ;
    int orderIndex, i, n, k, thisBaseIndex ;
-   float tempSeg0[ 4 ], tempSeg1[ 4 ] ;
+   
    int polygonCoordinatesBaseIndex ;
    int mirroredPolygonCoordinatesBaseIndex ;
    int thisOrderMinusOne ;
-   int numberOfWallsLimit ;
+   
    int side, previousMirrorSegmentWallToSkip, nextMirrorSegmentWallToSkip ; 
    float testSegment[4] ;
    int higher, lower ; 
@@ -3223,22 +3224,22 @@ bool pointInPolygonTest(
    int numberOfPoints,
    char string[]
 ){
-   float XminMax[2], YminMax[2] ;
+   
    int corner ;
-   int corner0, corner1 ;
+   
    float testSeg[4] ;
-   bool intersectionTest ;
+   
    float thisPolygonSegment[ 4 ] ;
    float intersectCoordinates[ 2 ] ;
-   float previousIntersectCoordinates[ 2 ] ;
-   bool previousIntersection=false ; 
+   
+    
    int intersectCount=0 ;
    bool thisPointIsInPolygon ;
    bool allPointsAreInPolygon=true ;
 
    int testPoint ;
-   int i ;
-   float thisSegmentLength ;
+   
+   
    float distanceToSegmentEnds[ 2 ] ;
    float testPointToSegmentEndAngles[ 2 ] ;
    float testPointToSegmentEndCorner[ 4 ] ;
@@ -3246,7 +3247,7 @@ bool pointInPolygonTest(
    int sideSegmentEnd ; 
    float greaterDistance ;
    float averageAngle ;
-   float tempSegment[ 4 ] ; 
+    
           
 
 //     pri( numberOfPoints, "NUMBER OF POINTS TO TEST" ) ; 
@@ -3406,11 +3407,11 @@ bool polygonTest( //
    int numberOfVertices,
    char string[]
 ){
-   int i, j, k, vertex0, vertex1 ;
-   int coordinates0[ 2 ], coordinates1[ 2 ] ; 
+   int vertex0, vertex1 ;
+    
    float seg0[ 4 ], seg1[ 4 ], intersectCoordinates[ 2 ] ;
    bool isThisAPolygon=true ;
-   bool segmentLinesIntersect, isAmember ;  
+     
    
 
    if( numberOfVertices <= 2 ){
@@ -3490,12 +3491,12 @@ bool isPolygonConcave(
    int numberOfVertices
 )
 {
-   int c0, c1, vertex0, vertex1, vertex2, vertex3 ;
+   int c0, vertex0, vertex1, vertex2;
    int xSignChangeCount=0, ySignChangeCount=0 ; 
    int xSignNow, ySignNow, xSignLast, ySignLast ; 
    float xDiff, yDiff ;
-   float seg0[ 4 ], seg1[ 4 ], intersectCoordinates[ 2 ] ;    
-   bool segmentLinesIntersect, isAmember ;
+       
+   
    int sideOfLineFlag, sideCount[ 3 ] ;  
    
    xDiff = polygon[ 2 ] - polygon[ 0 ] ;
@@ -4405,16 +4406,16 @@ int writeReflectionPulsesIntoImpulseResponse(
    int numberOfOutputChannels
 )
 {
-   int i, j, numberWritten=0, s, L, N ;
-   int n, nn, k, order ;
+   int j, numberWritten=0, s;
+   int n, k;
    float peakAmpWritten=0.;
    float amp, wallGainscaleAmp, reflectionOrderGainscaleAmp ;
-   int wall ;
+   
    float peakAmp ;
    int thisReflectionOrderLimit ;       
-   int thisReflectionOrder ;
+   
    int thisReflection ; 
-   int wallNumber, wallIndex ;
+   int wallIndex ;
    int wallImpulseResponseNumber ;
    int croppedImpulseResponseNowSize ;  
    int startN, lastN , incr, numberOfWallsInSequence, numberOfTestWalls ;
@@ -4422,21 +4423,20 @@ int writeReflectionPulsesIntoImpulseResponse(
    int selectedAndSortedReflectionsIndex ;
    int reflectionOrderImpulseResponseNumber ; 
 
-   static bool first=true ;
+   
 
    float *transferArray ;
-   int filterFlag ;
-   bool sequencePatternIsSame ;
+   
+   
    int IRindex ;
    bool testFlag ;
    float avgAmp=0. ;
-   int windowedSampleIndex ;
-   float ampEnv ;
+   
+   
    bool writeImpulseFlag ;
    float windowedSamplePeakAmp ;
    float airAbsorbMultiplier ;
-   float thisAngleDifference, thisAngleDifferenceProportion, thisProportionOfDispersionDecibels,
-      thisProportionOfDispersionDecibelsAsAmp ;
+   float thisAngleDifference, thisAngleDifferenceProportion, thisProportionOfDispersionDecibels;
    float distance, segment[ 4 ] ;    
 
 /*
@@ -5105,12 +5105,12 @@ void writeDirectSourcePulsesIntoImpulseResponseOLD(
 )
 {
    int position ; 
-   int speaker ;
+   
    int speaker0, speaker1 ; 
    bool found ;
    bool onePairStraddles ;  
    int j ; 
-   float lowVal, highVal ; 
+    
    float listenerToSourceAngleTemp ;
    float listenerToSpeakerAngleMaximumTemp ; 
    float listenerToSpeakerAngleMinimumTemp ;
@@ -5127,13 +5127,13 @@ void writeDirectSourcePulsesIntoImpulseResponseOLD(
    float nextClosestSpeakerToNewNextClosestSpeakerSourceDistance  ; // nextClosestSpeakerToNewSourceDistance ;
    float closestSpeakerToNewNextClosestSpeakerSourceDistance  ;
 
-   float amp1, amp2, diffAmp, baseAmp, finalAmp, distance1, distance2 ; 
+   float amp1, amp2, diffAmp, finalAmp, distance1, distance2 ; 
    float amp1AtThreshold, amp2AtThreshold, finalAmpAtThreshold, finalAmpInVirtualOrRealSpace ;
 
    float segment[ 4 ] ;
-   float proximityAmpScaler ;
+   
    float rolloffDecibels ;
-   float proximityProportion ;
+   
    float thisAirAbsorptionExponent ;   
 
 
@@ -5788,13 +5788,13 @@ void makeDirectSoundSpeakerAmplitudes()
    float crossFadeProportion ;
    float listenerToSourceAngleTemp ;
    float segment[ 4 ] ;
-   float diffRange, baseAngle, angle ;
+   float baseAngle, angle ;
    float *distanceAmpScalars0, *distanceAmpScalars1 ;
    float thisAirAbsorptionExponent ;
    float sourceInFrontProximityGain ;
    float rolloffDecibels, *rolloffDecibels0, *rolloffDecibels1, angleDiff ;    
    float thisRotatedSource ;
-   float thisSourceToListenerAnglePlusRotation ; 
+    
    float thresholdProximityScalar ; 
 
    prt( "IN makeDirectSoundSpeakerAmplitudes" ) ; 
@@ -6134,13 +6134,13 @@ void makeDirectSoundSpeakerAmplitudes()
 
 void makeSourceToThresholdProximityDistance()
 { // ???
-   bool found ; 
-   int speaker0, speaker1 ;
-   bool onePairStraddles ;
+    
+   
+   
    float segment0[ 4 ] ;
    float segment1[ 4 ] ;
-   float thresholdIntersection[ 2 ] ;
-   float intersectionCoordinates[ 2 ] ;
+   
+   
 
 // int crossFadeSpeaker0, crossFadeSpeaker1
 
@@ -6364,7 +6364,7 @@ bool findIntersectionOfLinesContainingSegments(
    float x, y ;
    bool segmentsIntersect = true ;
    bool print=false ; 
-   float mw, mp, bw, bp, temp ;
+   float mw, mp, bw, bp;
    float  wxlow, wxhigh, wylow, wyhigh, pxlow, pxhigh, pylow, pyhigh  ;
    
    if( (w[ 2 ] - w[ 0 ]) == 0.0 ){
@@ -6455,7 +6455,7 @@ void readInWallImpulseResponses()
    int n, wall ;
    int channel, frame ; 
    int numberOfSampsBufferedIn ;
-   float peakAmp ;   
+      
 
 
    if( (strcasecmp( wallImpulseResponseInputSoundFileName, datafile2 ) == 1) ||
@@ -6632,13 +6632,13 @@ void convolveTwoArrays(
 {
    static int L0, N, N2, previousN=-1, previousLh0m1=-1, i, j, k, Lh0m1 ;
    static int Nw = 2048, temp ; // ?
-   static bool first = true, eof ;
+   
    static int sampsToRead ;
    static int array1Index ;
    static float real, imag ;
 
-   float peakAmp ;
-   float binFreq, rolloffAmp, rolloffdB ; 
+   
+    
    float fundamental ; 
 
 
@@ -6844,7 +6844,7 @@ int cropEndForSilence(
 )
 {
    int index, i, sameSize ;
-   bool stillBelowThreshold=true ;
+   
 
    index = *size - 1 ;
    shortenMemory = false ;
@@ -6884,8 +6884,8 @@ int cropIR_DataEndForSilence(
    bool shortenMemory
 )
 {
-   int index, i, sameSize ;
-   bool stillBelowThreshold=true ;
+   int index;
+   
 
    index = IR_DataLength - 1 ;
    shortenMemory = false ;
@@ -6980,9 +6980,9 @@ void filterAudioArray(
 
 
    float fundamental ;
-   int L, N, N2, lengthMinus1, i, j, k ;
+   int L, N, N2, lengthMinus1, i;
    float *filtBuffer ;
-   float binFreq, rolloffdB, rolloffAmp  ; 
+    
 
 //prt( " ---------------> FILTERING IN filterAudio <----------------"); 
 
@@ -7060,7 +7060,7 @@ void smoothReleaseOfCroppedEnd(
 
 void getWallImpulseResponseChannelAssignments()
 { //
-   int i, j, k, wall ;
+   int i, k, wall ;
    float temp ;  
 
    if( (strcasecmp( wall_channel_assignments_file, datafile2 ) == 1) ||
@@ -7147,7 +7147,7 @@ void getWallImpulseResponseChannelAssignments()
 
 void getWallDecibelGainscaleLevels()
 { // 
-   int i, j, k, wall ;
+   int i, k, wall ;
    float temp ;  
 
    if( (strcasecmp( wall_dB_gainscale_factors_file, datafile2 ) == 1) ||
@@ -7368,12 +7368,12 @@ void createAndReorderWallReflectionSequence(
 )
 {
    int thisReflection, thisReflectionOrderLimit ;
-   int startN, incr, i, j, k, l, n ;
-   int countOfSelectedReflections ;
+   int startN, incr, i, k, n ;
+   
    int numberOfWallsInSequence ;
    int *wallSequence_firstToLast ;
    bool changeMade=true ;
-   int *temp ; 
+    
 
    ivec( wallSequence_firstToLast, highOrderLimit + 2 ) ;  
 
@@ -7722,7 +7722,7 @@ void filterAndNormalizeImpulseResponseNow(
    float rolloffScaler
 )
 {
-   int i, L, N, n ;
+   int L, N, n ;
    float peakAmp ;  
 
    prt(" . . . FILTERING impulseResponseNow . . . " ) ;
@@ -8257,7 +8257,7 @@ void readInReflectionOrderImpulseResponses()
 
 void getReflectionOrderImpulseResponseChannelAssignments()
 { //
-   int i, j, k, order ;
+   int i, k, order ;
    float temp ;  
 
    if( reflection_order_impulse_responses__off_0__on_1 == 1 )
@@ -8368,7 +8368,7 @@ bool makeReflectionOrderImpulseResponseNow(
    int thisOrder ; 
    float ROamp, impulseAmp ;  
    
-   float prop, ampEnv, peakAmp=0. ;
+   float prop, ampEnv;
    int ROimpulseResponsePresenceLevelsIndex ;   
 
    static bool first=true ; 
@@ -8555,7 +8555,7 @@ void findAverageReflectionOrderDelayTimes(
 
 void getReflectionOrderDecibelGainscaleLevels()
 { // 
-   int i, j, k, reflection_order ;
+   int i, k;
    float temp ;  
 
    int	numberOfReflectionOrders ;
@@ -8632,12 +8632,12 @@ void getReflectionOrderDecibelGainscaleLevels()
 
 void findreflectionOrderCVOrderSequences()
 {
-   int thisSequenceSize, seqBegin, index, i, seqVal, order, k, l ;
-   int   index0, index1, impulseResponse0SizeNow ;
-   int response0number, response1number ; 
-   float peakAmp ;
-   int largestReflectionOrder=0 ; 
-   float temp0, temp1, temp2 ;
+   int seqBegin, index, i, seqVal, order, k;
+   
+    
+   
+    
+   
  
 
    if( reflectionOrderImpulseResponsesFlag )
@@ -8801,7 +8801,7 @@ void makeOrIncreaseMemorySpaceForSavedWallReflectionPatterns()
 
 void getWallImpulseResponsePresenceLevels()
 { //
-   int i, j, k, order, wall ;
+   int i, k, wall ;
    float temp ;  
 
    prt( "\n\n***** WALL IMPULSE RESPONSE PRESENCE LEVELS:" ) ;
@@ -8893,7 +8893,7 @@ void balanceWallImpulseResponseAgainstPulseUsingPresence()
 {
    float wallAmp, impulseAmp ;
    int i, n ;
-   float *transferArray ;   
+      
 
    if( wallImpulseResponsesFromSoundFileFlag )
    {
@@ -8915,8 +8915,8 @@ void balanceWallImpulseResponseAgainstPulseUsingPresence()
 void balanceROimpulseResponseAgainstPulseUsingPresence()
 {
    float ROamp, impulseAmp ;
-   int i, n, order ;
-   float *transferArray ;   
+   int n, order ;
+      
 
 
    if( (reflection_order_impulse_responses__off_0__on_1 == 1) && useROIRpresenceLevelsFlag )
@@ -8945,14 +8945,14 @@ void balanceROimpulseResponseAgainstPulseUsingPresence()
 
 void preConvolveReflectionOrderImpulseResponsesWithIrconvolver()
 {
-   int largestNewReflectionOrder=0 ;
-   int  PCimpulseResponse1SizeNow, PCimpulseResponse2SizeNow ;
-   int order, index, k, i, j ;
+   
+   
+   int order, index, k, i;
 
-   int reflectionOrderTempSpaceTotalSizeNow ;
-   int newReflectionOrderTempSpaceTotalSizeNow ;
-   float peakAmp ;
-   bool convolvedFlag = false ;
+   
+   
+   
+   
    char	soundFileName[ STRING_SIZE ] ;
    char	outputSoundFileName[ STRING_SIZE ]="" ;
    char	outputSoundFilesNameString[ STRING_SIZE ]="" ;
@@ -9139,7 +9139,7 @@ void makeIR_DataSpace()
 
 void getReflectionOrderImpulseResponsePresenceLevels()
 { //
-   int i, j, k, order, wall ;
+   int i, k;
    float temp ;  
 
 

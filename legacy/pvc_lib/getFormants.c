@@ -28,14 +28,13 @@ int get_formants(
 
 
 float *amps, *freqs, *newAmps, * testAmpsSave, *AmpsDerivative,
-	*triWindow, *winArray, *v, *w, *symmetryFactor, *selectedFormantsAmps,
+	*triWindow, *winArray, *v, *w, *symmetryFactor,
 	*formantAmpsCopy, *tempList, *peakAmps, *avgAmps, *HammingWindow, *diffdBs  ; 
 
-float centroidFreq, sumOfAmps, strongestFreq, peakAmp, baseAmp, windowBW, freqsDiffSum, freqsDiffMax,
-		avgBinFreqDiff, vv, thisDBthreshold, 
-	newAmpsPeakAmp, scaleFactor, peakAmpIn_v_and_w, vSum, wSum, diffProp ; 
-int includesflag, tempListLengthNow, sign ;
-float thisMaxAmp, sum, sum1, sum2, meanBW, maxBW ;
+float centroidFreq, sumOfAmps, strongestFreq, peakAmp, windowBW, freqsDiffSum, freqsDiffMax,
+		avgBinFreqDiff, vv, thisDBthreshold, scaleFactor, peakAmpIn_v_and_w, vSum, wSum; 
+int sign ;
+
 float TWOPI ;  
 int HammingWindowSize=1024 ;
  
@@ -46,21 +45,21 @@ float cf, fundamental, ampSum, thisHammingSum, thisAmp, HammingFloatIndex  ;
 
 static int first=1 ; 
 
-float lowdBdiff, highdBdiff, lowFreqDiff, highFreqDiff ; 
+float lowFreqDiff, highFreqDiff ; 
 
-float thisCF, thisCFdB, dBdiff, freqDiff, thisFreqDiff, thisFreq ; 
-int formantIndex, thisIndex, found ; 
+float thisCF, thisCFdB, dBdiff, freqDiff; 
+int formantIndex, found ; 
 
 float baseDB, lowDB, highDB, lowFreq, highFreq, temp ; 	
 
-int thisFormant, indexOfFormant, numBins ; 	    
+ 	    
 
 float *freqStasis, *tempFreqStasisSpectrum ; 
 float stdDev, freqThreshold, freqDiffAvg ; 
 FILE *fopen(), *adata;
 
-int avgWinSize, n, c, exitFlag ; 
-int N2, i, j, k, l, indexOfPeak ; 
+int avgWinSize, n; 
+int N2, i, j, k; 
 
 static int lastN=0 ; 
 

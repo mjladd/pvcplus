@@ -32,78 +32,75 @@ double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
 int   eof = 0, channelout=0,  chanmethod=0,  obank=0 ;
  float P = 1.0;
-  FILE *fopen(), *fp,  *fofd,  *tof ;
+  FILE *fopen(),  *fofd;
 char ch, outformatunits[ STRING_SIZE ] ;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,
     *channel_i,   *output ;
-float	gain=1., peakamps[MAXIMUM_CHANNELS]
+float peakamps[MAXIMUM_CHANNELS]
  ;
 int numOversamps, backlogOutputFreqs=0 ; 
 
 float averageAmp, fileAmp, fileFreq ; 
 int amplitude_weighted_oversampling__factor=0 ; 
 float mode_filter_window_size_in_seconds=0. ; 
-float oversampling_amplitude_weighting_warp_index=0. ; 
+ 
 int mode_filter_window_size_in_frames=0 ; 
 
-int outputResultsForm=0 ; 
+ 
 
-float strongestFormantFreq, strongestFormantAmp=0. ; 
+ 
 
-int numberOfValues ; 
-float *collectedAmpValues, *collectedFreqValues ; 
+ 
+ 
 int filepos ; 
 
 int frameNow, beginFrame, endFrame ; 
 
-float  temp, temp1,  temp2,  temp3, temp4, ftemp4,    binAmpsSum, oldBinAmpsSum=0.,  shortnorm ;  
+float temp4, ftemp4,    binAmpsSum, oldBinAmpsSum=0.,  shortnorm ;  
 float getthresh();
 //int beginchan,  endchan,  
-int exflag=0, ifileFlag ; 
+int ifileFlag ; 
  
-float ampValue, freqValue  ; 
+ 
  int notestate_flag=0 , goodfreq,   backlogcount, bsize,   firstnote ; 
  
  float ampnow_out[ 2048 ],  a0,  a1 ; 
  
-float peakbinamp = 0.,  avgbinamp=0.,  peakamp, peakenvamp=0., ampthresh,ampgatethresh,    limit ;
+float peakenvamp=0., ampthresh,ampgatethresh;
 float   IR,  dur=0.;
 char tempstring[ STRING_SIZE ], *user ; 
 FILE *famp,  *ffreq ; 
 FILE *famp2,  *ffreq2 ; 
 char  freqname[ STRING_SIZE ],  ampname[ STRING_SIZE ] ; 
 char  freqname2[ STRING_SIZE ],  ampname2[ STRING_SIZE ] ; 
-float compression,  OR=44100.,  tp,  tpinc=500.,  freqdiff,  lowf,  hif ; 
+float compression,  tp,  tpinc=500.,  freqdiff,  lowf,  hif ; 
 float releasec,  minusreleasec,  attackc,  
-    minusattackc,  freqchangec,  minusfreqchangec ; 
+    minusattackc; 
 double ar_dB ;
-int datatype=0 ;  
+  
 float frametprop,  tempt=0.,  midC ;
 int qseccount=0,  seccount=0,  printflag=0, plotflag=0 ;
 int outtype=0 ; 
-float snfloats[ 1000 ] ; 
+ 
 
 int firstThresholdHit=0 ; 
 
-int outsr ; 
+ 
 static int loc ; 
 //*****************************
- float threshfac = .001;
- float maxigain;
-float dfreqs[ 20 ],  maxamps[ 20 ]  ; 
-float low_freq,  hi_freq,    maxbinfreq, smallestdifffreq, 
-	smallestdifffreqavg=0.,  maxbinfreqavg=0.,  spectrumresfreqavg=0. , 
-	    spectrumresfreq=0. ; 
-float  peakpropthresh=.01, maxbinamp ;  
+ 
+ 
+ 
+ 
+  
 
 
-int fcount,  mflag  ; 
-float capacitance=0., cap,  invcapacitance=1.,  maxaverage=0.,  
-    old_freqnow=-1.,  freqnow, freqampnow, fund,  resfreq   ;
-int median_buffer_size=100,  mi=0 ; 
-float *median_buffer,  med ; 
+ 
+float old_freqnow=-1.,  freqnow, freqampnow;
+int median_buffer_size=100; 
+float *median_buffer; 
 
-int *formants,   fsize, max_num_peaks=512, min_num_peaks=20, num_peaks,  *formant_freq_rank ; 
+int *formants,   fsize,  *formant_freq_rank ; 
 int num_formants=MAXIMUM_NUMBER_OF_FORMANTS ; 
 float *formant_freq,  *formant_amp ; 
 
@@ -160,11 +157,11 @@ void find_freq_new(
 int begin_buffsize, 
     max_buffsize ; 
 
-int extra_outs ; 
+ 
 
-int nout=1, firstflag=0 ; 
+ 
 
-float ampnow, old_ampnow,  fvalue,  avalue,  outval ; 
+float ampnow,  fvalue,  avalue,  outval ; 
 float	
 	freqprop=FREQUENCY_PROPORTION_THRESHOLD, 
 	tframe_size = BEGIN_T_FRAME_SIZE,  
@@ -173,7 +170,7 @@ float
 	note_ampthresh ; 
 
 
-float freqset=-1. ; 
+ 
 
 float find_common_freq( 
 
@@ -213,10 +210,10 @@ float sine_wave( float freq,  int R ) ;
 
 // ANALYSIS FILE STUFF
 float *analysis_lower,  *analysis_higher ; 
-float analysis_fundamental ;  
+  
 int analysis_N,  analysis_D, analysis_R, analysis_chan,  niframes ;  
 float analysis_dur,  iframes_per_sec ; 
-float normamp[MAXIMUM_CHANNELS],  normamppk ;
+float normamp[MAXIMUM_CHANNELS];
 int ainchan ; 
 
 float low, hi, range, average, median, mode, standarddeviation, sum, begin, end, middle ; 
@@ -1820,7 +1817,7 @@ float find_common_freq(
 
 float sine_wave( float freq,  int R ){
     
-    static float vlow, v,   vhi,  vfrac, fracdex,  sintab[ 2048 ], ftabdex=0.,  incr ; 
+    static float vlow, v,   vhi, fracdex,  sintab[ 2048 ], ftabdex=0.,  incr ; 
     static int tabsize=2048,  first=1,  ilowdex,  ihidex ; 
     int kt ; 
     
@@ -1912,11 +1909,11 @@ int zero_cross_peaks( float F[], float F_i[],   int Nplus2,
     
     // TAKE SUCCESSIVE DIFFERENCES TO PLACE PEAKS AT ZERO CROSSINGS
     int i, j,  sign,  p,  breakout,  doneflag, peak_count,  PV ;
-    int num_to_avg,  save_i, start_i,  k,  Nm,  addflag ; 
-    float mult, mprop,  temp,  sum,  peak,  minamp,  
-	min_formant_dB, dB_adder,  min_formant_amp ;  	    
-    static int first=0;
-    static float  *temp_F_i ; 
+    int addflag ; 
+    float peak,  minamp,  
+	min_formant_dB, dB_adder;  	    
+    
+     
     
     doneflag = 0 ; 
     min_formant_dB = -3 ; 
@@ -2049,7 +2046,7 @@ int zero_cross_peaks( float F[], float F_i[],   int Nplus2,
 int print_peak_freqs( float F[], float fundamental,  int Nplus2,  int formant_bin[], int num_peaks ){
     
     // PRINT THE PEAK FREQUENCIES
-	int i, j, k ; 
+	int i; 
 	float oldfreq = 0,  diff, dB,    diffsum ; 
 
     diffsum = 0. ; 
@@ -2103,8 +2100,8 @@ int find_formants(
  * 
  */
 
-	int i, j, k,  again ;
-	float temp,  diffsum,  oldfreq ;  
+	int i, k,  again ;
+	float diffsum,  oldfreq ;  
 
 		for( i = 0; i <	num_peaks; i++){
 		
@@ -2177,20 +2174,17 @@ void optimal_comb(
 		*ampOutputBuffer ;
 
 	static int first=1, frames=0, numVals=MAX_NUMBER_OF_STRONGEST_FORMANT_VALUES, numberInBuffers=0, zeroBins ; 
-	float alternateFreq=-1., partialFrac, alternateAmp=0. ; 
+	float alternateFreq=-1., alternateAmp=0. ; 
 
-	int bin, i, j, k, ampIndex, freqIndex, isUnique, breakLoop, sortedFlag, insertFlag, modeFoundFlag ; 
+	int bin, i, k, ampIndex, freqIndex, isUnique, breakLoop, sortedFlag, insertFlag, modeFoundFlag ; 
 	float peakAmp, peakAdjustedAmpThresh, temp ;
-	int  fundBin, fundAmpIndex, fundFreqIndex, thisFreqBin, thisFreqAmpIndex, thisFreqFreqIndex,
-		inFormantRegionFlag ; 
-	float thisFundamental, peakFormantAmp, thisFundamentalSum,  thisFreq, 
-			strongestFundamental, strongestFundamentalSum=0.,
-				secondStrongestFundamental=1., secondStrongestFundamentalSum=0. ;
+	int  fundBin, fundAmpIndex, fundFreqIndex; 
+	float thisFundamental, thisFundamentalSum;
 	float strongestFundamentals[MAX_NUMBER_OF_STRONGEST_FORMANT_VALUES], strongestFundamentalSums[MAX_NUMBER_OF_STRONGEST_FORMANT_VALUES] ; 
-	int numberOfContributingPartials[MAX_NUMBER_OF_STRONGEST_FORMANT_VALUES], numberOfPartials ;  
+	int numberOfContributingPartials[MAX_NUMBER_OF_STRONGEST_FORMANT_VALUES];  
  
-	float temp0, temp1, temp2, temp3 ;  
-	float thisFloatPartial ; 
+	  
+	 
 
 	float mode, thisModeFreqDiff, absModeFreqDiff, thisOutputFreq, thisOutputAmp ; 
 
@@ -2520,7 +2514,7 @@ void find_freq_new(
 ){
 
     float temp, tempAmp ; 
-    int i,  j,  k ; 
+    int i; 
     
     *freqnow = -1. ; *freqampnow = 0. ; 
 
@@ -2529,10 +2523,10 @@ void find_freq_new(
 
 		// USE OPTIMAL COMB METHOD ON FORMANTS
 	
-		static int first=1 ; 
+		 
 		static float *sums ; 
 		int i, j, k, numberOfOverPartials=5, opartial, overPartial, freqAmpIndex ; 
-		float temp,  temp2 ; 
+		float temp; 
 	
 	    	fvec( sums, num_peaks * numberOfOverPartials ) ; 
 	

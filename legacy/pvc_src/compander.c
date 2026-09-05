@@ -6,27 +6,26 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,  k,  jj,  ii ;
+int i,j;
 float nyquist,  fundamental,  freqdiff ;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
 int   eof = 0, obank = 0,  channelout=0 ;
 float P = 1.0;
-FILE *fopen(), *fp;
+FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
 float *previous_channel,   *F,  *channel_freqdev,  *previous_change  ; 
 float threshfac = .001,  threshfacdB=-96 ;
 
-float channelAmpSum, tempChannelAmpSum, previousTempChannelAmpSum, 
-	normalizationAmp, frameNormalizationAmpLimit ; 
-float normenv, minusnormenv ; 
+ 
+ 
 
 float	pm, gain=1. ;
-float  temp,  temp1,  temp2,  temp3 ;  
+float  temp,  temp1,  temp2;  
 float getthresh();
 
-float peakbinamp = 0.,  avgbinamp=0., smoothingBW=0. ; 
+float smoothingBW=0. ; 
 
 float   IR, DR,   dur=0.;
 int print_flag=0 ; 
@@ -163,7 +162,8 @@ strcpy( routine, "compander" ) ;
 if( argc < 2 )usage() ; 
 
 
-//CASE -> USAGE//h -> ? s -> ? 
+//CASE -> USAGE
+//h -> ? s -> ? 
 
     while( (ch= crack( argc, argv, "|R|w|N|M|P|D|c|d|f|o|O|Q|_|=|q|W|t|S|I|b|e|Z|p|i|H|m|d|X|s|F|a|A|C|c|L|l|h", 0  )) != CRACK_DONE_FLAG ) {
 	switch(ch) {

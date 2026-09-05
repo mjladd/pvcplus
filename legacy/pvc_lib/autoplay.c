@@ -19,11 +19,10 @@ int autoplay(
 	char playfiles[3][ STRING_SIZE ] ; 
 
 	int	
-		n, j, m, i, k, l ; 
+		n, j, i; 
     
 	char	commandString[ STRING_SIZE ],
-                string[10], 
-		promptString[ STRING_SIZE ],
+                string[10],
                 ch
 	;
 

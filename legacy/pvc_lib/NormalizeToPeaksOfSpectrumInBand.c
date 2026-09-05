@@ -13,9 +13,8 @@ void NormalizeToPeaksOfSpectrumInBand
     int formantHighStopBandIndices[], 
     float expansionIndex
 ){
-    int N2, lowIndex, highIndex, i, j, k, l, m, n, indexRange, halfRangeIndex, formant  ; 
-    float lowGain, highGain, upRamp, downRamp, peakAmp, lowAmp=0.0, highAmp=0.0,
-	lowFreq, highFreq ;
+    int N2, lowIndex, highIndex, i, j, k, indexRange, halfRangeIndex, formant  ; 
+    float lowGain, highGain, upRamp, downRamp, peakAmp, lowAmp=0.0, highAmp=0.0;
     float inputPeakAmp ; 
 
     N2 = N / 2; 

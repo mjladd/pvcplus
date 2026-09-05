@@ -10,16 +10,16 @@ int i,j ;
 float nyquist,  basefreq ;
 double atof(),  DD ;
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0 ;
+int   eof = 0, obank = 0,  channelout=0 ;
 float P = 1.0;
 FILE *fopen();
 char ch,  tempstring[ STRING_SIZE ] ;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel, *output ;
 float threshfac = .001,  threshfacdB=-96 ;
-float  gain,    f  ;
+
 float  *previous_channel, *previous_buffer, *next_channel,  *next_buffer,
     *feedback_channel,  *feedback_buffer,  *bufferout, 
-    *binfreq, *phasediff,      temp,  temp2, temp3,   
+    *binfreq, *phasediff,      temp,   
     source_pm,  feedback_pm,  source_gain,  feedback_gain, master_gain; 
 float envattack,  envrelease,  minusattack,  minusrelease  ;  
 float getthresh();
@@ -30,7 +30,7 @@ float low, hi, avg, median ; int length ;
 double ar_dB ; 
 
 float feedbackthresh,  feedt,  minusfeedbacklowpass, feedlowpass, feedlevel, 
-       *freqdither,  freqdithernow ; 
+       *freqdither; 
 float minusfeedbackalowpass, feedalowpass,  
        *dBdither,  dBdithernow ; 
 int	feedback_thresh_mode=1 ; 

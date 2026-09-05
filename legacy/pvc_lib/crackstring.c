@@ -14,12 +14,11 @@
 
 FILE *crackstring(char  s[], struct func *p ) 
 {
-	int	i, k,  pd(),  num,  bad,  last,  dpc, numCharactersToTest=1000, charCount=0, 
-		stringLength ;
+	int pd(),  num,  bad,  last,  dpc, numCharactersToTest=1000, charCount=0;
 	float	t ;  
-	FILE	*fopen(),  *fp ;  
+	FILE	*fopen();  
 	struct       stat st;
-	char c, scratch[ STRING_SIZE ], tmpFileName[ STRING_SIZE ] ; 
+	char c, scratch[ STRING_SIZE ]; 
  
 
     // TEST s FOR CHARACTERS. IF NOT CHARACTERS, TREAT AS A  

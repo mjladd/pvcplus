@@ -189,7 +189,7 @@ if( window_type == 0 ){
   
   
   int k,  i ; 
-  float V,  D=.0000001,  S,  factsum,  Ssum ; 
+  float D=.0000001,  S,  factsum,  Ssum ; 
   
   S = 1. ; Ssum = 0. ; 
   k = 1 ; 

@@ -108,58 +108,56 @@ void advanceToNextDataTimePoint(
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j, k, l,  m, n, nnn=0, i1, i2 ;
-float frac ; 
+int i, k, n;
+ 
 int thisLayer ; 
-int R=44100, in, on;
-bool notSearchingForDuration=true ; 
-int   eof = 0, channelout=0 ;
-float tpt, x, v, z ; 
-long int xBegin, xEnd ; 
+
+ 
+int channelout=0 ;
+float x, v, z ; 
+ 
 int acceptableOutputDurationFlag=0 ;  
 FILE *fopen() ;
-char ch,  tempstring[ STRING_SIZE ],  
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ],  *user ;
+char ch,  tempstring[ STRING_SIZE ],  *user ;
 int stopFlag ; 
-bool printOn ; 
+ 
 double isrDouble ;
 int numberOfLayers=1 ;
 float sincTruncationAmplitudeLevel ;
 double sincTruncationXinSeconds ;
-float  dur, prop, propFrac, rampValue ;
-int iprop ;
-float  temp, temp1,  temp2,  pm,  IR  ;  
-int showme=0 ;
-int numberOfLayersSave ; 
-float max, min, average ; 
-bool saveLayerData=false ; 
+float rampValue ;
+
+  
+
+ 
+ 
+ 
 
 float *layerHoldTimeDur, *layerRiseTimeDur, *layerFallTimeDur, *layerTimeStartPoint,
 	*layerTimeFallPoint ; 
 
 
 int *layerMode ; // 0: RISE, 1: HOLD PEAK, 2: FALL, 3: OFF
-int		numSynthChannels=1 ;
+
 double *layerDataTpt ;
 float *layerValue  ; 
 
-float complianceRatio=0., oldComplianceRatio, oldTestOutputDuration, convergenceProp=1. ;
+float complianceRatio=0., oldComplianceRatio, convergenceProp=1. ;
 
-float tempSave ;
+
 
 bool useInputRateForOutputRate=true ; 
 
-long int lowIndex, highIndex ;
-double realIndex, lowRealIndex, highRealIndex ; 
-float fracIndex  ; 
-int numberOfOutChannels=1, chan, outputChan, inputChan, numFrames ; 
-float outputChanPeakAmpSum[2]={-99999999.,-999999999.}, thisOutputChanAmpSum[2],
-	PeakAmp ; 
+
+ 
+ 
+int chan, outputChan, inputChan; 
+ 
 float outputDuration=0. ; 
-double sincSumXscaler=1., xScaledForSinc ; 
+double sincSumXscaler=1.; 
 bool synthesizeOutputDuration=false ; 
 int synthesizeOutputDurationAttempts=0 ;
-FILE *data ;
+
 int RMScount ; 
 float RMS, peakAmplitude=0. ;
 
@@ -177,24 +175,23 @@ double halfSincFunctionLengthAsDouble ;
 
 float *halfSincLookupTable ; 
 
-float timeNow ; 
+ 
 
 int synthesisMode=0 ; 
 
-char outputFileName[ STRING_SIZE ]="" ; 
+ 
 
 float inputDuration=0.0 ; 
 
 int  frameNow ; 
 
-int numsamps ; 
-int numSampsBufferedIn, arg_index_Save, normalizeFlag=1 ; 
+ 
+int normalizeFlag=1 ; 
 long int numFramesLeft ; 
-int numFramesBufferedIn, blockFrame ; 
+int numFramesBufferedIn; 
 
-int numberOfInputSoundFiles=0, totalFramesBufferedIn, 
-	numberOfInputChannels, 
-		 thisInputFile,
+int totalFramesBufferedIn, 
+	numberOfInputChannels,
 	numberOfSampsBufferedIn, numberOfFramesBufferedIn, numberOfFramesToTransfer ; 
 
 long int numberOfOutputSampleFrames, numberOfFrames ;
@@ -206,13 +203,13 @@ float duration, outputChannelPeakAmps[ MAXIMUM_CHANNELS ], inputChannelPeakAmps[
 	peakInputChannelAmp=0., peakOutputChannelAmp=0., finalOutputChannelPeakAmps[ MAXIMUM_CHANNELS ],
 	finalOutputChannelPeakAmp=0. ; 
 
-float sincDecibelsTruncateLevel=-96.0 ; 
+ 
 
 float interleavedInputBuffer [ BLOCKSIZE * MAXIMUM_CHANNELS ] ; 
-float inputBufferByChannels [ MAXIMUM_CHANNELS ][ BLOCKSIZE ] ; 
+ 
 
 bool useTableLookup=true ;
-float tempBlock[ BLOCKSIZE ], *allChanInputBlock, *allChanOutputBlock ; 
+float tempBlock[ BLOCKSIZE ], *allChanOutputBlock ; 
 
 int mode__rate_multiply_0__semitones_add_1=0 ; 
 
@@ -1302,18 +1299,18 @@ void advanceToNextDataTimePoint(
 	bool saveLayerData,
 	bool notSearchingForDuration
 ){
-	float prop ; 
-	int iprop, k ;
-	float propFrac ;
-	float temp1, temp2, temp3 ; 
+	 
+	
+	
+	 
 	float rateChangeIncrement, originChangeDifference ;
 	static int messageSent=0 ;
 	static double oldDataTpt ;
-	static float scaledDataTimeLeft ;
+	
 	static double increment ;
 	static bool releaseTriggered ;
-	static bool outsideAboveFlag ; 
-	static float amountOutside ;
+	 
+	
 	int thisLayer ;      
 	 
 	 
@@ -1569,7 +1566,7 @@ float linearlyInterpolate(
 	long int numberOfFrames
 ){
 	long int lowIndex, highIndex ;
-	double realIndex, lowRealIndex, highRealIndex ; 
+	double realIndex; 
 	float fracIndex, sum  ; 
 
 

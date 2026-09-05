@@ -9,8 +9,8 @@ int main( argc, argv )
 {
 
 
-int i,j,k, jj,   i1,  i2 ;
-float i1p,  i2p,  pm, source_pm, fm,  fs ; 
+int i,j,   i1,  i2 ;
+float i1p,  i2p,  pm, fm,  fs ; 
 float nyquist;
 double atof();
 int R=44100, N=0, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
@@ -19,7 +19,7 @@ float P = 1.0;
 
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *buffer_filter, *channel, *channel_delay, 
 		*channel_filter,  *output ;
-float *previous_channel_filter,  *F, *OF,   *FF ; 
+float *previous_channel_filter,  *F,   *FF ; 
 //float lowfreq=0., hifreq=22050. ; 
 
 float funcMin, funcMax, funcAvg, maxDelayT=0. ;  
@@ -32,13 +32,12 @@ float threshfac = .001,  threshfacdB=-96 ;
 float releasec,  minusreleasec,  attackc,  minusattackc ; 
 double ar_dB ; 
 float	gain=1. ;
-int limitcount=0,  bandrejecton=0 ; 
+int bandrejecton=0 ; 
 FILE *fopen();
-FILE *fp;
+
 float N_ratio,  analysis_fundamental ; 
 int analysis_N,  analysis_N2 ; 
-float channelAmpSum, tempChannelAmpSum, filterChannelAmpSum,
-	normgain, frameNormalizationAmpLimit, normalizationAmp, Normalize_to__Input_Sound_0__Filter_1=0 ; 
+float channelAmpSum, tempChannelAmpSum, filterChannelAmpSum, frameNormalizationAmpLimit, normalizationAmp, Normalize_to__Input_Sound_0__Filter_1=0 ; 
 
 int print_flag=0 ; 
 int pitchflag=0; 
@@ -46,7 +45,7 @@ char ch;
 // SHELF EQ
 float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
 
-float  temp,  temp2,  temp3 ;  
+float  temp;  
 float getthresh();
 float   IR,  dur=0.;
 
@@ -177,7 +176,8 @@ if( argc < 2 )usage() ;
 
 /*
 
-CASE -> USAGE 
+CASE -> USAGE
+ 
 
 */
 

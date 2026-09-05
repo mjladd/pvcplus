@@ -20,7 +20,7 @@ int findFilterTimeAndConstrainByWindow(
 	float vibratoPeriodDuration
 )
 {
-    float temp, prop, warpedProp, propFrac, winSize, NewMinusOldDiff, newDur ;
+    float temp, prop, propFrac, winSize, NewMinusOldDiff;
     float filtTimeLeftNow, filtTimeLeftProp ;
     int boundariesResetExitCode ; // 0: NO RESET, 1: RESET  
 
@@ -29,7 +29,7 @@ int findFilterTimeAndConstrainByWindow(
     int iprop ; 
     static float testDur ;
     static float remainingTime ;  
-    static float remainingFiltTime ;
+    
     static int timeDirectionNow ;
     static int endSegmentFlag ; 
     static float loopTimeDirectionInverter=1.0 ;

@@ -7,26 +7,24 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j, k, l,  m, n, nnn=0 ;
-float nyquist,  fundamental ;
-int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  write_ascii=0 ;
-float P = 1.0;
+int i, k, n;
+
+
+
+
 FILE *fopen() ;
-char ch,  tempstring[ STRING_SIZE ],  
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ],  *user, fileDelayTimesFileName[ STRING_SIZE ]="",
+char ch,  tempstring[ STRING_SIZE ],  *user, fileDelayTimesFileName[ STRING_SIZE ]="",
 		new_fileDelayTimesFileName[ STRING_SIZE ]="", fileGainLevelModifiersFileName[ STRING_SIZE ]="",
 		 new_fileGainLevelModifiersFileName[ STRING_SIZE ]="" ;
 int delaysFlag=0, catFilesFlag=0, gainLevelsFlag=0, file ; 
-float  dur ;
-float  gain, f ;
-float  temp, temp1,  temp2,  pm,  IR  ;  
-int showme=0 ; 
-int numberOfOutChannels=1, chan, outputChan, inputChan, fileSizeInBytes, numFrames ; 
-float outputChanPeakAmpSum[2]={-99999999.,-999999999.}, thisOutputChanAmpSum[2],
-	PeakAmp ; 
 
-FILE *data, *delayFile, *gainLevelModifiersFile ;
+
+  
+ 
+int chan; 
+ 
+
+FILE *delayFile, *gainLevelModifiersFile ;
 
 float *fileDelayTimes, *fileGainLevelModifiers, delayTime, previousDelayTime=0.0,  gainLevel ;  
 
@@ -34,27 +32,27 @@ float *inputSoundFileDurationsInSeconds ;
 
 int soundFileIndex ; 
 
-int outputMode=-1, filepos ; 
+int filepos ; 
 
-float timeNow ; 
+ 
 
-char outputFileName[ STRING_SIZE ]="" ; 
+ 
 
-char channelOrderFile[ STRING_SIZE ] = "",  new_ChannelOrderFile[ STRING_SIZE ] ; 
+ 
 
 int channelOutputLength=0 ; 
 
-int channelOrderFlag__input_order_0__file_order_1, frameNow ; 
+int frameNow ; 
 int numberOfDelayFileDelayTimes ; 
 
 
-int numSampsBufferedIn, numFramesLeft, arg_index_Save, normalizeFlag=0 ; 
-int numFramesBufferedIn, blockFrame ; 
+int numFramesLeft, arg_index_Save, normalizeFlag=0 ; 
+int numFramesBufferedIn; 
 
 int numberOfInputSoundFiles=0, totalFramesBufferedIn, 
-	numberOfInputChannels, largestNumberOfInputChannels=0, largestNumberOfFrames=0, 
-		 numberOfFrames, maxNumberOfFrames=0, minNumberOfFrames, thisInputFile,
-	numberOfSampsBufferedIn, numberOfFramesBufferedIn, numberOfFramesToTransfer, silentBufferSize ; 
+	numberOfInputChannels, largestNumberOfInputChannels=0, 
+		 numberOfFrames, maxNumberOfFrames=0,
+	numberOfSampsBufferedIn, numberOfFramesBufferedIn, numberOfFramesToTransfer; 
 
 SF_INFO inputSFinfo ;  
 SF_INFO outputSFinfo ; 
@@ -65,13 +63,13 @@ float duration, *silentBuffer, channelPeakAmps[ MAXIMUM_CHANNELS ], peakChannelA
 float interleavedInputBuffer [ BLOCKSIZE * MAXIMUM_CHANNELS ] ; 
 float inputBufferByChannels [ MAXIMUM_CHANNELS ][ BLOCKSIZE ] ; 
 
-char *home_directory ; 
+ 
 
-float tempBlock[ BLOCKSIZE ], *allChanInputBlock, *allChanOutputBlock ; 
+float tempBlock[ BLOCKSIZE ], *allChanOutputBlock ; 
 
-float truncateDuration=-1. ; 
+ 
 
-int truncateDurationFlag=0, truncateDurationInFrames ; 
+ 
 
 // SOURCE GAIN
 struct  func  amplitudeEnvelope ; 

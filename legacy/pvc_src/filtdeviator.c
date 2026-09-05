@@ -6,8 +6,8 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k, jj,   i1,  i2 ;
-float i1p,  i2p,  pm,  fm,  fs,  fdbm, fdpm, fdmdiff,  fd,  fsdiff,  fdevminus ; 
+int i,j,   i1,  i2 ;
+float i1p,  i2p,  pm,  fm,  fs, fdmdiff,  fsdiff,  fdevminus ; 
 float nyquist;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
@@ -15,20 +15,20 @@ int   eof = 0, obank = 0,  channelout=0 ;
 float P = 1.0;
 int SOURCE_maxNumOfDelayFrames, FILTER_maxNumOfDelayFrames ; 
 float SOURCE_maxDelayT=0., FILTER_maxDelayT=0. ; 
-float peakDelayTime, baseDelayTime,  maxDecayTime, feedbackDecayTimeRange ; 
+float maxDecayTime, feedbackDecayTimeRange ; 
 float interpDecayTFilterAmp ; 
-float funcMin, funcMax, funcAvg, maxDelayT=0., timeRange, timeDelayFeedbackAmp, *thisFilterDelayT,
+float funcMin, funcMax, funcAvg, timeRange, *thisFilterDelayT,
 	*previous_thisFilterDelayT, 
 	*thisFilterDelayT_inFrames, *thisFilterDecayT, *thisFilterDecayT_inFrames,  
-	interpTdelayFilterAmp, this_freqdevmode, thisdBval, this_randelayTval ; 
-int maxNumOfDelayFrames, SOURCE_frameNowChannelDelayIndex, FILTER_frameNowChannelDelayIndex, 
+	interpTdelayFilterAmp, thisdBval; 
+int SOURCE_frameNowChannelDelayIndex, FILTER_frameNowChannelDelayIndex, 
 	thisFilterFrameDelay, thisSourceFrameDelay, sourceflag=0 ; 
 int randomDelayTflag=0 ; 
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *bufferSum, 
 			*buffer_filter, *buffer_filter_delayed_inputs, *channel, 
 	*channel_filter, *channel_filter_delayed_inputs, 
 		*SOURCE_channel_delay, *FILTER_channel_delay, *FILTER_channel_delay_now, *output ;
-float *previous_channel_filter,  *F,  *Ffreq, *FtimeDelay, *FampWarp,  *FfreqWarp, *FtimeDelayWarp,
+float *previous_channel_filter,  *F, *FampWarp,  *FfreqWarp, *FtimeDelayWarp,
 	* FdecayTimeWarp, 
 	 *previous_ranfreqv,  *previous_ranampv ; 
 float threshfac = .001,  threshfacdB=-96 ;
@@ -37,24 +37,23 @@ double ar_dB ;
 float	gain=1. ;
 int bandrejecton=0 ; 
 FILE *fopen();
-FILE *fp;
+
 float randelayTsmoothc, minusrandelayTsmoothc ; 
 
 
-float peakdBnow,  basedBnow,  ampdiffnow,  dBdiffnow,  fdevdiff ; 
+ 
 
-float channel_outAmpSum, tempChannelAmpSum, filterChannelAmpSum,
-	normgain, frameNormalizationAmpLimit, normalizationAmp, Normalize_to__Input_Sound_0__Filter_1=0 ; 
+float channel_outAmpSum, tempChannelAmpSum, filterChannelAmpSum, frameNormalizationAmpLimit, normalizationAmp, Normalize_to__Input_Sound_0__Filter_1=0 ; 
 
 int print_flag=0 ; 
-int pitchflag=0; 
+ 
 char ch;
 // SHELF EQ
 float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
 
-float this_ranampval, this_interpFilterAmp, this_interpFilterFreq, this_smoothedrandomval, this_smoothedfileval,
+float this_ranampval, this_interpFilterAmp, this_interpFilterFreq, this_smoothedrandomval,
 	fullydeviatedfreq ; 
-float  temp,  temp2,  temp3,  temp4 ;  
+float  temp;  
 float getthresh();
 float   IR,  dur=0.;
 
@@ -261,7 +260,8 @@ FILTER_OUTPUT_frameNormalizationDecibelLimit.L = 1. ;
 
 if( argc < 2 )usage() ; 
 
-//CASE -> USAGE//   
+//CASE -> USAGE
+//   
 
     while( (ch= crack( argc, argv, 
 	"~|/|:|_|=|@|a|A|b|B|c|C|d|D|e|E|f|F|g|G|h|H|i|I|j|J|k|K|l|L|m|M|n|N|o|O|p|P|q|Q|r|R|s|S|t|T|u|U|v|V|w|W|x|X|y|Y|z|Z|", 0  )) != CRACK_DONE_FLAG ) {  //    

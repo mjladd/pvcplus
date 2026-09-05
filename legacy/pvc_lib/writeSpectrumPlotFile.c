@@ -11,7 +11,7 @@ int writeSpectrumPlotFile(
 )
 {
     FILE *fopen(), *file ;     
-    int i, j, k, f, lowFreq, highFreq, freqRange ;
+    int i, k, f, lowFreq, highFreq, freqRange ;
     float lowAmp, highAmp, outVal ;  
 
 //    prs( spectrumOutputFile, "DECIBELS SPECTRUM PLOT FILE" ) ; 

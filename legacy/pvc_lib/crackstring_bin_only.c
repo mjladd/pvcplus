@@ -13,13 +13,13 @@
 
 FILE *crackstring_bin_only(char  s[], struct func *p ) 
 {
-int	i, j, k,  pd();
-float	t ;  
-FILE	*fopen(),  *fp ;  
+int pd();
+  
+FILE	*fopen();  
 struct       stat st;
-char c ; 
-FILE *home ;
-char ch, homeDirectory[ STRING_SIZE ];
+ 
+
+
 
 
  

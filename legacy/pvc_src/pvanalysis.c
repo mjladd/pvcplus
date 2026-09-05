@@ -13,10 +13,9 @@ int main(argc, argv)
 		Nw2, 
 		D = 1024, 
 		I = 1024,
-		i, j, k, l,  
+		i, k,  
 		printflag=0, 
 		in,
-		exflag,
 		specprintflag=0,  
 		eof = 0;
     float 	peakamps[MAXIMUM_CHANNELS], 
@@ -24,9 +23,6 @@ int main(argc, argv)
 		fundamental, 
 		DR,  
 		P = 0.,
-		len,
-		tincr,
-		tpos,
 		*Hwin,
 		*Wanal,
 		*Wsyn,
@@ -38,11 +34,10 @@ int main(argc, argv)
 		*SP
 		;
     char	scratch[ 500 ], 
-		ch,
-		*dbuf;
-int   obank = 0,  sflag = 0,  channelout=0 ;
-int   print_flag=0 ; 
-int Qflag ;
+		ch;
+int   obank = 0,  channelout=0 ;
+ 
+
 int qseccount=0,  seccount=0;
 float nyquist,  frametprop,  tempt=0.,  dur ;
  
@@ -53,7 +48,7 @@ float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ;
  
 float warpshape=0. ; 
 
-float normdB=0., dBgain=0.,  ampgain=1.,  peakamp=0., peakampnow=0., avgpeakamp=0.,  peakdB,  avgpeakdB   ; 
+float dBgain=0.,  ampgain=1.,  peakamp=0., peakampnow=0., avgpeakamp=0.,  peakdB,  avgpeakdB   ; 
 
 
 if( argc < 2 )usage() ; 

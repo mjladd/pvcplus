@@ -11,14 +11,14 @@ int main( argc, argv )
 {
 float crossFadeDur, halfCrossFadeDur, thisBeginT, thisEndT ;
 
-int i,j, k, l,  m, nnn=0, numbins,   stopbin=10,  offset, L, mixfilesNormalizationFlag ;
-float binFreq, rolloffdB, rolloffAmp ; 
-float nyquist,  fundamental ;
+int i, mixfilesNormalizationFlag ;
+ 
+
 double atof();
-int R=44100, N=1024, N2, Nw = 2048, Nw2, Lh = 220, Lhm1, I = 220, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  write_ascii=0 ;
-float P = 1.0;
-FILE *fopen(), *tdata, *impulseData, *adata ;
+
+int channelout=0;
+
+FILE *fopen();
 FILE	*impulseFilesFilePointer ;
 char	impulseFilesName[ STRING_SIZE ]="", command[ 40000 ], 
 	fileName[ STRING_SIZE ]="", thisEnv[ STRING_SIZE ]="",
@@ -27,16 +27,13 @@ char	impulseFilesName[ STRING_SIZE ]="", command[ 40000 ],
 
 int number_of_movement_function_points=1 ; 
 
-char ch,  tempstring[ STRING_SIZE ],  write_ascii_filename[ STRING_SIZE ]="./ascii.out", 
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ],  *user,
-    channelListFileName[ STRING_SIZE ] ;
-float *Hwin, *Wanal, *Wsyn, *input, *winput, 
-    *inbuffer, *outbuffer, *inputSave, *B, *channel, *output, *impulseAnalysis ;
-float threshfac = .001,  threshfacdB=-96.;
-float  *binfreq,  dur ;
-float  gain, f ;
-float  *previous_channel, *channel_freqdev ;
-float  temp, temp1,  temp2,  pm  ;  
+char ch,  tempstring[ STRING_SIZE ];
+
+
+
+
+
+  
 float getthresh();
 struct func IRBPF_LowFreqPoint ;
 struct func IRBPF_HighFreqPoint ; 
@@ -51,31 +48,31 @@ struct func SourceInputBPF_lowFilterRolloffInDecibelsPerOctave ;
 struct func SourceInputBPF_highFilterRolloffInDecibelsPerOctave ;
 
 
-float  phasediff ; 
-int showme=0 ; 
-float impulseDuration=1. ; 
-float impHyp, sigHyp, sigHypNew, prop ; 
+ 
+ 
+ 
+float prop ; 
 
 int impulseShapingFlag_Off_0__On_1=0 ; 
 
-float warpshape=0. ; 
+ 
 
 int deconvolution_0__convolution_1=1 ; 
 
-float real, imag ; 
+ 
 // SHELF EQ
 int add_ring_time__off_0__on_1=0 ; 
 
-int numberOfImpulseChannels, impulse_SR, impulseChannel=0, impulseChannelNow, sampsRead ; 
+int impulseChannel=0; 
 
 char outputDirectory[ STRING_SIZE ]="" ;
 
 
-int frameBeginSampNow=0 ; 
+ 
 
-int lowbin=0,  highbin=-1,  numberframes=0,  n=0 ; 
-float lowbinfreq=0,  highbinfreq=-1 ; 
-int filttype=0 ; 
+ 
+ 
+ 
 
 int multichannel_output_mode__standard_0__alternate_1=0 ;
 
@@ -487,7 +484,10 @@ void usage()
 	"	e:   "END_TIME         // endt
 	"	C:   "RESYNTHESIS_CHANNEL      // channelout
 
-	"	I:	output directory \n"	"	J:	impulse channel [-0.]\n"	"	d:	add ring time  0 = off, 1 = on [0]\n"	"	v:	normalization code:  0, 1, 2, 3 [0]\n"
+	"	I:	output directory \n"
+	"	J:	impulse channel [-0.]\n"
+	"	d:	add ring time  0 = off, 1 = on [0]\n"
+	"	v:	normalization code:  0, 1, 2, 3 [0]\n"
 
 
 	"	M:   multi-channel output mode: standard = 0, alternate = 1 [0]\n"
@@ -497,7 +497,10 @@ void usage()
 	"	r:   convolution source output gain in dB (func)[-0.]\n"
 
 	"	** INPUT SOUND: BAND PASS FILTER\n"
-	"	D:	low rolloff frequency (func) [-0.]\n"	"	f:	high rolloff frequency (func) [-0.]\n"	"	h:	low edge amplitude rolloff in decibels per octave (func) [-0.]\n"	"	H:	high edge amplitude rolloff in decibels per octave (func) [-0.]\n"
+	"	D:	low rolloff frequency (func) [-0.]\n"
+	"	f:	high rolloff frequency (func) [-0.]\n"
+	"	h:	low edge amplitude rolloff in decibels per octave (func) [-0.]\n"
+	"	H:	high edge amplitude rolloff in decibels per octave (func) [-0.]\n"
 
 	"	   *** IMPULSE RESPONSE FILTER BAND ***\n"
 	"	s:   impulse response low frequency rolloff point [0.]\n"

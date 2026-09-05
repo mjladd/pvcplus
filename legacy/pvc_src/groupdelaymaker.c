@@ -8,42 +8,41 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k, l,  i1,  i2, ipartial,   n, exflag, 
-     NC, NC2,   np,  nf=2,  first=1  ;
+int i,j,k,  i1,  i2, ipartial,   np;
 float nyquist;
 double atof();
-int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
+int R=44100, N=1024;
 
-int analysis_N,  analysis_D, analysis_R, analysis_chan,  niframes ;  
+int analysis_N,  analysis_D, analysis_R, analysis_chan;  
 float normamp[MAXIMUM_CHANNELS] ; 
 
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0 ;
-float P = 1.0;
-FILE *fopen(), *fp;
+
+
+FILE *fopen();
 char ch;
-float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
-float *previous_channel,  *F,  *FT,  *SUM,  *harmony ; 
- float threshfac = .001;
-float	gain=1. ;
-float  temp,  temp2,  temp3,  temp4,  temp5,  temp6 ;  
+
+float *F; 
+ 
+
+float  temp,  temp3,  temp5,  temp6 ;  
 float getthresh();
-float peakbinamp = 0.,  avgbinamp=0., avgdelay,  averagedB,  peakamp=0,  peakfreq=-9999, minamp, 
+float avgbinamp=0., avgdelay,  averagedB,  peakamp=0, minamp, 
     maxdelay=-99999,  mindelay=999999., 
     dBedge=0,  dbdown1,  dbdown2,  percentofbins, dBrolloff ;
 float fundamental ; 
-int   invert_flag=0,  nbins=0,  spectmethod=0 ;
-float   IR,  dur=0.;
+int nbins=0,  spectmethod=0 ;
+
 
 // SHELF EQ
-float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
-int eqnormbypassflag=0 ; 
+ 
+ 
 
 FILE *data ; 
 char datafile[ STRING_SIZE ] = "EMPTY\0", new_datafile[ STRING_SIZE ]  ; 
 char datafile2[ STRING_SIZE ] = "EMPTY\0" ; 
-float *PP, *domainamp, *partialamp,    fund=100.,  freqdiff,  target_gain,  SOURCE_gain,  midC,  part ; 
-int method=1,  nd=0,  vb=0 ; 
-float bw1,  bw2,  bw,  default_delay_time=0.,  default_dB=0.,  default_amp ; 
+float *PP,  freqdiff,  midC; 
+int method=1,  vb=0 ; 
+float bw,  default_delay_time=0.,  default_dB=0.,  default_amp ; 
 char tempstring[ STRING_SIZE ] ; 
 
 void value_from_methods(

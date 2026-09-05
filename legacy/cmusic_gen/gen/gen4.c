@@ -19,9 +19,9 @@
 int main(argc, argv) int
 	argc;
 	char           *argv[]; {
-	float           tcoef[SIZE], vcoef[SIZE], alpha[SIZE], factor, *f, *ff, scale = 0.0;
+	float           tcoef[SIZE], vcoef[SIZE], alpha[SIZE], *f, *ff, scale = 0.0;
 	float           expr();
-	extern int      exprerr;
+	
 	int             i, j, seglen, length, nc = 0, closed = 1;
 	double		atof() ; 
 

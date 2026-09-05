@@ -5,21 +5,21 @@ void usage() ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k,  i1,  i2;
-float i1p,  i2p ; 
-float nyquist;
+int k;
+ 
+
 double atof();
-int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
+
 int analysis_N,  analysis_D, analysis_R, analysis_chan,  niframes ;  
 float analysis_dur,  iframes_per_sec ; 
-int   eof = 0 ;
-FILE *fopen(), *fp, *home ;
-char ch, homeDirectory[ STRING_SIZE ];
-float  temp,  temp2,  temp3 ;  
-float normamp[MAXIMUM_CHANNELS],  normamppk ;
-float   IR,  dur=0.;
-float fundamental ;
-float analysis_fundamental ;  
+
+FILE *fopen();
+
+float  temp,  temp2;  
+float normamp[MAXIMUM_CHANNELS];
+
+
+  
 
 char tempstring[ STRING_SIZE ] ; 
 

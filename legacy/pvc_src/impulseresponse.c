@@ -27,32 +27,32 @@ float *peakInputChannelAmps ;
 float peakAmp ; 
 int peakAmpChannelNumber ; 
 
-float low, hi, length, median; 
+ 
 
 fpos_t position ;
 
-long size;
 
-int nn, Lh, L ; 
-float oldt ; 
-int i,j, k, jj, ii ;
+
+int Lh, L ; 
+ 
+int i, k;
 float nyquist,   fundamental ;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048 ;
 int   eof = 0, channelout=0 ;
-float P = 1.0 ;
-FILE *fopen(), *fp,  *adata, *dataOutput ;
+
+FILE *fopen(), *dataOutput ;
 char ch ;
-float *input, *buffer, *channel ;
-float	 gain=1.  ;
-float  temp,  temp2,  temp3,  temp4,  temp5,  temp6  ;
+float *buffer, *channel ;
+
+float  temp;
 float dur ;
 int numOutChannels ; 
 
 char decibelsSpectrumPlotFile[ STRING_SIZE ]="" ; 
 
 int   print_flag=0 ; 
-float   n=2048 ;
+
 char tempstring[ STRING_SIZE ] ; 
 
 int normalizationFlag=2 ; 

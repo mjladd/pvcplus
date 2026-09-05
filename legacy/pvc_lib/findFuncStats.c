@@ -27,16 +27,16 @@ int findFuncStats(
 	int		freqUnitsFlag
 ) 
 {
-	int	i, ii, k,  pd(), count=0, notdone ;
+	int	i, ii,  pd(), count=0, notdone ;
 	float	t, *value ;  
-	FILE	*fopen(),  *fp ;  
-	float *temp_array, temp, tempsum, v[10] ;
-	int histogramcounts[100] ;  
-	float histogramdivisionsums[100], histdivision ; 
-	int numhistdivisions, modeFound, modeFoundFlag ;
-	float lowdivision, highdivision ;  
+	FILE	*fopen();  
+	float *temp_array, temp, tempsum;
+	  
+	 
+	int modeFoundFlag ;
+	  
 
-	float thislow, thishigh, thisrange, thisaverage, thismedian, thismode, thisstandarddeviation, thissum, thisbegin, thisend, thismiddle ; 
+	float thislow, thishigh, thisrange, thisaverage, thismedian, thismode, thisbegin, thisend, thismiddle ; 
 
 	numberOfValues = p->n ; 
 

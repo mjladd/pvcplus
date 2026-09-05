@@ -12,30 +12,30 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,  k, kk, kl=0,  i1,  i2,  mm ;
+int i, kk, kl=0,  i1,  i2,  mm ;
 float nyquist,  fundamental;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
 int   eof = 0, channelout=0,  chanmethod=0,  obank=0 ;
  float P = 1.0;
-  FILE *fopen(), *fp,  *fofd ;
+  FILE *fopen(),  *fofd ;
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
-float	gain=1., peakamps[MAXIMUM_CHANNELS]
+float peakamps[MAXIMUM_CHANNELS]
  ;
 float  temp,  temp2,  temp3, temp4,    old_temp=0.,  shortnorm ;  
 float getthresh();
 int  exflag=0 ; 
  
-float peakbinamp = 0.,  avgbinamp=0.,  peakamp, peakenvamp=-999999999., minenvamp=999999999., 
-	ampthresh,ampgatethresh,    limit ;
+float peakenvamp=-999999999., minenvamp=999999999., 
+	ampthresh,ampgatethresh;
 float   IR,  dur=0.;
 char tempstring[ STRING_SIZE ],  *user ; 
 FILE *fscratch ; 
 char scratch[ STRING_SIZE ] ; 
-float compression,  OR=44100.,  tp,  tpinc=500.,  freqdiff,  lowf,  hif ; 
+float compression,  tp,  tpinc=500.,  freqdiff,  lowf,  hif ; 
 float releasec,  minusreleasec,  attackc,  
-    minusattackc,  freqchangec,  minusfreqchangec ; 
+    minusattackc; 
 float freleasec,  minusfreleasec,  fattackc,  minusfattackc ; 
 float oldfiltenv, filtenv ; 
 
@@ -44,7 +44,7 @@ int datatype=0 ;
 float frametprop,  tempt=0.,  midC ;
 int qseccount=0,  seccount=0,  printflag=0, plotflag=0 ;
 int outtype=0 ; 
-float snfloats[ 1000 ] ; 
+ 
 
 int outformat=0 ; 
 

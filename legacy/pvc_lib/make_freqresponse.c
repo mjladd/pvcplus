@@ -33,9 +33,9 @@ int make_freqresponse(
     float nn ; 
     int eof;
     
-    int i,  j,  in,  on ;      
+    int i,  in,  on ;      
     
-    long int file_p ; 
+     
 
 //    pri( method,  "METHOD" ) ; 
 

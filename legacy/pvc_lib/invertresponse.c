@@ -11,7 +11,7 @@ int invertresponse(
 
     int i ;
     int flag;
-    float K,  a,  peakamp,  normamp ; 
+    float a,  peakamp,  normamp ; 
     static float athresh ; 
     static int first=1 ; 
     

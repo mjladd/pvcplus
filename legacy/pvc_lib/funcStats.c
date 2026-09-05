@@ -9,9 +9,9 @@
 
 int funcStats( struct func *p, float *low, float *hi, float *avg, int *length, float *median  ) 
 {
-int	i, k,  pd(), count=0, notdone ;
+int	i,  pd(), count=0, notdone ;
 float	t, *value, temp ;  
-FILE	*fopen(),  *fp ;  
+FILE	*fopen();  
  
 
 	*length = p->n ; 

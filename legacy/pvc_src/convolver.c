@@ -8,33 +8,33 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k,  itemp ;
+int i,j,  itemp ;
 float nyquist;
 double atof();
   int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  achannelout ;
+int   eof = 0, obank = 0,  channelout=0,  achannelout ;
 int analysis_N,  analysis_D, analysis_R, analysis_chan,   niframes ;  
 float analysis_dur,  iframes_per_sec ; 
 float P = 1.0;
-FILE *fopen(), *fp;
+FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *previous_buffer, *channel,  
     *C_buffer, *C_channel, *output, *channelMix, *bufferMix ;
 float *previous_channel,  *F,  *Fbuffer,  *F_lower,  *F_higher ; 
 float threshfac = .001,  threshfacdB=-96 ;
-float	pm, fm, panc,  pans, panpot, 
+float	pm,  pans, 
     A_dB,  B_dB,  C_dB,    gain=1. ;
-float  temp,  temp2,  temp3 ;  
+float  temp,  temp2;  
 float getthresh();
-float peakbinamp = 0.,  avgbinamp=0.,  peakamp ;
+
 float   IR,  dur=0.;
 float fundamental ;
-float warpshape=0. ; 
+ 
 int smooth__polar_0__Cartesian_1=0 ; 
 float envattack,  envrelease,  minusattack,  minusrelease  ;  
 double ar_dB ; 
 
-float real, imag ; 
+ 
 
 
 int frameNormalizeFlag, smoothingFlag ; 
@@ -42,7 +42,7 @@ int frameNormalizeFlag, smoothingFlag ;
 float A_peak, B_peak,  AB_peak,  normamp,  normamps[16] ; 
 
 float panwarp_A=0.,  panwarp_B=0. ; 
-int ainchan,  exflag ; 
+int ainchan; 
 
 int Data_Time_Rate_Units__Seconds_0__Vibrato_periods_1=0 ; 
 float vibratoPeriodDurationNow=1. ; 
@@ -51,21 +51,20 @@ float vibratoPeriodDurationNow=1. ;
 // SHELF EQ
 float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
 
-float windowedFilttnow, loopTimeDirectionSign=1.0 ; 
-int Mode__sampler_loop_0__autostop_1=0,  autostopflag=0,  wrap_0_fold_1_clip_2=0, useTimeWindowFlag=0, 
-	Onset_and_Release_Segment_Mode__off_0__on_1=0, useEndSegmentStageFlag=0   ; 
+ 
+int Mode__sampler_loop_0__autostop_1=0,  autostopflag=0,  wrap_0_fold_1_clip_2=0, 
+	Onset_and_Release_Segment_Mode__off_0__on_1=0; 
 
-float channelAmpSum, tempChannelAmpSum, filterChannelAmpSum,
-	normgain, frameNormalizationAmpLimit, normalizationAmp, 
+float channelAmpSum, tempChannelAmpSum, filterChannelAmpSum, frameNormalizationAmpLimit, normalizationAmp, 
 			Normalize_to__Input_Sound_0__Filter_1=0 ; 
 
 
 
 // ** FILTER VARIABLES
-float filttnow=0., oldfilttnow,  filttinc,  filtf, filtfprop  ; 
-int filtflow,  filtflowold=0,  filtfhigh ; 
+float filttnow=0., oldfilttnow,  filttinc; 
+ 
 
-SF_INFO 	inputSFinfo ; 
+ 
 
 
 char tempstring[ STRING_SIZE ] ; 

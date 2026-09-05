@@ -16,7 +16,7 @@ float find_fluxoid(
  ){
     
     int i,  i1,  i2 ; 
-    float sum,  a,  temp2,  value,  w,  ampsum ; 
+    float sum,  temp2,  ampsum ; 
     
     // MAKE THE FLUXOID
 

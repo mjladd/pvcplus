@@ -7,13 +7,11 @@ int main(argc,argv)
    
 
 
-    char	*filename, 
-		ch, 
-		crack()
+    char crack()
     ;
 
-    float norm=0.,  amplitude,  dB ; 
-    int n = 0 ; 
+    float amplitude,  dB ; 
+     
     
 
 //#include "underflow.h"

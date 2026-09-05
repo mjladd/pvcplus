@@ -9,8 +9,7 @@ int main(argc,argv)
    
 
 
-    char	*filename, 
-		ch, 
+    char ch, 
 		crack()
     ;
 

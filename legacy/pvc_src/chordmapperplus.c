@@ -250,7 +250,7 @@ float auto_adjust_stopband_dB=-20 ;
 
 float Fundamental_Frequency_for_Vibrato_Periods_Detection=0. ; 
 
-float decibelChangeExpansionDecibels, decibelChangeThreshold ; 
+ 
 
 float channel_change_increase_SmoothCoef, minus_channel_change_increase_SmoothCoef ; 
 float channel_change_decrease_SmoothCoef, minus_channel_change_decrease_SmoothCoef ; 
@@ -282,16 +282,15 @@ float filtwinlow_amountToChange, filtwinhi_amountToChange ;
 
 int startDataIndex, endDataIndex, groupNumber=(-1) ; 
 
-int i,j,k, ii,  l,  i1,  i2, ipartial, ipartial_save, i1_save, i2_save,   bug=0, tone_now, *partial_Band_Begin,  *trans_switch, doubleBin, 
-     mm, numberOfBands,  n,  NC, NCmult2, NCdiv2, numTones, nf=2,  first=1,  
+int i,j,k,  l,  i1,  i2, ipartial, ipartial_save, i1_save, i2_save, tone_now, *partial_Band_Begin,  *trans_switch, doubleBin, 
+     mm, numberOfBands,  n,  NC, NCmult2, numTones,  
 	*indexInChannelForHarmony, *indexInChannelForNoise, *tone, *bandIndexforHarmonyBins, *synthetic_VIBRATO_SWITCH ;
 
 float maxDelayT=0., ringTimeCountDown=0., *functionDelayT_Switchscaler ; 
 int *noise_switch, *noise_bank_tone_number, number_of_noise_banks=0, noiseBank, toneNumber, 
 	*tone_Filter_Switch, *tone_Filter_Type, *noise_Filter_Switch, *tone_Channel_Output_Number, *partial_Band_Channel_Output_Number,
 		*noise_Bank_Channel_Output_Number, maximum_Channel_Output_Number=0  ; 
-float fc,   dBc,  *tonesums, 
-	    bandampsum, newbandampsum,   *oldbandampsum,  bandpeakamp, 
+float *tonesums,   *oldbandampsum, 
 	this_Stasis_Median_harmony, this_Stasis_Median_harmony_for_Static_Harmony_Index, this_Stasis_Median_noise, 
 		*oldtunemult  ;
 
@@ -304,21 +303,21 @@ int boundariesResetExitCode, boundariesResetFlag ;
 
 int Data_Time_Rate_Units__Seconds_0__Vibrato_periods_1=0 ; 
 
-int newIndex ; 
+ 
 
 float peakAmp, peakdB, resetTriggerPoint ; 
 
-float thisRate, thisForce, forceMedianDifference, forceMedian, 
+float thisForce, forceMedianDifference, 
 	*rateCorrelatedMedianRaiser_TONE_VALUES, *rateCorrelatedForceSuppressor_TONE_VALUES, *filtrate_TONE_VALUES,
 		*noise_band_decibel_limit_TONE_VALUES, *noise_band_decibel_limit_rolloff_TONE_VALUES,
 	*pitchChangeExpansionDecibels_TONE_VALUES, * frequency_change_suppression_threshold_TONE_VALUES, 
 	*frequency_change_suppression_threshold_increase_response_time_in_seconds_TONE_VALUES ; 
 
-float weighted_channel_change_frame_average, frameWeightsSum, thisMIDIChange, peak ;
+
 
 int rateCorrelatedForceSuppressionSwitch=0, Rate_Correlated_Randomization_Switch=0 ; 
 
-float *toneAmpRescaleSum_Curved, *toneAmpRescaleSum_Uncurved, *toneAmpRescaleProp ; 
+ 
 
 float *channel_average ; 
 
@@ -328,14 +327,14 @@ float low, hi, range, average, median, mode, standarddeviation, sum, begin, end,
 
 float *channel_change_average, *channel_change, *previous_channel_change ; 
 
-float thisStaticHarmonyAmp, sumOfNonSuppressedStaticAmps, sumOfStaticAmps ; 
+float sumOfNonSuppressedStaticAmps, sumOfStaticAmps ; 
 
 float analyzedFundamental=-1. ; 
 
 float vibratoPeriodTableSize=1024. ; 
 float *timeWarp, *oldTimeWarp, *ranAmpScale, *oldRanAmpScale, *rateMod, *oldRateMod,  *vibPhaseNow, *vibratoPeriodTable ; 
 
-int bottomIndex, topIndex, bottomChannelIndex, topChannelIndex ; 
+ 
 float *noiseBandDecibelLimiterThreshold, *noiseBandChannelPositionIndex ; 
 
 float *HammingWindow ; 
@@ -345,7 +344,7 @@ float tuneNullPhasePropPoint, tuneNullPhaseCurveIndex,  tuneBandPropPoint, tuneB
 
 int SourceFreqAnalysisAdjustmentSwitch=0; 
 
-float average_amp_change_in_dB, average_freq_change ; 
+ 
 
 float *thisFreqresponseFrame, *ampWeightSums, *averageBandFreq ; 
 
@@ -364,7 +363,7 @@ float 		*master_gain_in_dB_TONE_VALUES, *master_gain_TONE_VALUES, master_gain_no
 
 float	Rate_Correlated_Noise_Amp_Randomization_Proportion, Rate_Correlated_Noise_Freq_Randomization_Proportion ;
 
-float Force_Correlated_Noise_Amp_Randomization_Proportion, Force_Correlated_Noise_Freq_Randomization_Proportion ; 
+ 
 
 
 float *tonesChannelAmpSums, *channelAmpSum_delay_buffer, thisChannelAmpSum ; 
@@ -372,60 +371,58 @@ float *tonesChannelAmpSums, *channelAmpSum_delay_buffer, thisChannelAmpSum ;
 float partial_formant_inclusion_threshold_in_dB=-100. ; 
 float thisNoiseBankGain ; 
 
-float nyquist,  sumfind=0., testpeakamp=0 ;
-float thisTuneProp, thisForceProp, synthetic_Vibrato=1.0 ; 
-int EQ_Usage_Switch__Off_0__Tones_and_Noise_1__Tones_2__Noise_3=0 ;  
+float nyquist;
+ 
+  
 int frameNowChannelDelayIndex, ampIndex, freqIndex, bin ; 
 
-float thisFilterDelayT  ; 
-int thisFilterDelayTinFrames, thisFilterFrameDelay, thisFrameDelay ;  
+ 
+int thisFrameDelay ;  
 
 
 float *static_freqresponse_averages ; 
 
 float static_freqresponse_peak_SUM_in_dB ; 
-float power ; 
-float rolloff,  cf ; 
+ 
+float cf ; 
 float *channelsSumBefore ; 
 float thisAvgFreq, thisProp, thisTuneFactor, thisForceFactor, thisAmpForceFactor ; 
-int NCtest ; 
+ 
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
 int ainchan ; 
 //int loopmode=0,  loopmodenow=0 ;
-float winsizenow ;  
-int   eof = 0, obank = 0,  channelout=0, achannelout=0, 
+  
+int   eof = 0, obank = 0,  channelout=0, 
      part_count,  numpasspartials, 
     rejected_part_count,  current_rejected_part ;
 float thisPartialbw, thisPartialNumber,  P = 1.0;
-int lowb,  hib ; 
-int peakAmpAddress, band ; 
+ 
+int band ; 
 
 float ampSquared ; 
 
 int *tempChannelNoiseBinFlags, NumNoiseBins, NumNoiseBinsMult2 ; 
 
-float *noise, *previous_noise, *static_noise, noise_pmt, noise_gain, thisNoiseForceControl, thisNoiseBankForceControl, 
-	thisNoiseBankPitchMultiplier ;  
-int noiseFlag=0, noiseVibratoFlag=0 ; 
+float *noise, *previous_noise, *static_noise, thisNoiseBankForceControl;  
+int noiseFlag=0; 
 
 int *transposeShiftMethod_PITCH, *transposeShiftMethod_NOISE, this_transposeShiftMethod_PITCH, this_transposeShiftMethod_NOISE ; 
-float unshiftedpartialfreq,  this_sourceptfundfreq, *sourceptfundfreq,  freqshiftpoint_or_adder_P,  freqshiftpoint_or_adder_B, 
-    freqshift_mult_or_add_P, freqshift_mult_or_add_B, this_partial_shift_factor ; 
+float unshiftedpartialfreq,  this_sourceptfundfreq, *sourceptfundfreq; 
 
-float *channelsSumAfter, *rescaleProp, thisRescaleProp, interpolatedRescaleProp, tProp, env, thisVibEnv ; 
+float *channelsSumAfter, *rescaleProp, tProp, env; 
 
 float *vibratoPeriodDurations, averageVibratoPeriodDuration, vibratoPeriodDurationNow ; 
 
 
-FILE *fopen(), *fp, *fscratch, *pitchdata ;
-FILE *adata[ NUMBER_OF_WRITE_NUMBERS ], *testOut ;
+FILE *fopen();
+
 
 
 
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *previous_channel, *output ;
-float *previous_harmony, *F,   *harmony, *channel_delay, *static_harmony, *previous_static_harmony, 
+float *previous_harmony,   *harmony, *channel_delay, *static_harmony, *previous_static_harmony, 
 	*harmony_force_curve_indeces, 
 	 *sourcefreq, *filttnow_delay_buffer, *tones_delayed_filttnow, 
 	*coswindow,    pms  ; 
@@ -436,16 +433,16 @@ float *harmonyBandsForStaticFreqResponses_PeakAmpOfStrongestBinInBand ;
 
 float threshfac = .001,  threshfacdB=-96 ;
 float	newfreq ;
-float  temp, temp1,  temp2,  temp3,  temp4,  temp5,  temp6,  temp7,  temp8,  temp10 ;  
+float  temp, temp1,  temp2,  temp6,  temp7;  
 float getthresh();
 float   IR,  dur=0., funcDur, saved_dur ;
-float lowpartfreq_P,  lowpartfreq_B,  shiftedpartfreq_P, shiftedpartfreq_B ; 
+ 
 
 float *analysis_lower,  *analysis_higher, *previous_change, *tempChannel ; 
 
-float *ampEnvelope, peakSum ; 
+ 
 
-float ditx, ditinc, drate,  ditherA,  ditherB,  dithert,  olddithert ;   
+float ditx;   
 
 int maxNumOfDelayFrames ; 
 
@@ -453,7 +450,7 @@ double ar_dB ;
 float loopSmoothCoef, minusLoopSmoothCoef ; 
 float asum,  fsum ;
 int bcount,  b1 ; 
-int kk,  saved_mm ; 
+int saved_mm ; 
 
 float analysis_fundamental ;  
 int analysis_N,  analysis_D, analysis_R, analysis_chan,  niframes ;  
@@ -461,27 +458,27 @@ float analysis_dur,  iframes_per_sec ;
 
 float normamp[MAXIMUM_CHANNELS],  normamppk ;
 
-float peakamp, oldpeakamp,   normampdB,  normampw,  gradient  ; 
+float oldpeakamp; 
 
-float tunesmooth, minustunesmooth ; 
-float c_response, minusc_response ; 
+ 
+ 
 
-float loopTimeDirectionSign=1.0 ; 
+ 
 
 double log2 ; 
 
-float tgateamp,  rolloff_amp ; 
+float rolloff_amp ; 
 
 int sourceflag=0 ; 
-int method_flag=0 ; 
+ 
 
 float halfcoscurve( float v ),  fullcoscurve( float v ) ; 
 float coscurve_dB( float v ) ; 
 
 FILE *data ; 
-char datafile[ STRING_SIZE ] = "EMPTY",  new_datafile[ STRING_SIZE ], *user, files[ 300 ]="" ; 
-float *PP, *domainamp, *partialamp,    fundamental,  SOURCE_gain,  midC,  part ; 
-int nd=0 ; 
+char datafile[ STRING_SIZE ] = "EMPTY",  new_datafile[ STRING_SIZE ], *user; 
+float *PP,    fundamental,  SOURCE_gain,  midC; 
+ 
 float bw ; 
 char tempstring[ STRING_SIZE ], tempPitchTrackName[ STRING_SIZE ], tempstring2[ STRING_SIZE ] ; 
 
@@ -495,13 +492,13 @@ float loopSmoothTime=0.0 ;
 
 int auto_adjust_cf_and_bw=0 ; 
 
-int ranampflag=0, ranfreqflag=0   ; 
-float  tsmoothc,  minustsmoothc ; 
+ 
+ 
 
 // ** FILTER VARIABLES
-float filttnow=0., oldfilttnow=0.,   filttinc,  filtf, filtfprop  ; 
-int filtflow,  filtflowold=0,  filtfhigh ; 
-float dwin ; 
+float filttnow=0., oldfilttnow=0.,   filttinc; 
+ 
+ 
 
 float *delayTimes, *timeRateScalers ; 
 
@@ -5223,18 +5220,18 @@ void makeStaticFreqResponseAveragesFromDataFile (
 
 ){
 
-    FILE *fopen(), *fscratch;
+    FILE *fopen();
     float thisAmpWeightSum, averageFreqForThisBand ; 
 
     float valueSum, windowAmpSum ; 
     float thisSum, strongestSum, peakAmp, weightedFreqSum, weightsSum, thisFreq ; 
-    int band, mm, strongestBin, bin, dBlevelFreqresponse ; 
+    int band, strongestBin, bin, dBlevelFreqresponse ; 
 
     int iFlag, amp, freq, start, end ; 
     float mult, temp; 
     int dBdiffsum ; 
-    float sumOfAmps, dBsum,  peakdBsum=(-9999999.) ; int sumUseFlag ; 
-    int i, ii, j, k, l, n, static_freqresponse_averages_base_index, 
+    float sumOfAmps, dBsum,  peakdBsum=(-9999999.) ;  
+    int i, j, k, l, n, static_freqresponse_averages_base_index, 
 	static_freqresponse_index ;
     float beginT, endT, timeIncr=(1./25.), thisTime, halfTimeWindowSize ; 
  
@@ -5247,7 +5244,7 @@ void makeStaticFreqResponseAveragesFromDataFile (
     float realHammingWindowStartIndex ;
     float thisHammingWindowValue ;
     float sumOfHammingWindowValues ;
-    int numberOfFreqResponsesForThisDBsum ;
+    
     int static_freqresponse_averages_sum_count[ NUMBER_OF_STATIC_FREQRESPONSE_AVERAGES ] ;  
     
 
@@ -5588,7 +5585,7 @@ void getVibratoValuesAndIncrement(
 
 )
 {
-    int i, j, k, toneIndex ; 
+    int i, toneIndex ; 
     float x, rateNow, vibPhaseWithTimeMod, coef=0.66 ; 
 
     static int first=1 ;
@@ -5801,10 +5798,10 @@ float find_fundamental_frequency(
 	int D
 )
 {
-	char tempstring[ STRING_SIZE ], tempPitchTrackName[ STRING_SIZE ], tempstring2[ STRING_SIZE ], *user ; 
-	float avg, length ;
+	char tempPitchTrackName[ STRING_SIZE ], tempstring2[ STRING_SIZE ], *user ; 
+	
 	float analyzedFundamental ;
-	FILE *fopen(), *pitchdata ; 
+	FILE *fopen(); 
 
 	float low, hi, range, average, median, mode, standarddeviation, sum, begin, end, middle ; 
 

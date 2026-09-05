@@ -6,40 +6,40 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k, jj,   i1,  i2 ;
-float i1p,  i2p,  pm,  fm,  fs ; 
+int i,j;
+float pm; 
 float nyquist;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0 ;
+int   eof = 0, obank = 0,  channelout=0 ;
 float P = 1.0;
 
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
-float *previous_channel, *smooth_channel,  *F, *amp_change, 
+float *previous_channel,  *F, *amp_change, 
 	  *previous_amp_change ; 
 float threshfac = .001,  threshfacdB=-96 ;
 float releasec,  minusreleasec,  attackc,  minusattackc ; 
 double ar_dB ; 
 float	gain=1. ;
 FILE *fopen();
-FILE *fp;
-float N_ratio ;
+
+
 float noise_thresh_limit_dB=0. ;  
-int analysis_N,  analysis_N2 ; 
+ 
 
 
-int track=1 ; 
+ 
 int print_flag=0 ; 
 char ch;
 // SHELF EQ
 float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
 
-float  temp,  temp2,  temp3,  temp4 ;  
+float  temp,  temp2;  
 float getthresh();
 float   IR,  dur=0.;
 
 float dBnumerator ; 
-float fundamental, factor,   noisefiltergain,  filtamp ;  
+float fundamental, factor,   noisefiltergain;  
 
 float temp_begint,  temp_endt ; 
 float A_begint=0.,  A_endt=0. ; 
@@ -48,7 +48,7 @@ char  tempResponseFile[ STRING_SIZE ], scratchString[ STRING_SIZE ], responsePlo
 
 float thisPeakAmp ; 
 
-float sum_noise_amp,  frame_sum, trackampgain ; 
+float sum_noise_amp,  frame_sum; 
 
 char tempstring[ STRING_SIZE ] ; 
 

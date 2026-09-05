@@ -9,11 +9,11 @@
  */
 int tprintspec( float *F, int Nplus2, float fundamental, int freqcutoff ){
 
-    int i, j, k, ii, jj,  flag,  zeroflag,  itemp ; 
-    float temp,  temp2, temp3, dBnow,  basedB,  peakdB,  dBrange,  dBdiv ; 
+    int i, j, k, jj,  flag,  zeroflag,  itemp ; 
+    float dBnow,  basedB,  peakdB,  dBrange,  dBdiv ; 
  
     float A[10], AdB[10], freq ; 
-    int lowbin,  highbin,  n,  ibin ; 
+    int lowbin,  highbin,  n; 
 
     // OCTAVE AVERAGE PRINT
     freq = 31.25 ; n = 0 ; 

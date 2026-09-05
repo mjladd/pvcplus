@@ -27,7 +27,7 @@ void noscbank2(  float C[], int N, int R, int Nw, int I, float P, float O[], flo
 		freq,
 		n,
 		chan;
-  float		a0;
+  
   char		*space(); 
 
 /* first pass: allocate memory to hold previous values

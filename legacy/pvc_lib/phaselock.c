@@ -5,7 +5,7 @@ void phaselock( float channel[], int N2 )
 {
 	static int first=1, *peakMarkers ;  
 
-	int ampIndex, bin, j ; 
+	int ampIndex, bin; 
 
 
 	if( first ){

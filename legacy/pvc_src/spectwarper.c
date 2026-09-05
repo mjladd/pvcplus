@@ -7,16 +7,16 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,  k,  jj,  ii ;
+int i,  ii ;
 float nyquist,  fundamental,  freqdiff ;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
 int   eof = 0, obank = 0,  sflag = 0,  channelout=0 ;
 float P = 1.0;
-FILE *fopen(), *fp;
+FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel, *tempchannel,   *output ;
-float *previous_channel,   *F,  *channel_freqdev,  *previous_change  ; 
+float *previous_channel,  *channel_freqdev,  *previous_change  ; 
 float threshfac = .001,  threshfacdB=-96 ;
 float channelAmpSum, tempChannelAmpSum, normalizationAmp, frameNormalizationAmpLimit ; 
 
@@ -26,7 +26,7 @@ float  temp,  temp1,  temp2,  temp3,  temp4  ;
 float getthresh();
 int lowb,  hib ; 
 
-float peakbinamp = 0.,  avgbinamp=0., octaves=0. ; 
+ 
 
 
 float   IR, DR,   dur=0.;

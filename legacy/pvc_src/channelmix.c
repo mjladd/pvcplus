@@ -7,23 +7,22 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j, k, l,  m, nnn=0 ;
-float nyquist,  fundamental ;
-int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  write_ascii=0 ;
-float P = 1.0;
+int i, k, l;
+float nyquist;
+int R=44100, D = 220, I = 220;
+
+
 FILE *fopen() ;
-char ch,  tempstring[ STRING_SIZE ],  
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ],  *user ;
+char ch,  *user ;
 float  dur ;
-float  gain, f ;
-float  temp, temp1,  temp2,  pm,  IR  ;  
-int showme=0, numFramesOut=0 ; 
-int numberOfOutChannels=1, chan, outputChan, inputChan, fileSizeInBytes, numFrames ; 
+
+float  temp;  
+int numFramesOut=0 ; 
+int numberOfOutChannels=1, chan, fileSizeInBytes, numFrames ; 
 float outputChanPeakAmpSum[2]={-99999999.,-999999999.}, thisOutputChanAmpSum[2],
 	PeakAmp ; 
 
-int numSampsBufferedIn, numFramesLeft, middleChanFlag, middleChanNumber ; 
+int numFramesLeft, middleChanFlag, middleChanNumber ; 
 int numFramesBufferedIn, blockFrame ; 
 
 float tempBlock[ BLOCKSIZE ], *allChanInputBlock, *allChanOutputBlock ; 

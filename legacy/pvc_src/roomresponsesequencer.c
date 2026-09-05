@@ -505,35 +505,33 @@ int main( argc, argv )
     int argc ; char *argv[] ;
 {
 
-int numSampsBufferedIn, arg_index_Save, normalizeFlag=0 ; 
+int normalizeFlag=0 ; 
 
 struct func masterGainInDecibels ;
 int outputChannelNumber=0 ;
 int polygonCoordinatesSource=0 ;
 
 
-int L, N ; 
+ 
 
 FILE *data ;
 
-float prop, rawProp, soundPathPositionProportion, sourceX, sourceY, angleInRadians ; 
+float prop, soundPathPositionProportion, sourceX, sourceY, angleInRadians ; 
 
-int i,j, k, l,  m, n, nnn=0, i1, i2, np ;
+int i, k,  m, n;
 
-float frac ; 
-int R=44100, in, on;
+ 
+
 FILE *fopen() ;
-char ch,  tempstring[ STRING_SIZE ],  
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ], soundFormatTemplateFile[ STRING_SIZE ],
-outputDirectory[ STRING_SIZE ], source_coordinates_plot_file[ STRING_SIZE ],			
- *user,
+char ch,  tempstring[ STRING_SIZE ], soundFormatTemplateFile[ STRING_SIZE ],
+outputDirectory[ STRING_SIZE ], source_coordinates_plot_file[ STRING_SIZE ],
 		command[ 40000 ], thisCommand[ 40000 ], thisImpulseFileName[ STRING_SIZE ] ;
-float  temp, temp1,  temp2,  pm,  IR  ;  
+  
 
-float tempBlock[ BLOCKSIZE ], *allChanOutputBlock ; 
+ 
 
-SF_INFO inputSFinfo ;  
-SF_INFO outputSFinfo ; 
+  
+ 
 
 
 // X COORDINATE FUNCTION
@@ -1727,7 +1725,8 @@ exit(EXIT_SUCCESS) ;
 
 }
 
-
+
+
 void usage()
 {
 	fprintf(stderr, "%s",
@@ -1802,7 +1801,8 @@ void usage()
 	"	J:  speaker coordinates rotation In degrees (func) [0]\n"
 	"	k:  speaker coordinates scale factor (func) [1]\n"
 
-	"	/C: source_position_angle (func) \n"	"	/D: source_position_radius (func)\n"
+	"	/C: source_position_angle (func) \n"
+	"	/D: source_position_radius (func)\n"
 	"	/E: source_coordinates_plot_file \n"
 
 	"	s:  output mix components -- 0 = both direct and reflected sound\n"
@@ -1822,7 +1822,8 @@ void usage()
 	"	       increasing with greater magnitudes. Exponent of 2 corresponds to \n"
 	"	       inverse square law; value of 0 produces all amplitudes to be equal.\n"
 	"	       Values between 1 and 2 generally work best. (func) [2.]\n"
-	"	/p: air absorption exponent for real space source (func) \n"	"	a:  reflections air-absorption exponent: \n"
+	"	/p: air absorption exponent for real space source (func) \n"
+	"	a:  reflections air-absorption exponent: \n"
 	"  	       amplitude of reflection = (reference distance / reflection distance)**exponent\n"
 	"	       Positive/negative values produce distance-correlated decrease/increase\n"
 	"	       in amplitude, respectively, with severity of decrease or increase \n"
@@ -1836,7 +1837,9 @@ void usage()
 	"	        of 0dB. Amplitudes for shorter distances are limited to the\n"
 	"	       reference distance amplitude, i.e. to 0dB. (func) [1]\n" 
 
-	"	/t: source minimum distance from listener (func) \n"	"	/u: use collapsed threshold amplitudes  0 = no, 1 = yes \n"
+	"	/t: source minimum distance from listener (func) \n"
+	"	/u: use collapsed threshold amplitudes  0 = no, 1 = yes \n"
+
 
 
 	"	l:  reflection order high limit (greatest number of wall reflections)\n"
@@ -1928,7 +1931,9 @@ void usage()
 	"	z:   wall impulse response filter low amplitude rolloff per octave in dB (func) \n"
 	"	Z:   wall impulse response filter high amplitude rolloff per octave in dB (func) \n"
 
-	"	3: impulse inclusion threshold in dB (func) \n"	"	U: impulse end truncation threshold in dB (func) \n"	"	v: impulse end truncation release time in seconds (func) \n"
+	"	3: impulse inclusion threshold in dB (func) \n"
+	"	U: impulse end truncation threshold in dB (func) \n"
+	"	v: impulse end truncation release time in seconds (func) \n"
 
 
 	"	C: room impulse response output channel [0]\n"

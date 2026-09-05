@@ -19,10 +19,10 @@ int i,j,k, n,   i1,  i2,  ipartial,  numberOfTargetPartials, bin ;
 float nyquist;
 double atof();
  
-float tv0, tv1, tv2, tv3 ; 
+float tv0, tv1, tv3 ; 
 
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
-int   eof = 0, obank = 0,  sflag=0,   channelout=0;
+int   eof = 0, obank = 0,   channelout=0;
 
 float SOURCE_maxDelayT=0., HARMONY_maxDelayT=0., HARMONY_maxDecayT=0. ;
 int SOURCE_maxNumOfDelayFrames, HARMONY_maxNumOfDelayFrames, 
@@ -34,44 +34,44 @@ float data_partial_number_scaler, data_partial_number_shifter, data_decibel_scal
 
 float *delayTimes, *timeRateScalers, *decayTimes, *dBLevels, *partialPitchShifts, *partialNumbers ; 
  
-float TARGETS_randelayTsmoothc, TARGETS_minusrandelayTsmoothc ; 
+ 
 float NON_TARGETS_randelayTsmoothc, NON_TARGETS_minusrandelayTsmoothc ; 
  
 float funcMin, funcMax, funcAvg ; 
 
 
 float P = 1.0;
-FILE *fopen(), *fp;
+FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *bufferSum, *channel, *source_channel_out,
 	  *SOURCE_channel_delay, *HARMONY_channel_delay, *output ;
-float *previous_source_channel_out,  *F,  *FT,  *harmony,  *harmony_delayed_inputs, *harmony_delay_now, 
+float *previous_source_channel_out,  *F,  *harmony,  *harmony_delayed_inputs, *harmony_delay_now, 
 	*buffer_harmony_delayed_inputs,  *previous_harmony, *timeDelay, *previous_timeDelay,
 	*timeDelayInFrames, *decayTime, *decayTimeInFrames ;
 int  *partialDataLine, dataLine ;  
 float threshfac = .001,  threshfacdB=-96 ;
-float	random_seed, gain=1. ;
-float  temp,  temp2,  temp3 ;  
+float gain=1. ;
+float  temp,  temp3 ;  
 //int beginchan,  endchan ; 
 int sourceflag=1, PartialBandWindowType__rectangle_0__Hann_1__Welch_2=2 ; 
 float getthresh();
 float  FundamentalFreqNow  ;
-	float diff,  ireleasec, ireleasem,  
+	float ireleasec, ireleasem,  
 		    iattackc,    iattackm,  
 		    ifreqsmoothc, ifreqsmoothm,  
 		    sreleasec,  sreleasem,  
 		    sattackc,  sattackm ; 
 
-float   IR,  dur=0.,  pms,  pmnt,   pmt,  sgain ;
+float   IR,  dur=0.,  pms,  pmnt,  sgain ;
 int TARGETS_randomizationFlag=0, NON_TARGETS_randomizationFlag=0 ; 
-float dBhi=0,  dBlow=0, middB=0,   midfreq=1000,   eqshape=0.  ; 
-int method_flag=0 ; 
+ 
+ 
 double ar_dB ; 
 
 FILE *data ; 
 char datafile[ STRING_SIZE ] = "", new_datafile[ STRING_SIZE ] ; 
 
-float *PP,    fundamental,  target_gain,  non_target_gain, midC,  part ; 
+float *PP,    fundamental,  non_target_gain, midC,  part ; 
 int method=0 ; 
 
 char tempstring[ STRING_SIZE ] ; 
@@ -87,7 +87,7 @@ struct func NON_TARGETS_timedelayresponsetime ;  // OK
 struct func partial_bandwidth ; float *partial_bandwidth_VALUES ;  // OK
 
 // MASTER GAIN
-struct  func  dBgain ; float *dBgain_VALUES ;  // NOT RESPONSIVE TO DIFFERENT DELAYS
+struct  func  dBgain ;   // NOT RESPONSIVE TO DIFFERENT DELAYS
 
 // NON TARGET  FREQUENCY SHIFT ADDER
 struct  func  NON_target_harmadd ;  // OK
@@ -1572,7 +1572,8 @@ void usage()
 	"	H: TARGETS time delay randomization  0 = off 0, 1 = on [0]\n"
 	"	c: TARGETS time delay response time in seconds (func) [0]\n"
 	"	g: TARGETS decay time scaler (func) [0]\n"
-	"	k: TARGETS decay time shifter (func) [0]\n"	"	x: TARGETS partial bandwidth proportion (func) [0]\n"
+	"	k: TARGETS decay time shifter (func) [0]\n"
+	"	x: TARGETS partial bandwidth proportion (func) [0]\n"
 
 
 	"	B:	dB level at boundaries of partial band [-96.]\n"

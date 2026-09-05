@@ -12,7 +12,7 @@ void leanunconvert( float C[], float S[], int N2, int I, int R )
 
   int		real, imag,
 		amp, phase;
-  float		a, b;
+  
   register int		i;
   
   for ( i = 0; i <= N2; i++ ) {
@@ -37,7 +37,7 @@ void leanunconvert2( float C[], float S[], int N2, int I, int R )
 
   int		real, imag,
 		amp, phase;
-  float		a, b;
+  
   register int		i;
   
   for ( i = 0; i <= N2; i++ ) {
@@ -61,7 +61,7 @@ void leanunconvert3( float C[], float S[], int N2, int I, int R )
 
   int		real, imag,
 		amp, phase;
-  float		a, b;
+  
   register int		i;
   
   for ( i = 0; i <= N2; i++ ) {

@@ -18,30 +18,29 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k, l,  i1,  i2, ipartial,  bug=0, exflag=0, ampIndex, freqIndex, bin, 
-     mm,  n,  NC, NCmult2, NCdiv2,   numberOfTargetBands,   *harmonizer_channel_bins  ;
+int i,j,k, l,  i1,  i2,  bug=0, ampIndex, freqIndex, bin, 
+     mm,  NC, NCmult2,   numberOfTargetBands,   *harmonizer_channel_bins  ;
 float nyquist;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
-int   eof = 0, obank = 0,  sflag=0,   channelout=0;
+int   eof = 0, obank = 0,   channelout=0;
 float P = 1.0;
-FILE *fopen(), *fp;
+FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, 
     *buffer, *channel, *channel_source_out, *HARMONIZER_channel_delay, HARMONIZER_maxDelayT=0.,  
-	*HARMONIZER_DATA_delayT, *delayT_NOW, HARMONIZER_maxDecayT=0., 
-	*SOURCE_channel_delay, SOURCE_maxDelayT=0., SOURCE_maxDecayT=0.,
-		*HARMONIZER_DATA_decayT, *decayT_NOW, *output ;
-int *delayT_NOW_inFrames, *decayT_NOW_inFrames, *bandDataLine  ; 
-float *previous_channel,  *F,  *FT,  *SUM,  *harmony, *harmony_delayed_inputs, *harmony_delay_now,  
-	*bufferSum, *buffer_harmony_delayed_inputs, *ampfreq, *HARMONIZER_DATA_amp, *HARMONIZER_DATA_freq, pmt,  
+	*HARMONIZER_DATA_delayT, *delayT_NOW, 
+	*SOURCE_channel_delay, SOURCE_maxDelayT=0., *output ;
+int *delayT_NOW_inFrames, *bandDataLine  ; 
+float *harmony, *harmony_delayed_inputs, *harmony_delay_now,  
+	*bufferSum, *buffer_harmony_delayed_inputs, *HARMONIZER_DATA_amp, *HARMONIZER_DATA_freq,  
 		*pmt_VALUES, pms  ; 
 float threshfac = .001,  threshfacdB=-96. ;
-float	random_seed, gain=1. ;
+float gain=1. ;
 float lowfreq,  hifreq, centerfreq, dur ; 
-float  temp,  temp1, temp2,  temp3,  temp4,  temp5,  temp6 ;  
+float  temp, temp2,  temp3,  temp4,  temp5;  
 float getthresh();
-float funcMin, funcMax, funcAvg ; 
+float funcMin, funcAvg ; 
 float   IR ;
 int HARMONIZER_maxNumOfDelayFrames, HARMONIZER_frameNowChannelDelayIndex, 
 	SOURCE_maxNumOfDelayFrames, SOURCE_frameNowChannelDelayIndex, 
@@ -56,14 +55,13 @@ int sourceflag=1 ;
 float freqMultiplierOrAdder ; 
 FILE *data ; 
 char datafile[ STRING_SIZE ] = "",  new_datafile[ STRING_SIZE ] ; 
-float *PP,  fundamental,  target_gain, *target_gain_VALUES,  SOURCE_gain,  midC ; 
-int shift_format=0,   nd=0 ; 
+float *PP,  fundamental, *target_gain_VALUES,  SOURCE_gain,  midC ; 
+int shift_format=0; 
 char tempstring[ STRING_SIZE ] ; 
 
 float data_shift_factor_scaler, data_shift_factor_shifter, data_frequency_scaler, data_frequency_shifter, 
 		data_peak_dB_scaler, data_stopband_dB_scaler, data_stopband_dB_shifter, 
-	    data_time_delay_scaler, data_time_delay_shifter, data_Q_index_shifter,
-	data_decay_time_scaler, data_decay_time_shifter ; 
+	    data_time_delay_scaler, data_time_delay_shifter, data_Q_index_shifter; 
 
 // AMP INTERPOLATION CONTROL
 struct func target_AmpInterpControl ; float *target_AmpInterpControl_VALUES ; // OK

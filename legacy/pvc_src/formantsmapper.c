@@ -6,28 +6,27 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j, k, l,  m, m1, m2,  nnn=0,    numbins,   stopbin=10,  offset ;
+int i,j, k, l, m1;
 float nyquist,  fundamental ;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  write_ascii=0 ;
+int   eof = 0, obank = 0,  channelout=0;
 float P = 1.0;
-FILE *fopen(),  *write_ascii_d,  *tdata, *adata ;
-char ch,  tempstring[ STRING_SIZE ],  write_ascii_filename[ STRING_SIZE ]="./ascii.out", 
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ],  *user ;
+FILE *fopen(), *adata ;
+char ch,  tempstring[ STRING_SIZE ],  *user ;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, 
     *buffer, *previous_buffer, *channel, *output ;
 float threshfac = .001,  threshfacdB=-96.;
 float  *binfreq,  dur ;
-float  gain, f ;
+float  gain;
 float  *previous_channel, *channel_freqdev;
-float  temp, temp1,  temp2,  pm,  IR  ;  
+float  temp,  pm,  IR  ;  
 float getthresh();
-float phasediff ; 
+ 
 int notFound, residueBinsFlag=0 ; 
 
-int extendTargetFormants=0, bin,
-	AddOctavesToTargetExtensionPartials=0, Source_Stopband_Type=0, 
+int extendTargetFormants=0,
+	AddOctavesToTargetExtensionPartials=0, 
 		bank_A_0__banks_A_and_B_1=0 ; 
 
 float thisOctave, added_formants_partial_dB_rolloff_per_partial=0., amplitude_normalization_decibel_gain_limit=200 ; 
@@ -38,8 +37,7 @@ float ampInterpControl, freqInterpControl ;
 
 int thisPartialNumber, transferCode, smoothingFlag, thisCenterBin ; 
 
-float formantsGain, interpControl, formantOverlapDBAdjustSource, formantOverlapDBAdjustTarget,
-		formantOverlapAmpAdjust, thisCenterBinFreq ; 
+float thisCenterBinFreq ; 
 
 float highStopBandFreqOfLower, lowStopBandFreqOfLower ; 
 
@@ -76,7 +74,7 @@ float *targetFormantCenterFreqs_ORIGINAL, *targetFormantAmps_ORIGINAL, *targetFo
 int targetNumFormants_ORIGINAL, *targetFormantIndices_ORIGINAL, 
 	*targetFormantLowStopBandIndices_ORIGINAL, *targetFormantHighStopBandIndices_ORIGINAL ; 
 
-float lowerAmp, upperAmp, lowerFreq, upperFreq ; 
+ 
 
 float *extendedTargetFormantCenterFreqs, *extendedTargetFormantAmps ; 
 int *extendedTargetFormantPartial ; 
@@ -87,21 +85,18 @@ int *extendedTargetFormantIndices, *extendedTargetFormantLowStopBandIndices, *ex
 
 
 
-int extendedTargetNumFormants, lowerIndex, upperIndex, duplicateFlag ; 
+int extendedTargetNumFormants; 
 
 int *targetToSourcePairing, *sourceToTargetPairing ; 
-float thisformantCFdiff, formantCFdiff, 
-	targetCentroid, sourceCentroid, targetCentroidAmpSum, sourceCentroidAmpSum,
-	centroidDiff  ; 
+float thisformantCFdiff, formantCFdiff; 
 
-float Pre_Synthesis_Formant_Bandwidth_Extension_Factor=1, thisHalfBW ; 
-int halfBWofBins, *sourceFormantLowBin, *sourceFormantHighBin, *sourceFormantCenterBin ; 
-int lowHalfBinLimit, highHalfBinLimit ; 
+float Pre_Synthesis_Formant_Bandwidth_Extension_Factor=1; 
+int *sourceFormantLowBin, *sourceFormantHighBin, *sourceFormantCenterBin ; 
+ 
 
 int outputNumFormants, *outputSourceFormants, *outputTargetFormants ; 
 float *SourceAmpSumOfSourceFormantsUsingThisSourceFormant, 
-		*SourceAmpSumOfTargetFormantsUsingThisSourceFormant, 
-			*numberOfThisTargetFormantUsed ; 
+		*SourceAmpSumOfTargetFormantsUsingThisSourceFormant; 
 float *outputMappedChannel, *outputMappingTransposeMultiplier, * outputMappingSourcePartialMultiplier, 
 	*outputInterpolationControlFormantWarp,
     thisFormantInterpolationWarp, interpolationPathDiffusion=0. ; 
@@ -136,8 +131,8 @@ float Source_formants_low_frequency_boundary=20.,
 float releasec,  minusreleasec,  attackc,  minusattackc ; 
 double ar_dB ; 
 float factor,  ampfactor ; 
-int lowbin=0,  highbin=-1,  numberframes=0,  n=0 ; 
-float lowbinfreq=0,  highbinfreq=-1 ; 
+int n=0 ; 
+ 
 
 
 
@@ -2279,7 +2274,11 @@ void usage()
 	"	Y:	Added Formants Partial dB Rolloff per Partial [0.]\n"
 	"			The amplitude of extended partial formants rolls\n"
 	"			off as a function of the partial number and the specified value.\n"
-	"	@:	Source Formants Decibel Threshold [-200.]\n"	"	Z:	Source Formants High Frequency Boundary [Nyquist]\n"	"	z:	Source Formants Low Frequency Boundary [20.]\n"
+	"	@:	Source Formants Decibel Threshold [-200.]\n"
+
+	"	Z:	Source Formants High Frequency Boundary [Nyquist]\n"
+
+	"	z:	Source Formants Low Frequency Boundary [20.]\n"
 	"			Source formants falling below the amplitude threshold or\n"
 	"			outside the frequency bounds are omitted.\n"
 
@@ -2290,7 +2289,9 @@ void usage()
 	"			difference in curve paths.\n"  
 	"	T:	Target_formants_transposition_in_semitones (func) [0]\n"
 	"	K:	Target Formants Decibel Threshold [-96]\n"
-	"	O:	Target Formants High Frequency Boundary [0]\n"	"	o:	Target Formants Low Frequency Boundary [0]\n"	"			Following transposition to a fixed (pre-synthesis) position\n"
+	"	O:	Target Formants High Frequency Boundary [0]\n"
+	"	o:	Target Formants Low Frequency Boundary [0]\n"
+	"			Following transposition to a fixed (pre-synthesis) position\n"
 	"			target formants with amplitude less than the threshold or whose \n"
 	"			center frequency is outside the low/high boundaries are omitted.\n"   
 	"	j:	Highest Partial for Extended Target Partials; 0: All below Nyquist [0]\n"
@@ -2328,7 +2329,9 @@ void usage()
 	"	L:      envelope release time   (func) [0.]\n"
 	"	V:	Highest Partial for Extended Source Partials; 0: All below Nyquist [0]\n"
 
-	"	k:	Target Partials Extension -- Octaves Switch 0: off, 1: on [0]\n"	"	y:	Source Partials Extension -- Octaves Switch 0: off, 1: on  [0]\n"
+	"	k:	Target Partials Extension -- Octaves Switch 0: off, 1: on [0]\n"
+
+	"	y:	Source Partials Extension -- Octaves Switch 0: off, 1: on  [0]\n"
 
 	"			Adds upper octaves to source or target partials.\n"
 	"	x:	Residue Bins -- 0: off, 1: on [0]\n"

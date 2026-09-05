@@ -17,8 +17,7 @@ float AnalyzePartials(
  ){
     
     int i, j,   i1,  i2 ; 
-    float sumamps, sumfreqs,  a, binfreq,
-	 temp2,  value, partanalfreq, lowfreq, hifreq, bw=1.0, freqbw, sqsum, partfreq, peakbinamp, 
+    float binfreq, partanalfreq, lowfreq, hifreq, freqbw, peakbinamp, 
           binamp, strongbinfreq ; 
     
    

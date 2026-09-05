@@ -20,7 +20,7 @@ float find_spectralflatness(
  ){
     
     int i,  i1,  i2 ; 
-    double a,  temp2,  value, ampIndB, temp ; 
+    double value; 
     double arithmeticMean, geometricMean, count, omittedFromCount ;    
 
     // TURN FREQ BOUNDS INTO INDECES

@@ -31,7 +31,7 @@ float find_peak_amp(
     float sumamp ; 
     int eof;
     
-    int i,  j,  in,  on ;      
+    int i,  in,  on ;      
     
     peaksumamp = -9999. ; 
 

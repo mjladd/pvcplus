@@ -16,11 +16,11 @@
 int main(argc, argv) int 
 	argc;
 	char           *argv[]; {
-	float           coef[SIZE], factor, *f, *ff, scale = 0.0;
+	float factor, *f, *ff, scale = 0.0;
 	float           harm, amp, pha;
 	float           expr();
-	extern int      exprerr;
-	int             i, j, seglen, length, na, nc, closed = 0;
+	
+	int             i, j, length, nc, closed = 0;
 	double 		atof(); 
 
 	if (argc < 5 || *argv[1] != '-' || *(argv[1] + 1) != 'L') {

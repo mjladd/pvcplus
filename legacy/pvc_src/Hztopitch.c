@@ -7,13 +7,11 @@ int main(argc,argv)
    
 
 
-    char	*filename, 
-		ch, 
-		crack()
+    char crack()
     ;
 
-    float norm=0.,  octpch,  Hz,  temp1,  temp2,  log_two, reference ; 
-    int n = 0 ; 
+    float octpch,  Hz,  temp1,  temp2,  log_two, reference ; 
+     
     
 
 //#include "underflow.h"

@@ -37,31 +37,30 @@ int main( argc, argv )
 {
 
 
-float low, hi, avg, length, median; 
+float avg; 
 
 int nn,  sec,  min ; 
 float oldt ; 
-int i,j, k, jj, ii,   exflag;
+int i,j, k;
 float nyquist,   fundamental ;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0 ;
+int   eof = 0, obank = 0,  channelout=0 ;
 float P = 1.0, coef=0.0 ;
-FILE *fopen(), *fp,  *adata;
-char ch, tempResponseFile[ STRING_SIZE ], scratchString[ STRING_SIZE ] ;
+FILE *fopen(),  *adata;
+char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel, *channel_forFormantSelection,   
 	*previous_channel, *output ;
-float *F, *FreqStasisSpectrum, FreqStasisSpectrumAmpSum=0.0, *AmplitudeSpectrum, 
-		*AmplitudeSpectrumForFormantSelection, *OutputSpectrum, 
-		*binAmpSumAndFreqSum, *SD, channel_Save, threshold,
+float *FreqStasisSpectrum, *AmplitudeSpectrum, *OutputSpectrum, 
+		*binAmpSumAndFreqSum,
 		compandingIndex=0.0 ;
-float *PeakWindowedAmps, *AvgWindowedAmps ; 
-int numSaveFrames, saveFramesCount ;  
-float	gain=1., stdDev  ;
-float  temp,  temp2,  temp3,  temp4,  temp5,  temp6  ;
+ 
+  
+
+float  temp;
 float getthresh();
-float peakbinamp = 0.,  avgbinamp=0.,  peakamp,  dur, minDev, maxDev ;
-float freqChangePerMilisecond=1.0 ; 
+float dur, minDev, maxDev ;
+ 
 
 int numFormants, *formantIndices, *formantLowStopBandIndices, *formantHighStopBandIndices ;
 
@@ -71,7 +70,7 @@ float lowFreqLimit=0., highFreqLimit=0., minimumFormantDB=-96. ;
 
 int CorrelateWithFreqStasisFlag=0 ; 
 
-char decibelsSpectrumPlotFile[ STRING_SIZE ]="", formantsFile[ STRING_SIZE ]="",  formantsASCIIdataFile[ STRING_SIZE ]="" ; 
+char decibelsSpectrumPlotFile[ STRING_SIZE ]="",  formantsASCIIdataFile[ STRING_SIZE ]="" ; 
 
 char formantsOutputFile[ STRING_SIZE ]="" ; 
 
@@ -84,22 +83,21 @@ char freqStasisPlotFile[ STRING_SIZE ]="" ;
 float *barPlot, minFormantAmp, minFormantdB  ; 
 int peakFormantFreq ; 
 
-float peakdB, avgdB, diffdB, dBadjust, thisdB ; 
+ 
 
-int lowIndex, highIndex, thisHammingIndex, HammingWindowSize=1024 ; 
-float ampSum, thisHammingSum, thisAmp, peakAmp, *peakAmps, *avgAmps, *peakAvgProps, *HammingWindow, 
-	cf, centroidFreq, sumOfAmps, peakAveragePropIndB ; 
-
+int HammingWindowSize=1024 ; 
+float *peakAmps, *avgAmps, *HammingWindow, centroidFreq, sumOfAmps; 
 
 
 
 
-int numClipped=0, normalizeToPeaksFlag=0 ; 
-int Formants_N ; 
+
+int normalizeToPeaksFlag=0 ; 
+ 
 int weightflag=1 ; 
 int   print_flag=0, buffer_count=0 ; 
-float   IR, DR,  n=2048 ;
-char tempstring[ STRING_SIZE ] ; 
+float DR;
+ 
 
 // SHELF EQ
 float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 

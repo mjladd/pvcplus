@@ -12,7 +12,7 @@ int readFilterFrame (
 	int analysis_chan
 )
 {
-	int i, k ;  
+	int k ;  
 
 	// READ IN THE LOWER AND HIGHER FRAMES
 	    

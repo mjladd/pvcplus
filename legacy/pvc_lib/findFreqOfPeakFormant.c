@@ -14,7 +14,7 @@ int findFreqOfPeakFormant(
 {    
 
     int i, i1, i2, first ;
-    int flag;  
+      
     
     first = 1 ; 
 

@@ -6,7 +6,7 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k,  i1,  i2;
+int i,j,  i1,  i2;
 float i1p,  i2p ; 
 float nyquist;
 double atof();
@@ -16,12 +16,12 @@ float analysis_dur,  iframes_per_sec ;
 int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  achannelout=0 ;
 int pitchflag=0; 
  float P = 1.0;
-  FILE *fopen(), *fp;
+  FILE *fopen();
 char ch;
 
 float funcMin, funcMax, funcAvg, maxDelayT=0., timeRange, thisDelayT, 
 	interpTdelayFilterAmp ; 
-int maxNumOfDelayFrames, frameNowChannelDelayIndex, thisFrameDelay, sourceflag ; 
+int maxNumOfDelayFrames, frameNowChannelDelayIndex, thisFrameDelay; 
 
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
 float *previous_channel_filter, *channel_filter, *F, *Ffreq,  *previousF,  *tempF, *FtimeDelay, *channel_delay,
@@ -32,12 +32,12 @@ double ar_dB ;
 float  temp,  temp2,  temp3,  temp4 ;  
 float getthresh();
 float normamp[MAXIMUM_CHANNELS] ;
-float diff ; 
+ 
 float   IR,  dur=0.;
 float fundamental ;
-float filtframenow=0. ; 
+ 
 float analysis_fundamental, N_ratio,  sourceamp,  filtamp ;  
-int limitcount=0,  bandrejecton=0 ; 
+int bandrejecton=0 ; 
 int ainchan ; 
 // SHELF EQ
 float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
@@ -45,7 +45,7 @@ float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ;
 float  ranfreqsmoothc,  minusranfreqsmoothc ; 
 int ranfreqdevswitch=0 ; 
 
-float fdmdiff,  fdpm, fdbm,   fsdiff,  fdevminus ; 
+float fdmdiff,   fsdiff,  fdevminus ; 
 
 int Mode__sampler_loop_0__autostop_1=0,  autostopflag=0,  wrap_0_fold_1_clip_2=0, 
 	LoopNormalizationFlag=0, Onset_and_Release_Segment_Mode__off_0__on_1=0   ; 
@@ -56,8 +56,8 @@ float freleasec,  minusfreleasec,  fattackc,  minusfattackc ;
 
 
 //** FILTER VARIABLES
-float filttnow=0., oldfilttnow,  filttinc,  filtf, filtfprop  ; 
-int filtflow,  filtflowold=0,  filtfhigh ; 
+float filttnow=0., oldfilttnow,  filttinc; 
+ 
 
 
 char tempstring[ STRING_SIZE ] ; 
@@ -117,7 +117,7 @@ struct  func  expthreshdB ;
 
 //  FILTER EXPANSION THRESHOLD IN DB
 struct  func  expdB ;
-float  expthreshamp, expamp   ; 
+ 
 
 
 
@@ -1526,7 +1526,10 @@ void usage()
 
 	"	f:	"FILTER_FREQ_RESPONSE_SMOOTHING_BW
 
-	"	//:	filter time delay deviation warpshape (func) [0]\n"	"	/a:	frequency shift adder (func) [0]\n"	"	@:	FILTER OUTPUT time Delay Deviation Control (func) [1]\n"	"	~:	peak loop smooth time (func)  [.2]\n"
+	"	//:	filter time delay deviation warpshape (func) [0]\n"
+	"	/a:	frequency shift adder (func) [0]\n"
+	"	@:	FILTER OUTPUT time Delay Deviation Control (func) [1]\n"
+	"	~:	peak loop smooth time (func)  [.2]\n"
 
 
 	"	PROCESSING SEQUENCE:\n"

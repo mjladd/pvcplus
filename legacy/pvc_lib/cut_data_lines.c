@@ -15,10 +15,10 @@ int cut_data_lines(
  
  
 FILE *dfile,  *ndfile,  *tfile ; 
-int data_end,  solo_on,  first=1,  baddata=0 ;
+int data_end,  solo_on,  baddata=0 ;
 char c,  last_c='\n', *name , namet[  STRING_SIZE  ], tstring[ STRING_SIZE ] ;
 int i, parenopen,  sendout ; 
-float t ;   
+   
 
     data_end = 0 ;  parenopen = 0 ; sendout = 1 ; 
  // MAKE TEMP NAME

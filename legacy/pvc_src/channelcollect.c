@@ -7,21 +7,19 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j, k, l,  m, n, nnn=0 ;
-float nyquist,  fundamental ;
-int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  write_ascii=0 ;
-float P = 1.0;
+int i,j, k, n;
+
+
+
+
 FILE *fopen() ;
-char ch,  tempstring[ STRING_SIZE ],  
-    scratch[ STRING_SIZE ],  scratch2[ STRING_SIZE ],  *user ;
-float  dur ;
-float  gain, f ;
-float  temp, temp1,  temp2,  pm,  IR  ;  
-int showme=0 ; 
-int numberOfOutChannels=1, chan, outputChan, inputChan, fileSizeInBytes, numFrames ; 
-float outputChanPeakAmpSum[2]={-99999999.,-999999999.}, thisOutputChanAmpSum[2],
-	PeakAmp ; 
+char ch,  tempstring[ STRING_SIZE ],  *user ;
+
+
+float  temp;  
+ 
+int chan; 
+ 
 
 FILE *data ; 
 
@@ -31,7 +29,7 @@ int numFramesOut=0 ;
 
 float totalTime, timeNow ; 
 
-char outputFileName[ STRING_SIZE ]="" ; 
+ 
 
 char channelOrderFile[ STRING_SIZE ] = "",  new_ChannelOrderFile[ STRING_SIZE ],
 	channelGainscaleFileInDecibels[ STRING_SIZE ] = "",
@@ -48,8 +46,8 @@ float *outputChannelDecibelScalers ;
 
 int channelGainscaleFlag__off_0__on_1=0 ; 
 
-int numSampsBufferedIn, numFramesLeft, arg_index_Save, normalizeFlag=0 ; 
-int numFramesBufferedIn, blockFrame ; 
+int numFramesLeft, arg_index_Save, normalizeFlag=0 ; 
+int numFramesBufferedIn; 
 
 int numberOfInputSoundFiles=0, totalNumberOfInputChannels=0, totalFramesBufferedIn, 
 	numberOfInputChannels, numberOfFrames, maxNumberOfFrames=0, minNumberOfFrames, thisTempFile,
@@ -64,9 +62,9 @@ float duration, *silentBuffer, channelPeakAmps[ MAXIMUM_CHANNELS ], peakChannelA
 float interleavedInputBuffer [ BLOCKSIZE * MAXIMUM_CHANNELS ] ; 
 float inputBufferByChannels [ MAXIMUM_CHANNELS ][ BLOCKSIZE ] ; 
 
-char *home_directory ; 
+ 
 
-float tempBlock[ BLOCKSIZE ], *allChanInputBlock, *allChanOutputBlock ; 
+float tempBlock[ BLOCKSIZE ], *allChanOutputBlock ; 
 
 float truncateDuration=-1. ; 
 

@@ -7,11 +7,11 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j, k,   stopbin=10 ;
+int i,j;
 float nyquist,  fundamental ;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0 ;
+int   eof = 0, obank = 0,  channelout=0 ;
 float P = 1.0;
 FILE *fopen();
 char ch,  tempstring[ STRING_SIZE ] ;
@@ -19,12 +19,12 @@ float *Hwin, *Wanal, *Wsyn, *input, *winput,
     *buffer, *channel, *tempchannel, *output ;
 float threshfac = .001,  threshfacdB=-96.;
 float  *binfreq,  dur ;
-float  gain, f ;
-float  *previous_channel1, *previous_channel2, *wouldbephasepoint,  *channel_freqdev, *previous_gain_mult;
+float  gain;
+float  *previous_channel1, *wouldbephasepoint,  *channel_freqdev, *previous_gain_mult;
 float	*avg_change ; 
-float  temp,  temp2,  pm,  IR  ;  
+float  temp,  pm,  IR  ;  
 float getthresh();
-float  phasediff,  difffreq ; 
+ 
 
 float channelAmpSum, tempChannelAmpSum, normalizationAmp, frameNormalizationAmpLimit ; 
 float freqChangeBWnormalizer ; 
@@ -33,7 +33,7 @@ float avgresponsec, minusavgresponsec ;
 
 // SHELF EQ
 
-float f_spect_t, a_spect_t,  freqc,  freqc1, freqc2, ampc ; 
+float f_spect_t,  freqc; 
 int spect_type=0 ; 
 
 float releasec,  minusreleasec ; 

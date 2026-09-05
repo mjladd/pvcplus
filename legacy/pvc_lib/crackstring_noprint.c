@@ -13,9 +13,9 @@
 
 FILE *crackstring_noprint(char  s[], struct func *p ) 
 {
-int	i, k,  pd(),  num,  bad,  last,  dpc ;
+int pd(),  num,  bad,  last,  dpc ;
 float	t ;  
-FILE	*fopen(),  *fp ;  
+FILE	*fopen();  
 struct       stat st;
 char c ; 
  

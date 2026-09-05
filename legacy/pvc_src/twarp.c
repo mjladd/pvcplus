@@ -6,16 +6,16 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k,  i1,  i2;
-float i1p,  i2p, dummyVal ; 
+int i,j,k;
+ 
 float nyquist;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
 int analysis_N,  analysis_D, analysis_R, analysis_chan,  niframes ;  
 float analysis_dur,  iframes_per_sec ; 
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  achannelout=0 ;
+int   eof = 0, obank = 0,  channelout=0;
  float P = 1.0;
-  FILE *fopen(), *fp;
+  FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel, *normalization_channel, *output ;
 float *previous_channel,  *F_lower,  *F_higher, *T_lower,  *T_higher,  
@@ -26,19 +26,19 @@ float threshfac = .001,  threshfacdB=-60,  tempdB,  ranfreqboundsdiff ;
 int   LoopNormalizationFlag=0 ; 
 float loopSmoothTime=0.0 ; 
 
-float channelAmpSum, normalizationChannelAmpSum ; 
-float frameNormalizationAmpLimit, normalizationAmp ; 
-float	pm, fm, fs,  gain=1.;
+ 
+ 
+float	pm,  gain=1.;
 double ar_dB ; 
-float  temp,  temp2,  temp3 ;  
+float  temp,  temp2;  
 float getthresh();
 float normamp[MAXIMUM_CHANNELS],  normamppk ;
-float diff ; 
+ 
 float   IR,  dur=0., saved_dur ;
 float fundamental ;
-float analysisDataframenow=0. ; 
+ 
 float analysis_fundamental ;  
-float prebalancesum,  postbalancesum, balancelimitdB=0,  balancelimitamp=0  ; 
+ 
 int ainchan ; 
 
 // SHELF EQ
@@ -54,7 +54,7 @@ float  ranampsmoothc,  minusranampsmoothc ;
 float  ranfreqsmoothc,  minusranfreqsmoothc ; 
 
 //** ANALYSIS DATA VARIABLES
-float analysisDatatnow=0., oldanalysisDatatnow=0.,   analysisDatatinc,  analysisDataf, analysisDatafprop  ; 
+float analysisDatatnow=0., oldanalysisDatatnow=0.,   analysisDatatinc; 
 
 int Mode__sampler_loop_0__autostop_1=0,  autostopflag=0,  wrap_0_fold_1_clip_2=0, 
 	Onset_and_Release_Segment_Mode__off_0__on_1=0   ; 

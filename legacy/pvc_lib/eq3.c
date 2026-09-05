@@ -14,7 +14,7 @@ int eq3(
 
     int i, j ; 
     float temp1,  freq ;
-    float peakbinamp,  lowamp, hiamp,  
+    float lowamp, hiamp,  
 	dBdiff,  freqdiff,  dBdiffdiv ;
     
 

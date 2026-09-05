@@ -20,11 +20,11 @@ FILE *fopen();
 char ch,  tempstring[ STRING_SIZE ] ;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel, *output ;
 float threshfac = .001,  threshfacdB=-96 ;
-float  gain,  midwayamp,  partialamp,  diffamp,    f,  f2  ;
+
 float  *previous_channel, *previous_buffer, *next_channel,  *next_buffer,
     *feedback_channel,  *feedback_buffer, *bufferout, *F,  
 	*tempF, *previousF, *F_lower,  *F_higher,    
-    *binfreq, *phasediff,      temp,  temp2, temp3,   
+    *binfreq, *phasediff,      temp,  temp2,   
     source_pm,  feedback_pm, fm, fs,   source_gain,  feedback_gain ; 
 float envattack,  envrelease,  minusattack,  minusrelease  ;  
 float getthresh();
@@ -54,8 +54,8 @@ float  FEEDBACK_dBhitemp,  FEEDBACK_dBlowtemp ;
 float prebalancesum,  postbalancesum, balancelimitdB=0,  balancelimitamp=0  ; 
 int limitcount=0,  balanceflag=0 ; 
 
-float filttnow=0.,  oldfilttnow, filttinc,  filtf, filtfprop  ; 
-int filtflow,  filtflowold=0,  filtfhigh ; 
+float filttnow=0.,  oldfilttnow, filttinc; 
+ 
 
 float analysis_fundamental, N_ratio ;  
 

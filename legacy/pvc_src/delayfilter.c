@@ -13,26 +13,26 @@ double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
 int analysis_N,  analysis_D, analysis_R, analysis_chan,  niframes ;  
 float analysis_dur,  iframes_per_sec ; 
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  achannelout=0 ;
+int   eof = 0, obank = 0,  channelout=0,  achannelout=0 ;
  float P = 1.0;
-  FILE *fopen(), *fp;
+  FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
 float *previous_channel,  *F_lower,  *F_higher,  *delay_F ; 
 float threshfac = .001,  threshfacdB=-60 ;
 float	pm, fm, fs,  gain=1.;
 double ar_dB ; 
-float  temp,  temp2,  temp3 ;  
+float  temp,  temp2;  
 float getthresh();
 float normamp[MAXIMUM_CHANNELS],  normamppk ;
-float diff ; 
+ 
 float   IR,  dur=0., funcDur ;
 float low, hi, avg, median ; 
 int length ; 
 float fundamental ;
-float filtframenow=0. ; 
+ 
 float analysis_fundamental ;  
-float prebalancesum,  postbalancesum, balancelimitdB=0,  balancelimitamp=0  ; 
+ 
 int ainchan ; 
 // SHELF EQ
 float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
@@ -42,21 +42,21 @@ float  delay_dBlow=0, delay_dBhi=0,  delay_freqlow=200, delay_freqhi=2000  ;
 float releasec,  minusreleasec,  attackc,  minusattackc ; 
 float  fsmoothc,  minusfsmoothc,  minusransmoothv, ransmoothv ; 
 //** FILTER VARIABLES
-float filttnow, twindiff,  *filtbint,  *binranv,  filttinc,  filtf, *filtfprop,  
+float filttnow,  *filtbint,  *binranv,  filttinc,  filtf, *filtfprop,  
 	*binTimeDelays, *filtbindBprop  ; 
-int *filtflow,  filtfhigh,  imode=1.,  earliestf ; 
+int *filtflow,  filtfhigh; 
 
 
 float dwin,  factor,  maxdelay  ;
 int *done ;  
 
 int print_flag=0 ; 
-int bandrejecton=0 ; 
+ 
 float delay_warpshape=0,  binamp ; 
 float N_ratio,  delay_analysis_fundamental ; 
 int  delay_analysis_N ;  
 char tempstring[ STRING_SIZE ] ; 
-float max,  min,  timeDelayForThisBin ; 
+float timeDelayForThisBin ; 
 
 // FUNCTION DELAY TIME SCALER
 struct func function_delay_time_scaler ; 

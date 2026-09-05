@@ -16,22 +16,22 @@ float analysis_dur,  iframes_per_sec ;
 int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  achannelout=0 ;
 int pitchflag=0; 
  float P = 1.0;
-  FILE *fopen(), *fp;
+  FILE *fopen();
 char ch;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
 float *previous_channel,  *F,  *previousF,  *F_lower,  *F_higher, *tempF ; 
 float threshfac = .001,  threshfacdB=-60 ;
 float	pm, fm, fs,  gain=1.;
 double ar_dB ; 
-float  temp,  temp2,  temp3 ;  
+float  temp,  temp2;  
 float getthresh();
 float normamp[MAXIMUM_CHANNELS] ;
-float diff ; 
+ 
 float   IR,  dur=0., saved_dur;
 float fundamental ;
-float filtframenow=0. ; 
+ 
 float analysis_fundamental, N_ratio,  sourceamp,  filtamp ;  
-int limitcount=0,  bandrejecton=0 ; 
+int bandrejecton=0 ; 
 int ainchan ; 
 
 //float fcentroid, old_fcentroid, scentroid,  old_scentroid,  sm ; 
@@ -39,8 +39,7 @@ int ainchan ;
 int Mode__sampler_loop_0__autostop_1=0,  autostopflag=0,  wrap_0_fold_1_clip_2=0, 
 	Onset_and_Release_Segment_Mode__off_0__on_1=0   ; 
 
-float channelAmpSum, tempChannelAmpSum, filterChannelAmpSum,
-	normgain, frameNormalizationAmpLimit, normalizationAmp, 
+float channelAmpSum, tempChannelAmpSum, filterChannelAmpSum, frameNormalizationAmpLimit, normalizationAmp, 
 			Normalize_to__Input_Sound_0__Filter_1 =0 ; 
 
 int LoopNormalizationFlag=0 ; 
@@ -50,17 +49,16 @@ float releasec,  minusreleasec,  attackc,  minusattackc ;
 float freleasec,  minusfreleasec,  fattackc,  minusfattackc ; 
 
 //** FILTER VARIABLES
-float filttnow=0., oldfilttnow,  filttinc,  filtf, filtfprop  ; 
-int filtflow,  filtflowold=0,  filtfhigh,  imode=1. ; 
+float filttnow=0., oldfilttnow,  filttinc; 
+int imode=1. ; 
 
 char tempstring[ STRING_SIZE ] ; 
 
-int numFormants, *formantIndeces ;
+int *formantIndeces ;
 float *formantCenterFreqs, *formantAmps, *formantBWs, *formantQs ; 
 
-float dbThreshold=(-80), lowFreqLimit=20, highFreqLimit=20000, smoothingHzBW=-1.0, 
-	smoothingBW_Q=-1.0, minBWasProportionOfPeakBW=0.1 ;  
-int maxNumberOfFormants=1000 ; 
+float dbThreshold=(-80);  
+ 
 
 
 // PEAK LOOP SMOOTH TIME
@@ -1153,7 +1151,8 @@ void usage()
 	"		    (When on,  auto stop will terminate synthesis\n"
 	"		      when a time boundary is crossed.)\n"
 
-	"	j:	Loop Normalization Flag [0]\n"	"	k:	peak Loop Smooth Time [.2]\n"
+	"	j:	Loop Normalization Flag [0]\n"
+	"	k:	peak Loop Smooth Time [.2]\n"
 
 
 	"	E:	FILTER-spectrum compression threshold (in decibels) (func) [0] \n"

@@ -9,7 +9,7 @@ float fval( struct func *p, float dur, float  T )
 {
    
     float z,   v ;
-    int i, ivlow,  ivhi, nv,  n ;
+    int i, ivlow,  ivhi;
      
  
 if( p->n <= 1.){

@@ -22,7 +22,7 @@ float findMode(
 	float binwidth, mode ; 
 	int numbins ;
 	float lowdivision, highdivision ;
-	float low, high, temp, standarddeviation, mean, tempsum ;   
+	float low, high, temp;   
 
 	
 	// ENLARGE TEMP ARRAY SPACE IF NEEDED. 

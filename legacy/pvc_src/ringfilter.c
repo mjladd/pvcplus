@@ -6,7 +6,7 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,  nshows=10,  i1,  i2  ;
+int i,j,  i1,  i2  ;
 float i1p,  i2p ; 
 float nyquist,  basefreq ;
 double atof(),  DD ;
@@ -17,10 +17,10 @@ FILE *fopen();
 char ch,  tempstring[ STRING_SIZE ] ;
 float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel, *output ;
 float threshfac = .001,  threshfacdB=-96 ;
-float  gain,  midwayamp,  partialamp,  diffamp,    f,  f2  ;
+
 float  *previous_channel, *previous_buffer, *next_channel,  *next_buffer,
     *feedback_channel,  *feedback_buffer, *bufferout, *F, *thisF,   
-    *binfreq, *phasediff,      temp,  temp2, temp3,   
+    *binfreq, *phasediff,      temp,   
     source_pm,  feedback_pm, fm, fs,   source_gain,  feedback_gain, master_gain; 
 float envattack,  envrelease,  minusattack,  minusrelease  ;  
 float getthresh();
@@ -30,7 +30,7 @@ float low, hi, avg, median ; int length ;
 double ar_dB,  temp2double, temp3double ; 
 
 float feedbackthresh,  feedt,  minusfeedbacklowpass, feedlowpass, feedlevel, 
-       *freqdither,  freqdithernow ; 
+       *freqdither; 
 float minusfeedbackalowpass, feedalowpass,  
        *dBdither,  dBdithernow ; 
 int	feedback_thresh_mode=1 ; 

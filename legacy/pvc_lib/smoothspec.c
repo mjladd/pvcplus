@@ -12,8 +12,8 @@ int smoothspec( float *F, int N2plus1, float octavesOrFreqBW,  int R )
     static float fund, *T ; 
     static int first=1 ; 
 
-    int  i, j, k,  l, m,   lowbin,  hibin, octavesOrFreqFlag, binsHalfBand ;
-    float pma, t,  pmb,   norm,  temp,  temp2,  peakampF,  peakampT, sum ;
+    int  i, j, k, m,   lowbin,  hibin, octavesOrFreqFlag, binsHalfBand ;
+    float pma, t,  pmb,   norm,  temp,  peakampF,  peakampT, sum ;
 
 
     //fprintf( stderr, "\n\n.......SMOOTHING  THE PEAK SPECTRUM..." ) ; 

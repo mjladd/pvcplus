@@ -13,9 +13,9 @@
 
 int prp( struct func *p,  char *s ) 
 {
-int	i, k,  pd() ;
+int	i,  pd() ;
 float	t,  hi,  low,  avg ;  
-FILE	*fopen(),  *fp ;  
+FILE	*fopen();  
  
 
 	

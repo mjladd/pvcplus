@@ -51,7 +51,7 @@ float dB_to_amp( float dB ){
 float semitones_to_mult( float semidev ){
     
     static int first=1;
-    static float *A,  mindev,  maxdev,  mult  ;
+    static float *A,  mult  ;
     float y1,  y2,  prop,  frac,  val,  temp ; 
     int iy1,  i ; 
     if( first ){

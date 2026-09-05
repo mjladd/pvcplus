@@ -26,7 +26,7 @@ static double seq = 32.0*1024.0;
 double onefrand(lb, ub)
 	double lb, ub;
 {
-	double tmp;
+	
 	register int i, dif;
 	static int gens;
 	static double *sums; 

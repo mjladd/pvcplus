@@ -14,9 +14,9 @@ int findFuncMinMaxAvg(
     float *avgval	  
 ) 
 {
-int	i, k,  pd() ;
+int	i,  pd() ;
 float	t,  hi,  low,  avg ;  
-FILE	*fopen(),  *fp ;  
+FILE	*fopen();  
  
 
 	

@@ -5,11 +5,11 @@ void pd( int i ) ;
 
 int main( int argc, char *argv[] )
 {
-int i,j, k, l,  m, nnn=0,    numbins,   stopbin=10,  offset ;
+int i,j, k, l,  m, nnn=0,    numbins,  offset ;
 float nyquist,  fundamental ;
 double atof();
 int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 220, I = 220, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0,  write_ascii=0 ;
+int   eof = 0, obank = 0,  channelout=0,  write_ascii=0 ;
 float P = 1.0;
 FILE *fopen(),  *write_ascii_d,  *tdata ;
 char ch,  tempstring[ STRING_SIZE ],  write_ascii_filename[ STRING_SIZE ]="./ascii.out", 
@@ -18,11 +18,11 @@ float *Hwin, *Wanal, *Wsyn, *input, *winput,
     *buffer, *channel, *output ;
 float threshfac = .001,  threshfacdB=-96.;
 float  *binfreq,  dur ;
-float  gain, f ;
+float  gain;
 float  *previous_channel, *channel_freqdev;
 float  temp, temp1,  temp2,  pm,  IR  ;  
 float getthresh();
-float lowfreq=-1,  hifreq=-1,  phasediff ; 
+float lowfreq=-1,  hifreq=-1; 
 int showme=0, phaseLockFlag=1 ; 
 
 // SHELF EQ

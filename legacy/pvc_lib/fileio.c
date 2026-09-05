@@ -211,18 +211,11 @@ int getInputFileDataToSetOutputChannels(int argc, char **argv)
 
 void setupfiles(int argc, char **argv)
 {
-    char	ch,
-		*user,
-		scratchString[ STRING_SIZE ],
-		tempFileName[ STRING_SIZE ],
-		thisFileName[ STRING_SIZE ]
-		;
+    char *user,
+		scratchString[ STRING_SIZE ];
 
     int		n,
                 j,
-		exflag, 
-		i,  
-		c,
 		numberOfSampsBufferedIn,
 		numberOfFramesBufferedIn,
 		framesLeftToBuffer,
@@ -230,21 +223,20 @@ void setupfiles(int argc, char **argv)
 		thisoutchan		
     ;
 	
-    short int	idata
-		; 
+     
 		
     float	temp    ;
 
-    float testOutputBuffer [ MAXIMUM_CHANNELS ] ; // HERE?
+     // HERE?
 
    FILE *inputFilePointer, *tempFilePointer ;
    long size, sizeCopy ; 
    int beginchansave ;
 
-   SF_INFO 	inputSFinfo ; 
+    
    SF_INFO 	outputSFinfo ; 
 
-   SF_FORMAT_INFO  format_info ;
+   
 
    int numSilentBuffers, remainingSamps ; 
    float silentBuffer[ BLOCKSIZE ] ; 
@@ -569,7 +561,7 @@ int rescaleThisBuffer( float peakamp[], float outputBufferByChannels[][ BLOCKSIZ
 
     static float peakofout,  peakifout, ampval, tempy ;
     static int first=1 ; 
-    int j,jc,  k, k2,  m, thisoutchan ; 
+    int j,jc, thisoutchan ; 
     
     // FIND PEAKS
     if( first == 1 )
@@ -671,16 +663,15 @@ int bufferout(float *outbuff,  int I, int flushflag)
 	float outputBufferByChannels [ MAXIMUM_CHANNELS ][ BLOCKSIZE ] ; // HERE?
 	float interleavedOutputBuffer [ BLOCKSIZE * MAXIMUM_CHANNELS ] ; // HERE?
 
-	static char numberLetters[4] = {'1','2','3','4' } ;  
-	char playfiles[3][ STRING_SIZE ] ; 
+	  
+	 
 	int bufferinsamps ; 
 
-	float   finbuff[ BLOCKSIZE ] ;
+	
 
 	static int	numsamps=0, 
 		blkcount=0,
-		n, j, m, noldread, i, k, l, 
-		exflag, 
+		n, j, 
 		flag=0, 
 		nblockover=0,
 		blockpeakn, 
@@ -692,15 +683,12 @@ int bufferout(float *outbuff,  int I, int flushflag)
 		thisoutchan
 		 ; 
     
-	static short int	idata
-		    ; 
+	 
 
 	static float    in[ BLOCKSIZE ] 
 		    ; 
     		
-	static float dur,
-		nn,
-		blockpeakt,
+	static float blockpeakt,
 		peakampt[ MAXIMUM_CHANNELS ],   
 		peakamp[ MAXIMUM_CHANNELS ],
 		lastpeakamp=0, 
@@ -711,11 +699,7 @@ int bufferout(float *outbuff,  int I, int flushflag)
 		gain    
 	;
 
-	char	commandString[ 128 ],
-                string[10], 
-		promptString[ 500 ],
-                ch
-	;
+	
 
 	SF_INFO 	outputSFinfo ; 
 
@@ -1183,7 +1167,7 @@ int bufferin( float *V )
 
 float timenow(float dur ){
     
-    float v;
+    
 //	t = ((float) samps / (float) ttlsamps ) * dur ; 
 	if( outputoff == 1 ) t = (float) samps / (float) isr ; 
 	else t = (float) samps / (float) osr   ; 
@@ -1196,7 +1180,7 @@ int readffthead( int *N, int *D, int *R, int *chans, int *win_type,  float peaka
 
     float temp, temp2 ; 
     int i ;
-    char tempString[ STRING_SIZE ], ch ; 
+    char tempString[ STRING_SIZE ]; 
 
     // READ IN THE FFT FILE HEADER VALUES
 
@@ -1310,22 +1294,17 @@ int readffthead( int *N, int *D, int *R, int *chans, int *win_type,  float peaka
 
 int outfile_setup(int argc, char **argv )
 {
-       char	ch,
-		*user,
+       char *user,
 		scratchString[ 128 ]
 		;
 
     int		n,
-		exflag, 
-		i,  
-		c,
                 thisoutchan		
     ;
 	
-    short int	idata
-		; 
+     
 		
-    float	temp    ;
+    
 
     SF_INFO      outputSFinfo ; 
 

@@ -18,7 +18,7 @@ int eq4(
 
 
 
-    int i, j ; 
+    int i; 
     float temp1,  freq ;
     float lowamp, hiamp, lowfreqdiff,  hifreqdiff;
     int lowflag,  hiflag ; 

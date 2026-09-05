@@ -7,7 +7,7 @@ float Hz_to_MIDI(
 )
 {
 
-    float log_two, reference, temp1, temp2, midi ; 
+    float log_two, reference, midi ; 
 
     log_two=flog10(2.) ;  
     reference = 220. * (pow(2.,3./12.)) ;  
@@ -25,7 +25,7 @@ float MIDI_to_Hz(
 )
 {
 
-    float log_two, reference, temp1, temp2, Hz ; 
+    float reference, Hz ; 
 
     reference = 220. * (pow(2.,3./12.)) ;  
 

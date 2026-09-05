@@ -9,36 +9,34 @@ void pd( int i ) ;
 int main( argc, argv )
     int argc ; char *argv[] ;
 {
-int i,j,k, l,  i1,  i2, ipartial,   n, exflag, 
-     NC, NC2,   np,  nf=2,  first=1  ;
+int i,j,k,   np;
 float nyquist;
 double atof();
-int R=44100, N=1024, N2, Nw = 2048, Nw2, D = 256, I = 256, in, on;
-int   eof = 0, obank = 0,  sflag = 0,  channelout=0 ;
-float P = 1.0;
-FILE *fopen(), *fp ; 
+int R=44100, N=1024;
+
+
+FILE *fopen(); 
 SNDFILE *infile;
 char ch;
-float *Hwin, *Wanal, *Wsyn, *input, *winput, *buffer, *channel,  *output ;
-float *previous_channel,  *F,  *FT,  *SUM,  *harmony ; 
- float threshfac = .001;
-float	gain=1. ;
-float  temp,  temp2,  temp3,  temp4,  temp5,  temp6 ;  
+
+float *F; 
+ 
+
+float  temp,  temp2,  temp3;  
 float getthresh();
-float peakbinamp = 0.,  avgbinamp=0.,  averagedB,  peakamp=0,  peakfreq, 
-    dBedge=0,  dbdown1,  dbdown2,  percentofbins, dBrolloff ;
+float avgbinamp=0.,  peakamp=0,  peakfreq;
 float fundamental ; 
 float freq1, freq2 ; 
-int   invert_flag=0,  nbins=0,  spectmethod=0 ;
-float   IR,  dur=0.;
+int   invert_flag=0;
+
 int flag ; 
 char dBonlyspectfile[ STRING_SIZE ] ;
 int  dBSpectFileflag=0 ; 
 
 int N_limit=0 ; 
 // SHELF EQ
-float  dBlow=0, dBhi=0,  freqlow=200, freqhi=2000  ; 
-int eqnormbypassflag=0 ; 
+ 
+ 
 
 FILE *data ; 
 char datafile[ STRING_SIZE ] = "EMPTY\0",  new_datafile[ STRING_SIZE ] ; 
@@ -46,9 +44,9 @@ char datafile2[ STRING_SIZE ] = "EMPTY\0" ;
 char soundfile[ STRING_SIZE ] ;  
 SF_INFO inputSFinfo ; 
 
-float *PP, *domainamp, *partialamp,    fund=100.,  freqdiff,  target_gain,  SOURCE_gain,  midC,  part ; 
-int nd=0,  vb=0 ; 
-float bw1,  bw2,  bw ; 
+float *PP,  freqdiff,  midC; 
+int vb=0 ; 
+ 
 char tempstring[ STRING_SIZE ] ; 
 
 if( argc < 2 )usage() ; 

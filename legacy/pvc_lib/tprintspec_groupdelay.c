@@ -7,7 +7,7 @@
  */
 int tprintspec_groupdelay( float *F, int N, float fundamental, int freqcutoff ){
 
-    int i, j, k, ii, jj,  flag,  zeroflag,  itemp ; 
+    int i, j, k, jj,  flag,  zeroflag,  itemp ; 
     float temp,  temp2, temp3,  delayrange,  delaydiv ; 
  
 	

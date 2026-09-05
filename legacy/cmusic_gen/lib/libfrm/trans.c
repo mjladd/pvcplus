@@ -14,7 +14,7 @@ void trans(a, alpha, b, n, output)
  float a, alpha, b, *output; int n;
 {
     register int i;
-    register float d, e;
+    
     register float interval;
     register float delta = b - a;
 

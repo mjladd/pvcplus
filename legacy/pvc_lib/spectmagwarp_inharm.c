@@ -11,8 +11,8 @@ int spectmagwarp_inharm(
 {    
 
     int i ; 
-    float temp ;
-    float middB ;
+    
+    
     float peakbinamp=0;   
     float curve( float V1, float  V2, float  n, float   x) ;
     

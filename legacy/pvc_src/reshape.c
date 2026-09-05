@@ -70,9 +70,9 @@ int main( argc, argv )
     int argc ; char *argv[] ;
 {
 int i,j,  k, l, m, numberOfSplineValues, numberOfScrollingPlotValues  ;
-  int   eof = 0, obank = 0,  sflag = 0;
- float P = 1.0;
-  FILE *fopen(), *fp, *adata ;
+  int   eof = 0;
+ 
+  FILE *fopen(), *adata ;
 char ch, chm1, chm2 ;
 
 float lowlimitsave, hilimitsave ; 
@@ -80,7 +80,7 @@ int lowlimitsaveflag=0, hilimitsaveflag=0 ;
 
 SF_INFO outputSFinfo ; 
 
-time_t rawtime;
+
 
 
 int processedOutputFlag=0, statsprintflag=0 ; 
@@ -93,43 +93,42 @@ int quickploty=0 ;
 
 int *quickplot=NULL, *quickplotwindowmarkers=NULL ; 
 
-float oldval ; 
+ 
 
 float arraylow, arrayhi, arrayrange, arrayaverage, arraysum, arraymedian, arraymode, 
 	arraystandarddeviation, arraybegin, arrayend, arraymiddle ; 
 int arraylength, steps, stepstotake ; 
 
-int beginValNumberingFlag=0, endValNumberingFlag=0, numberOfReshapeFunctionValues ; 
+int beginValNumberingFlag=0, endValNumberingFlag=0; 
 
 float threshold, *randomWindowSegment=NULL, funcprop ; 
 
-int soundfileWriteFlag=0, *indices=NULL ;
 
-float  temp,  temp2, newaverage, newsum,  temp3, temp4,    old_temp=0. ,  n=0.,  
-    N,  newhi,  newlow,  newdiff, dummyVal ;  
+
+float  temp,  temp2,  temp3, temp4,  n=0., dummyVal ;  
 
 float low, hi, range, average, median, mode, standarddeviation, sum, begin, end, middle ; 
 
-float randomWindowDivisionFactor, *windowAverages=NULL, *scratchWindowAverages=NULL  ; 
+float *windowAverages=NULL, *scratchWindowAverages=NULL  ; 
 int windowSize, windowSizeNow, window, windowBeginIndex, *scratchWindowAveragesIndices=NULL ; 
 float duplicationFactor ; 
 int lowIndex, hiIndex ; 
-float peakbinamp = 0.,  avgbinamp=0.,  peakamp, peakenvamp=0. ;
-int   frame_count=0,  flag=1,  ASCIIoutflag=-1,  ASCIIinflag=0,  silentflag=1 ; 
-float   IR,  dur=0.,   t=0.;
+
+int ASCIIoutflag=-1,  ASCIIinflag=0,  silentflag=1 ; 
+
 char tempstring[ STRING_SIZE ], inputScratchFileName[ STRING_SIZE ], csplineScratchFileName[ STRING_SIZE ], csplineCommand[ STRING_SIZE ] ;
-char reshapeFunctionFilename[ STRING_SIZE ] ; 
  
-FILE *fscratch=NULL,  *data=NULL,  *scalefile=NULL, *reshapefile=NULL, *inputScratchFile=NULL, *csplineScratchFile=NULL ; 
-char scratch[ STRING_SIZE ], values[ STRING_SIZE ],   scalefilename[ STRING_SIZE ] = "", *user  ; 
-int itty,  invflag=0,  diffmode=0 ; 
-float olddiffval,  *value=NULL, *scratchValue=NULL ; 
+ 
+FILE *fscratch=NULL,  *data=NULL,  *scalefile=NULL, *inputScratchFile=NULL, *csplineScratchFile=NULL ; 
+char scratch[ STRING_SIZE ],   scalefilename[ STRING_SIZE ] = "", *user  ; 
+int itty; 
+float *value=NULL, *scratchValue=NULL ; 
 
-int scalesize=0,  reshapefilesize, scalefileflag=0,  scaleOriginFlag=0, ii ; 
+int scalesize=0, scalefileflag=0,  scaleOriginFlag=0, ii ; 
 
-int lowflag=0,  hiflag=0,  lastflag=0,  numberflag=0, oversampi,  bflag=0  ; 
+int numberflag=0, oversampi; 
 
-float vcount=0.,  out_index ; 
+float out_index ; 
 int histogramNumberOfBins=100   ;
 
 int   histogramflag=0 ; 
@@ -138,24 +137,24 @@ float *histogramBins=NULL ;
 
 float frac, realIndex ; 
 
-int startFlagindex, endFlagindex, diffType ; 
+int diffType ; 
 int *windowBeginIndices=NULL, *windowLengths=NULL, markerCount, windowLength, numberOfWindows=0, 
 	computationLevel=0, newNumberOfWindows ; 
 float realWindowLength ; 
 
 
 int nn= 0 ;
-int nv = 0 ;  
-int firstv=0,  lastv=-1,  lastvflag=0 ; 
+  
+int firstv=0,  lastv=-1; 
 
-float filev,  oldfilev,  oldoutputval=0. ; 
+ 
 float scalesum=0 ; 
 
 float sortFlag=0. ; 
 int notdone ; 
 
-int lowc=0,  hic=0 ; 
-int fd,  fd2 ; 
+ 
+ 
 float temporigin ;
 //float   *scale=NULL ; 
 float   scale[1000] ; 
@@ -168,7 +167,7 @@ float feedcdm=1. ;
 int transCode=-1; 
 
 int find_data_type( ) ; 
-int sumflag=0 ; 
+ 
 
 float pitch,  reffreq=0.,  log_of_2,  midC ; 
 
@@ -2261,7 +2260,7 @@ void singleOperator(
 ){
 
 	int n, i, ii, notdone, steps, stepstotake=0, l ; 
-	float tProp, base=0., peak=0., lowVal, highVal, fraction, realIndex, oldVal, thisVal, 
+	float tProp, lowVal, highVal, fraction, realIndex, oldVal, thisVal, 
 		temp, midpoint, halfofarrayrange ; 
 	float arraylow, arrayhi, arrayrange, arrayaverage, arraymedian, arraymode,
 				arraystandarddeviation, arraysum, arraybegin, arrayend, arraymiddle ; 
