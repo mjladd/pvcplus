@@ -320,17 +320,28 @@ impl Synthesizer {
 }
 
 /// Ports `getthresh()`: the [`OscBank`] threshold for one frame - the
-/// peak amplitude among bins *1..* (bin 0, the DC bin, is excluded from
+/// peak amplitude among `bins[1..]` (bin 0, the DC bin, is excluded from
 /// the search, matching the C's loop starting at array index 2, i.e.
 /// skipping `amp[0]`) times a linear ratio `tgen` (typically
 /// `10^(dB/20)`, computed exactly - not the `DbToAmp` lookup-table
-/// approximation). Recomputed fresh every frame in the legacy tool (it's
-/// a `static`-free plain function there, unlike this port's other
-/// per-channel state), hence a plain function here too rather than a
-/// method needing an instance.
-pub fn getthresh(frame: &Frame, tgen: f32) -> f32 {
-    let peak = frame
-        .bins
+/// approximation).
+///
+/// Takes a plain bins slice rather than a whole [`Frame`] because the
+/// legacy call site matters here: `plainpv.c` calls `getthresh(channel,
+/// N, threshfac)` - passing the FFT size `N`, not `N + 2` (despite the
+/// C's own parameter being named `Nplus2`) - which *also* excludes the
+/// Nyquist bin (`frame.bins`' last entry) from the peak search, not just
+/// bin 0. Whether that's deliberate or an off-by-one in the original
+/// tool, it's what the real tool does, so the caller passes exactly the
+/// bins it wants considered (typically `&frame.bins[..n2]` to match
+/// `plainpv`) rather than this function assuming a fixed exclusion.
+///
+/// Recomputed fresh every frame in the legacy tool (it's a `static`-free
+/// plain function there, unlike this port's other per-channel state),
+/// hence a plain function here too rather than a method needing an
+/// instance.
+pub fn getthresh(bins: &[(f32, f32)], tgen: f32) -> f32 {
+    let peak = bins
         .iter()
         .skip(1)
         .map(|&(amp, _)| amp)
@@ -495,10 +506,8 @@ mod tests {
     fn getthresh_excludes_bin_zero_matches_c_oracle() {
         // Bin 0's amplitude (9.0, the largest) must not win the peak
         // search - confirmed against the real compiled getthresh().
-        let frame = Frame {
-            bins: vec![(9.0, 0.0), (2.0, 0.0), (7.0, 0.0), (4.0, 0.0), (1.0, 0.0)],
-        };
-        assert_eq!(getthresh(&frame, 0.5), 3.5);
+        let bins = [(9.0, 0.0), (2.0, 0.0), (7.0, 0.0), (4.0, 0.0), (1.0, 0.0)];
+        assert_eq!(getthresh(&bins, 0.5), 3.5);
     }
 
     /// The plan's explicit Task 2.5 acceptance test: analysis -> synthesis
