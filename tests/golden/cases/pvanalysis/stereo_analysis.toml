@@ -1,0 +1,9 @@
+tool = "pvanalysis"
+input = "stereo_two_tones_44k.wav"
+description = "stereo analysis file - exercises the legacy reader's interleaved-by-frame channel layout"
+legacy_steps = [
+    "pvanalysis -N1024 {input} {output}",
+]
+output_ext = "pva"
+tolerance = { kind = "exact" }
+notes = "pvanalysis.c's per-channel loop re-seeks to the start of the frame data on every channel pass and writes each frame's channels interleaved (frame 0 ch0, frame 0 ch1, frame 1 ch0, ...), not sequential per-channel blocks (channel 0's frames, then channel 1's frames) - confirmed against real 2-channel output, since the mono basic_analysis.toml case can't distinguish the two layouts at all. See pvc-io::pva's module doc comment."
