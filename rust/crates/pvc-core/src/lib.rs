@@ -4,6 +4,7 @@ pub mod fft;
 pub mod gen;
 pub mod pvoc;
 pub mod smooth;
+pub mod tools;
 pub mod units;
 pub mod warp;
 pub mod window;
