@@ -2,8 +2,8 @@ tool = "plainpv"
 input = "sine440_2s_44k.wav"
 description = "pitch transposition driven by an ASCII control-function file"
 legacy_steps = [
-    "plainpv -N1024 -P@{fixtures}/ramp.txt {input} {output}",
+    "plainpv -N1024 -P{fixtures}/ramp.txt {input} {output}",
 ]
 output_ext = "wav"
 tolerance = { kind = "spectral", max_db_error = 0.5 }
-notes = "func-able parameter case: -P@path instead of a constant; exercises crackstring/fval."
+notes = "func-able parameter case: -Ppath instead of a constant; exercises crackstring/fval. Fixed: the original version of this case used -P@{fixtures}/ramp.txt, mirroring the new pvc CLI's explicit @path convention (docs/dev/parameter-inventory.md) - but the legacy crackstring() never used '@' at all; it treats an argument as a filename only if it starts with a letter or '/', otherwise as a constant number. -P@... starts with '@', which sscanf silently fails to parse as a float, so ptrans stayed at its default (0) for the entire file - confirmed against the real binary's own startup banner, which only reports \"FILE IS ASCII... 5 values...\" once the '@' is removed. The '@' prefix is real and correct for `pvc pv --pitch @path` (this repo's own new-CLI design decision to make func-able parameters unambiguous, unlike the legacy sniffing) - it just never applied to invoking the legacy tool directly."

@@ -360,7 +360,7 @@ pub struct OscBank {
     l: usize,
     i_factor: usize,
     sample_rate: u32,
-    n: usize,
+    n2: usize,
     pitch: f32,
     last_amp: Vec<f32>,
     last_freq: Vec<f32>,
@@ -370,28 +370,41 @@ pub struct OscBank {
 impl OscBank {
     const TABLE_LEN: usize = 8192;
 
-    /// `n`: FFT size (number of bins is `n/2 + 1`, indexed 0..=n/2 as
-    /// `chan` below, matching the legacy `N+1`-sized state arrays - the
-    /// loop bound `NP` just controls how many of them are actually
-    /// driven). `nw`: window length (only used to pick the table's
-    /// amplitude scale, matching the legacy `Nw >= N ? N : 8*N`).
-    /// `i_factor`: samples synthesized per frame (legacy `I`). `pitch`:
-    /// frequency scaling factor (legacy `P`; `1.0` = no transposition).
-    pub fn new(n: usize, nw: usize, sample_rate: u32, i_factor: usize, pitch: f32) -> Self {
+    /// `n2`: `N / 2` where `N` is the FFT size (number of bins is `n2 +
+    /// 1`, indexed 0..=n2 as `chan` below, matching the legacy
+    /// `N2+1`-sized state arrays - the loop bound `NP` just controls how
+    /// many of them are actually driven). Named `n2` rather than `n`
+    /// deliberately: `plainpv.c` calls `noscbank(channel, N2, R, Nw, I,
+    /// P, output)` - its own parameter is *named* `N` but is actually
+    /// bound to the caller's `N2` (half the FFT size) at every call site
+    /// in this codebase, which matters here because `tabscale`/`NP` both
+    /// key off it. A first draft of this struct took the *actual* FFT
+    /// size and got a real, reproducible amplitude bug out of it
+    /// (confirmed against real `plainpv` output: a clean, constant
+    /// ~2.4x-too-loud oscillator-bank result, traced to `tabscale` being
+    /// computed from `N` instead of `N2`) - passing `n2` here forecloses
+    /// that mistake by construction rather than relying on callers to
+    /// remember the distinction.
+    ///
+    /// `nw`: window length (only used to pick the table's amplitude
+    /// scale, matching the legacy `Nw >= N2 ? N2 : 8*N2`). `i_factor`:
+    /// samples synthesized per frame (legacy `I`). `pitch`: frequency
+    /// scaling factor (legacy `P`; `1.0` = no transposition).
+    pub fn new(n2: usize, nw: usize, sample_rate: u32, i_factor: usize, pitch: f32) -> Self {
         let twopi: f32 = (8.0f64 * 1.0f64.atan()) as f32;
         let l = Self::TABLE_LEN;
-        let tabscale = if nw >= n { n as f32 } else { 8.0 * n as f32 };
+        let tabscale = if nw >= n2 { n2 as f32 } else { 8.0 * n2 as f32 };
         let twopi_over_l = twopi / l as f32;
         let table = (0..l)
             .map(|k| tabscale * (twopi_over_l * k as f32).cos())
             .collect();
-        let num_bins = n / 2 + 1;
+        let num_bins = n2 + 1;
         OscBank {
             table,
             l,
             i_factor,
             sample_rate,
-            n,
+            n2,
             pitch,
             last_amp: vec![0.0; num_bins],
             last_freq: vec![0.0; num_bins],
@@ -414,9 +427,9 @@ impl OscBank {
         let pinc = self.pitch * l / self.sample_rate as f32;
 
         let np = if self.pitch > 1.0 {
-            (self.n as f32 / self.pitch) as usize
+            (self.n2 as f32 / self.pitch) as usize
         } else {
-            self.n
+            self.n2
         };
 
         let mut out = vec![0.0f32; self.i_factor];

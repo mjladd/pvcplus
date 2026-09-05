@@ -33,6 +33,29 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    if (strcmp(argv[1], "windows2") == 0) {
+        // Configurable Nw/N/I for verifying make_windows' sinc-
+        // interpolation branch (Nw > N), which "windows" above never
+        // exercises (it always uses Nw == N).
+        if (argc < 5) {
+            fprintf(stderr, "usage: dumpwin windows2 <nw> <n> <i>\n");
+            return 1;
+        }
+        int nw = atoi(argv[2]);
+        int n = atoi(argv[3]);
+        int ifac = atoi(argv[4]);
+        float *h, *a, *s;
+        fvec(h, nw);
+        fvec(a, nw);
+        fvec(s, nw);
+        window_type = 0; // Hamming
+        makewindows(h, a, s, nw, n, ifac, 1);
+        for (int i = 0; i < nw; i++) {
+            printf("%d %.9g %.9g %.9g\n", i, h[i], a[i], s[i]);
+        }
+        return 0;
+    }
+
     if (strcmp(argv[1], "fft") == 0) {
         int n = 256;
         float *x;

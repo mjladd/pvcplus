@@ -23,5 +23,19 @@ fn main() -> anyhow::Result<()> {
         }
 
         Command::Fn { generator } => commands::gen::run(generator),
+
+        Command::Pv(args) => commands::pv::run(&args),
+
+        Command::Stretch {
+            factor,
+            input,
+            output,
+        } => commands::pv::run_stretch(factor, &input, &output),
+
+        Command::Pitch {
+            semitones,
+            input,
+            output,
+        } => commands::pv::run_pitch(semitones, &input, &output),
     }
 }
