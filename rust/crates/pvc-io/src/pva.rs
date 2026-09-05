@@ -5,11 +5,21 @@
 //!
 //! - **Legacy** (`read_legacy_pva`, reader only): the format
 //!   `legacy/pvc_src/pvanalysis.c` writes. A 32-native-f32 header -
-//!   `[N, D, R, chans, window_type]` followed by 27 more f32s - then, per
-//!   channel, `frame_count` frames of `N+2` f32s (mag/freq pairs). Frame
-//!   count isn't stored anywhere explicit; it's derived from the file size.
-//!   Kept only so the golden harness can read `pvanalysis`'s C-oracle
-//!   output; `pvc analyze` never writes this format.
+//!   `[N, D, R, chans, window_type]` followed by 27 more f32s - then
+//!   `frame_count` frames, each frame holding all channels' `N+2` f32s
+//!   (mag/freq pairs) *interleaved* one after another (frame 0's channel
+//!   0, frame 0's channel 1, ..., frame 1's channel 0, ...) - **not**
+//!   channel 0's frames followed by channel 1's frames. Confirmed against
+//!   a real 2-channel `pvanalysis` run (the mono golden fixture this
+//!   reader was first tested against can't distinguish the two layouts at
+//!   all): `pvanalysis.c`'s per-channel loop re-seeks to the start of the
+//!   frame data on every channel pass and writes that channel's frame at
+//!   position `k` among `ochan` slots per frame, skipping the others (or,
+//!   on channel 0's pass only, filling them with a copy of channel 0's
+//!   own data as a placeholder later overwritten by the real channel).
+//!   Frame count isn't stored anywhere explicit; it's derived from the
+//!   file size. Kept only so the golden harness can read `pvanalysis`'s
+//!   C-oracle output; `pvc analyze` never writes this format.
 //!
 //!   The 27 "spare" header floats aren't actually all spare: pvanalysis.c
 //!   seeks back after writing every channel's frames and overwrites the
@@ -117,11 +127,15 @@ pub fn read_legacy_pva(path: &Path) -> Result<PvaData, PvaError> {
     }
     let frames_per_channel = data_bytes / per_channel_bytes;
 
+    // Interleaved by frame across channels - frame 0's channel 0, frame
+    // 0's channel 1, ..., frame 1's channel 0, ... - not channel 0's
+    // frames followed by channel 1's frames. See this module's doc
+    // comment for how that was confirmed.
     let mut channel_data: Vec<Vec<Vec<f32>>> =
         vec![Vec::with_capacity(frames_per_channel); channels as usize];
     let mut offset = header_bytes;
-    for ch in channel_data.iter_mut() {
-        for _ in 0..frames_per_channel {
+    for _ in 0..frames_per_channel {
+        for ch in channel_data.iter_mut() {
             let mut frame = Vec::with_capacity(frame_floats);
             for i in 0..frame_floats {
                 let o = offset + i * 4;
@@ -308,6 +322,14 @@ mod tests {
     /// than depending on this module's own writer, so the test exercises
     /// read_legacy_pva against an independently-constructed legacy-shaped
     /// file rather than round-tripping through code under test.
+    /// Builds a legacy `.pva` fixture with frames interleaved by channel
+    /// (frame 0 ch0, frame 0 ch1, frame 1 ch0, ...) - the real
+    /// `pvanalysis.c` layout (see this module's doc comment), not
+    /// sequential per-channel blocks. An earlier draft of this fixture
+    /// wrote sequential blocks, matching what `read_legacy_pva` wrongly
+    /// assumed at the time - a self-consistent test that never actually
+    /// exercised the real file format, only caught once a real 2-channel
+    /// `pvanalysis` run was checked byte-for-byte.
     fn write_legacy_pva_fixture(path: &Path, n: u32, d: u32, r: u32, chans: u32) {
         let mut bytes = Vec::new();
         for v in [n as f32, d as f32, r as f32, chans as f32, 0.0f32] {
@@ -318,8 +340,8 @@ mod tests {
         }
         let frame_floats = n as usize + 2;
         let frames_per_channel = 3;
-        for ch in 0..chans {
-            for frame in 0..frames_per_channel {
+        for frame in 0..frames_per_channel {
+            for ch in 0..chans {
                 for i in 0..frame_floats {
                     let v = (ch * 1000 + frame as u32 * 10 + i as u32) as f32;
                     bytes.extend_from_slice(&v.to_ne_bytes());
@@ -365,5 +387,56 @@ mod tests {
         assert_eq!(data.header.channels, 1);
         assert!(data.frames_per_channel() > 0);
         assert_eq!(data.channels[0][0].len(), 1026);
+    }
+
+    #[test]
+    fn legacy_reader_deinterleaves_real_stereo_output_correctly() {
+        // Directly validates the interleaved-by-frame layout (see this
+        // module's doc comment) against real 2-channel `pvanalysis`
+        // output: re-derives frame N's channel 0 and channel 1 blocks
+        // from the raw file bytes using that layout, and checks they
+        // match what `read_legacy_pva` returns - rather than hardcoding
+        // expected values, which would only prove the parser agrees with
+        // itself. Skips if the golden harness hasn't been run.
+        let candidates = ["../../../tests/golden/expected/pvanalysis/stereo_analysis/output.pva"];
+        let Some(path) = candidates.iter().map(Path::new).find(|p| p.exists()) else {
+            eprintln!("skipping: run tests/golden/run_legacy.sh first to exercise this test");
+            return;
+        };
+        let bytes = fs::read(path).unwrap();
+        let data = read_legacy_pva(path).unwrap();
+        assert_eq!(data.header.channels, 2);
+        assert!(data.frames_per_channel() > 10);
+
+        let frame_floats = data.header.n as usize + 2;
+        let header_bytes = LEGACY_HEADER_FLOATS * 4;
+        let read_frame = |frame: usize, ch: usize| -> Vec<f32> {
+            let base = header_bytes + (frame * 2 + ch) * frame_floats * 4;
+            (0..frame_floats)
+                .map(|i| {
+                    let o = base + i * 4;
+                    f32::from_ne_bytes([bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]])
+                })
+                .collect()
+        };
+
+        for frame in [0usize, 5, 10] {
+            assert_eq!(
+                data.channels[0][frame],
+                read_frame(frame, 0),
+                "frame {frame} ch0"
+            );
+            assert_eq!(
+                data.channels[1][frame],
+                read_frame(frame, 1),
+                "frame {frame} ch1"
+            );
+        }
+        // The two channels carry different tones - their frames
+        // shouldn't be identical (a sequential-by-channel misparse would
+        // often coincidentally satisfy the raw-byte check above at frame
+        // 0 while still being wrong throughout, since both "channel 0"
+        // read paths start at the same file offset - this catches that).
+        assert_ne!(data.channels[0][10], data.channels[1][10]);
     }
 }
