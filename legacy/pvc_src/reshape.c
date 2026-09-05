@@ -868,8 +868,8 @@ while( (ch= crack( argc, argv, " A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X
     						fclose( csplineScratchFile ) ;
 						sprintf( tempstring, "/tmp/csplineOutput.%s.%d", user, (int)(rand()) ) ;
 						filesToRemove( tempstring, 0 );
-						sprintf( csplineCommand, "cspline %d `cat %s` > %s", 
-							numberOfSplineValues, csplineScratchFileName, tempstring ) ; 
+						snprintf( csplineCommand, sizeof(csplineCommand), "cspline %d `cat %s` > %s",
+							numberOfSplineValues, csplineScratchFileName, tempstring ) ;
 						system( csplineCommand ) ; 
 						fscratch  = fopen( tempstring, "r" ) ;
 

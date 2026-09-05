@@ -761,8 +761,8 @@ prt( "\n...............DONE." ) ;
 	fprintf( write_ascii_d,  "\n" ) ; 
 	fclose( write_ascii_d ) ; 
 	fclose( tdata ) ; 
-	sprintf( scratch2,  "rm %s",  scratch ) ;  
-	system( scratch2 ) ; 
+	snprintf( scratch2, sizeof(scratch2),  "rm %s",  scratch ) ;
+	system( scratch2 ) ;
 
 
     }

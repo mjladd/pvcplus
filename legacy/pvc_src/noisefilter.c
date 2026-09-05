@@ -235,11 +235,11 @@ for(outchan = beginchan,  channow = 0; outchan < endchan; outchan++,  channow++ 
 
       fprintf( stderr, "\nAnalyzed noise response plot file written to: %s\n", responsePlotFile ) ; 
 
-      sprintf( scratchString, 
+      snprintf( scratchString, sizeof(scratchString),
          "freqresponse  -a%s -B1 -M0  -D%f -w%i -N%i   -b%f -e%f  -c%i -P%i -C%i %s %s",
-	responsePlotFile, frames_per_sec, window_type, N, 
+	responsePlotFile, frames_per_sec, window_type, N,
 	A_begint, A_endt, A_method, A_print, (outchan + 1), ifile, tempResponseFile
-      ) ; 
+      ) ;
 
 
       // PRINT COMMAND

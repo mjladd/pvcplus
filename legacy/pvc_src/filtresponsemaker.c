@@ -354,7 +354,7 @@ fprintf( stderr,  "\n\nNUMBER OF SYNTHESIS OUTPUT AMP/FREQ PAIRS:    %d\n",  i/2
   
     fclose( data ) ; 
 
-    sprintf( tempstring,  "rm %s", new_datafile ) ; 
+    snprintf( tempstring, sizeof(tempstring),  "rm %s", new_datafile ) ;
     system( tempstring ) ; 
 
  

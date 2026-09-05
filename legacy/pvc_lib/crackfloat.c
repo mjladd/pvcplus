@@ -25,10 +25,10 @@ float crackfloat( char  s[], char ch ){
 	sscanf( s,  "%s",  name ) ;
       fprintf( stderr, "\n\nERROR: Function file  -------->    %s    <---------\n", name ) ; 
       fprintf( stderr, "\nnot allowed for %s parameter flag %c: \n\n", routine, ch ) ;
-	sprintf( tempFile, "/tmp/%s_command", routine ) ; 
-	sprintf( command, "%s >& %s", routine, tempFile ) ; 
- 	system( command ) ; 
-	sprintf( command, "grep \"%c:\" %s", ch, tempFile ) ;  
+	snprintf( tempFile, sizeof(tempFile), "/tmp/%s_command", routine ) ;
+	snprintf( command, sizeof(command), "%s >& %s", routine, tempFile ) ;
+ 	system( command ) ;
+	snprintf( command, sizeof(command), "grep \"%c:\" %s", ch, tempFile ) ;
  	system( command ) ; 
 	prt( "Constants only." ) ; 
 	prt( "\n. . . . . BYE.\n\n" ) ;        

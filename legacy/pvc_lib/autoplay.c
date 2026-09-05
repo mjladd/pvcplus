@@ -33,7 +33,7 @@ int autoplay(
                 fprintf( stderr, "\nOUTPUT FILE: %s", ofile ) ; 
 			fprintf( stderr, "\n" ); 
 
-			sprintf( commandString, "sndfile-info %s | head -n14 | tail -n9", ofile ) ; 
+			snprintf( commandString, sizeof(commandString), "sndfile-info %s | head -n14 | tail -n9", ofile ) ;
 			system( commandString  ) ; 
 
 			if( formatSwitchflag == 1 ){
@@ -44,7 +44,7 @@ int autoplay(
                 prline( 69,  "=" ) ;
 			fprintf( stderr, "\n" ); 
 
-                sprintf( commandString, "sndfile-play %s", ofile ) ; 
+                snprintf( commandString, sizeof(commandString), "sndfile-play %s", ofile ) ;
 
                 if( autoplayreps >= 1){ // 1
                    // AUTO-REPEAT
@@ -96,11 +96,11 @@ int autoplay(
 //					fprintf( stderr, "ch: %c\n", ch ) ; 
 					switch( ch ){
 			    			case '1':
-							sprintf( commandString, "sndfile-play %s", playfiles[0] ) ; break; 
+							snprintf( commandString, sizeof(commandString), "sndfile-play %s", playfiles[0] ) ; break;
 			    			case '2':
-							sprintf( commandString, "sndfile-play %s", playfiles[1] ) ; break;  
+							snprintf( commandString, sizeof(commandString), "sndfile-play %s", playfiles[1] ) ; break;
 			    			case '3':
-							sprintf( commandString, "sndfile-play %s", playfiles[2] ) ; break; 
+							snprintf( commandString, sizeof(commandString), "sndfile-play %s", playfiles[2] ) ; break;
 			    			default:
 							exit(EXIT_FAILURE) ; 
  					} ; 

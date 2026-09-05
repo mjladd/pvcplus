@@ -48,7 +48,7 @@ FILE *crackstring(char  s[], struct func *p )
 
 		// OPEN AND COUNT VALUES
 		prt( "EXAMINING FILE:    " ) ; 
-		sprintf( scratch, "ls -l %s", p->fname ) ;
+		snprintf( scratch, sizeof(scratch), "ls -l %s", p->fname ) ;
 		system( scratch ) ; 
 		if( (p->fp = fopen( p->fname, "r")) == NULL ){
 	    		// NULL FILE

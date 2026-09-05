@@ -425,14 +425,14 @@ prf( fundamental,  "FUNDAMENTAL" ) ;
   
     fclose( data ) ; 
  
-   sprintf( tempstring,  "rm %s", new_datafile ) ; 
+   snprintf( tempstring, sizeof(tempstring),  "rm %s", new_datafile ) ;
    system( tempstring ) ; 
 
 
     exit(EXIT_SUCCESS) ;
 }
 
-
+
 void usage()
 {
     fprintf(stderr, "%s",
