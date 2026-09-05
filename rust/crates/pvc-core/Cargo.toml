@@ -10,3 +10,8 @@ description = "Phase-vocoder DSP core: windows, FFT, analysis/synthesis, control
 [dependencies]
 
 [dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "pvoc"
+harness = false
