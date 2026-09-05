@@ -288,7 +288,8 @@ for(l = 0; l < 2; l++ ){
 				if( middleChanFlag ){
 					// ADD HALF OF MIDDLE
 					temp = 0.5 * allChanInputBlock[ (middleChanNumber * BLOCKSIZE) + blockFrame ] ; 
-					if(l == 0) temp = fabs(temp) ; thisOutputChanAmpSum[0] += temp ;
+					if(l == 0) temp = fabs(temp) ;
+					thisOutputChanAmpSum[0] += temp ;
 				} ;
 				if(l == 0) if( thisOutputChanAmpSum[0] > outputChanPeakAmpSum[0] ) 
 									outputChanPeakAmpSum[0] = thisOutputChanAmpSum[0] ; 
@@ -303,7 +304,8 @@ for(l = 0; l < 2; l++ ){
 				if( middleChanFlag ){
 					// ADD HALF OF MIDDLE
 					temp = 0.5 * allChanInputBlock[ (middleChanNumber * BLOCKSIZE) + blockFrame ] ; 
-					if(l == 0) temp = fabs(temp) ; thisOutputChanAmpSum[1] += temp ;
+					if(l == 0) temp = fabs(temp) ;
+					thisOutputChanAmpSum[1] += temp ;
 				} ;
 				if(l == 0) if( thisOutputChanAmpSum[1] > outputChanPeakAmpSum[1] ) 
 									outputChanPeakAmpSum[1] = thisOutputChanAmpSum[1] ; 

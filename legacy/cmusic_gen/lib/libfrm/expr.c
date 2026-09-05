@@ -38,7 +38,8 @@ float expr(string) char *string;{
 
     exprerr = 0;
     rpnp = rpn;
-    strncpy(rpn,polish(string,UNOPS,BINOPS,POSTOPS),LRPN);
+    strncpy(rpn,polish(string,UNOPS,BINOPS,POSTOPS),LRPN-1);
+    rpn[LRPN-1] = '\0';
 
     while(strlen(rpnp)){
 	sfield(&rpnp, item, "", ",");

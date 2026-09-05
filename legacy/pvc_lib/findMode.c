@@ -40,7 +40,8 @@ float findMode(
 	// FIND LOW AND HIGH ARRAY VALUES
 	low = high = temparray[0] ; 
 	for(i = 1; i < numberOfValues; i++){
-		if(temparray[i] > high) high = temparray[i] ; 	if(temparray[i] < low) low = temparray[i] ; 	
+		if(temparray[i] > high) high = temparray[i] ;
+		if(temparray[i] < low) low = temparray[i] ;
 	} ; 
 
 	// SET NUMBER OF HISTOGRAM BINS TO 100.

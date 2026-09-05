@@ -404,12 +404,11 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
     else
 	on = in ;
 
-
-	oldt = 0. ; 
-	sec = 0 ;
-	min = 0 ;  
-	nn = 0 ;
-	samps = 0 ;   
+    oldt = 0. ; 
+    sec = 0 ;
+    min = 0 ;  
+    nn = 0 ;
+    samps = 0 ;   
 	
 //*********************************************
 // LOOP FOR FRAMES

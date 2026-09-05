@@ -14,7 +14,7 @@ if( (\
  p = p->n; }
 
 // SUB FOR LINE ABOVE
-// ) == NULL){fprintf(stderr,"\nPOLISH: CALLOC FAILED!\n"); exit(-1);}\
+// ) == NULL){fprintf(stderr,"\nPOLISH: CALLOC FAILED!\n"); exit(-1);}
 
 
 #define NEWNODE(type) (struct type *) calloc(1, sizeof(struct type))
@@ -97,7 +97,8 @@ char *polish(expression, unops, binops, postops)
 	    }
 	    if(bc == '{'){p++; continue;}
 	    LINK(o,next_o,olist,operator);
-	    strncpy(o->op,fld,OPMAX);
+	    strncpy(o->op,fld,OPMAX-1);
+	    o->op[OPMAX-1] = '\0';
 	    o->prec = p;
 	    if(i==0){o->otype = UNOP; o->nopnds = 1;}
 	    if(i==1){o->otype = BINOP; o->nopnds = 2;}

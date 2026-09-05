@@ -202,8 +202,8 @@ prf( warpshape, "SPECTRUM WARPSHAPE INDEX" ) ;
     if (Nw == 0)
 	Nw = N;
 
-	if (I == 0)
-	    I = D;
+    if (I == 0)
+	I = D;
 
 
 // *******

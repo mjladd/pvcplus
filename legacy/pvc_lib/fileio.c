@@ -1208,19 +1208,19 @@ int readffthead( int *N, int *D, int *R, int *chans, int *win_type,  float peaka
     // READ IN  HEADER VALUES
 
     if( fread( &temp, sizeof(float) , 1, p->fp ) == EOF ){
-        if( printFlag  == 1 )fprintf( stderr,  "\n\n1) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;  exit(EXIT_FAILURE) ;  
+        if( printFlag  == 1 ){fprintf( stderr,  "\n\n1) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;}  exit(EXIT_FAILURE) ;
     }
     *N = (int) temp ; 
     if( fread( &temp, sizeof(float) , 1, p->fp ) == EOF ){
-        if( printFlag  == 1 )fprintf( stderr,  "\n\n2) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;  exit(EXIT_FAILURE) ;  
+        if( printFlag  == 1 ){fprintf( stderr,  "\n\n2) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;}  exit(EXIT_FAILURE) ;
     }
     *D = (int) temp ; 
     if( fread( &temp, sizeof(float) , 1, p->fp ) == EOF ){
-        if( printFlag  == 1 )fprintf( stderr,  "\n\n3) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;  exit(EXIT_FAILURE) ;  
+        if( printFlag  == 1 ){fprintf( stderr,  "\n\n3) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;}  exit(EXIT_FAILURE) ;
     }
     *R = (int) temp ; 
     if( fread( &temp, sizeof(float) , 1, p->fp ) == EOF ){
-        if( printFlag  == 1 )fprintf( stderr,  "\n\n4) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;  exit(EXIT_FAILURE) ;  
+        if( printFlag  == 1 ){fprintf( stderr,  "\n\n4) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;}  exit(EXIT_FAILURE) ;
     }
     *chans = (int) temp ; 
 
@@ -1245,7 +1245,7 @@ int readffthead( int *N, int *D, int *R, int *chans, int *win_type,  float peaka
 
 
     if( fread( &temp, sizeof(float) , 1, p->fp ) == EOF ){
-        if( printFlag  == 1 )fprintf( stderr,  "\n\n4) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;  exit(EXIT_FAILURE) ;  
+        if( printFlag  == 1 ){fprintf( stderr,  "\n\n4) YOUR INPUT ANALYSIS FILE HAS NO VALUES. BYE.\n\n" ) ;}  exit(EXIT_FAILURE) ;
     }
     *win_type = (int) temp ; 
 

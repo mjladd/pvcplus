@@ -52,7 +52,8 @@ int smoothspec( float *F, int N2plus1, float octavesOrFreqBW,  int R )
 	    lowbin = j - binsHalfBand ; hibin = j + binsHalfBand ; 
 	} ; 
 
-	if(lowbin < 0)lowbin = 0;   if(hibin > N2plus1 )hibin = N2plus1;
+	if(lowbin < 0)lowbin = 0;
+	if(hibin > N2plus1 )hibin = N2plus1;
 	T[j] = 0; temp = 0 ; sum = 0. ; 
 
 	for(k = lowbin,  m = 0; k <= hibin; k++,  m++){

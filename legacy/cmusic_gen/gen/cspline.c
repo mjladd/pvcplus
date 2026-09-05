@@ -54,7 +54,7 @@ float   konst = 0.0;
 float   zero = 0.;
 
 float
-        rhs (i) {
+        rhs (int i) {
 	int     i_;
 	double  zz;
 	i_ = i == n - 1 ? 0 : i;
@@ -157,8 +157,7 @@ int spline () {
 	return (1);
 }
 
-void readin (argi, argc, argv)
-char  **argv; {
+void readin (int argi, int argc, char **argv) {
 	extern double   atof ();
 	if (!Lflag)
 		ni = atof (argv[argi++]);
@@ -188,8 +187,7 @@ struct proj    *p; {
 }
 
 
-int main (argc, argv)
-char   *argv[]; {
+int main (int argc, char *argv[]) {
 	char    ch,
 	        crack ();	/* from <CARL> -libsf */
 	int     i;
@@ -251,7 +249,7 @@ char   *argv[]; {
 	exit (0);
 }
 
-void usage(x)
+void usage(int x)
 {
 fprintf(stderr, 
 "usage: cspline len_flag [flags] x0 y0 x1 y1 ... xN yN\n"

@@ -49,9 +49,11 @@ int eq(
 
     // FIND INDECES FOR EQ REGIONS FROM FREQUENCIES
     ilow = 1 + (2 * (int) ( (freqlow / fundamental) + .5 )) ; 
-	if(ilow < 0) ilow = 1 ;  if(ilow > N ) ilow = (N - 1) ;  
-    ihigh = 1 + (2 * (int) ( (freqhi / fundamental) + .5 )) ; 
-	if(ihigh < 0) ihigh = 1 ;  if(ihigh > N ) ihigh = (N - 1) ;  
+	if(ilow < 0) ilow = 1 ;
+	if(ilow > N ) ilow = (N - 1) ;
+    ihigh = 1 + (2 * (int) ( (freqhi / fundamental) + .5 )) ;
+	if(ihigh < 0) ihigh = 1 ;
+	if(ihigh > N ) ihigh = (N - 1) ;
     
 
     // GAIN LOW SHELF

@@ -85,8 +85,9 @@ int eq4(
 		temp1 = curve( dBhi, dBcf, temp1, eqwarp ) ; // dBhi to 0
 	    else
 		temp1 = curve( dBhi, dBcf, temp1, (-1. * eqwarp) ) ; // dBhi to 0
-		SP[i - 1] *= ( dB_to_amp( temp1 )) ;
-	} 
+
+	    SP[i - 1] *= ( dB_to_amp( temp1 )) ;
+	}
 
     }
 

@@ -27,8 +27,8 @@ int invertresponse(
 	peakamp = -999999999. ; 
 	for( i = 0; i < N ; i+= 2)
 	    if( SP[i] > peakamp ) peakamp = SP[i] ; 
-    
-	    if( peakamp <= 0.){
+
+	if( peakamp <= 0.){
 		//prt( "CANNOT INVERT RESPONSE!,  PEAK AMPLITUDE == 0" ) ; 
 		return(0) ; 
 	    }else{

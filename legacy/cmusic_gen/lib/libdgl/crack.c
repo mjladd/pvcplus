@@ -62,7 +62,7 @@ char crack(int argc, char **argv, char *flags, int ign)
 	pv++;		/* skip '-' or prev. flag */
 	if (*pv != '\0') 
 	    {
-	    if ((flgp=index(flags, *pv)) != NULL_CHAR)
+	    if ((flgp=index(flags, *pv)) != NULL)
 		{
 		pvcon = pv;
 		if (*(flgp+1) == '|') { arg_option = pv+1; pvcon = NULL; }

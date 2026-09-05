@@ -202,7 +202,8 @@ static int lastN=0 ;
     for( i = 0; i < N2; i++ ){
         for( n = 0; n < avgWinSize; n++ ){
 	    k = n + i - (avgWinSize / 2) ; 
-	    if( k < 0 ) k = 0 ; if( k > (N2 - 1)) k = N2 - 1; 
+	    if( k < 0 ) k = 0 ;
+	    if( k > (N2 - 1)) k = N2 - 1;
 	    winArray[n] = newAmps[ k ] ; 
 	} ; 
 
