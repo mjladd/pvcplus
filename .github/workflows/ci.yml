@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  legacy-build:
+    name: legacy-build (CMake)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libsndfile1-dev
+
+      - name: Configure
+        run: cmake -S legacy -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Install
+        run: cmake --install build --prefix "${{ runner.temp }}/pvc-legacy"
+
+      - name: Verify tool count
+        run: |
+          count=$(find "${{ runner.temp }}/pvc-legacy/bin" -maxdepth 1 -type f | wc -l)
+          echo "Installed $count binaries"
+          test "$count" -eq 53
+
+  docker:
+    name: docker buildx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build runtime image (amd64 + arm64, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha,scope=runtime
+          cache-to: type=gha,mode=max,scope=runtime
+
+      - name: Build dev image (amd64, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dev
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=dev
+          cache-to: type=gha,mode=max,scope=dev
+
+  # Added in Phase 2+ once rust/ exists:
+  #   rust:   cargo fmt --check, cargo clippy --all-targets -- -D warnings, cargo test --workspace
+  # Added in Phase 1:
+  #   golden: build legacy tools, regenerate fixtures, run tests/golden comparisons
