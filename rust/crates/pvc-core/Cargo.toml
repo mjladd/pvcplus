@@ -1,0 +1,17 @@
+[package]
+name = "pvc-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Phase-vocoder DSP core: windows, FFT, analysis/synthesis, control functions. No I/O."
+
+[dependencies]
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "pvoc"
+harness = false

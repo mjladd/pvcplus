@@ -85,8 +85,33 @@ jobs:
           path: tests/golden/expected/
           retention-days: 14
 
-  # Added in Phase 2+ once rust/ exists:
-  #   rust:   cargo fmt --check, cargo clippy --all-targets -- -D warnings, cargo test --workspace
+  rust:
+    name: rust (fmt, clippy, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flac
+
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace
+
   # Added in Phase 3+ once a ported tool exists to check with compare.py:
   #   golden gets a second step that runs the candidate and compares it
   #   against expected/ per case, instead of only proving every case still

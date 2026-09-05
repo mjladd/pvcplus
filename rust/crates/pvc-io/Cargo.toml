@@ -1,0 +1,17 @@
+[package]
+name = "pvc-io"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Audio, analysis-file (.pva), and control-file I/O for pvc. No libsndfile dependency."
+
+[dependencies]
+aifc = "0.7.0"
+flacenc = "0.5.1"
+hound = "3.5.1"
+symphonia = { version = "0.6.1", default-features = false, features = ["wav", "aiff", "flac", "mp3", "ogg", "vorbis", "pcm"] }
+thiserror = "1"
+
+[dev-dependencies]
