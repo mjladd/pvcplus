@@ -1,73 +1,61 @@
 # PVCplus - Phase Vocoder Coding toolkit
-# Docker build environment
+#
+# Multi-stage build. Default target (`docker build .`) is `runtime`: a small
+# image with only the built legacy C tools and their runtime library.
+# `--target dev` builds the interactive devcontainer image instead.
 
-FROM ubuntu:22.04
+# ---- legacy-build: compile the legacy C toolkit with CMake ----
+FROM debian:bookworm-slim AS legacy-build
 
-LABEL maintainer="mjladd"
-LABEL description="Phase Vocoder audio DSP toolkit"
-
-# Avoid interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Fix GPG keys for Ubuntu repositories (common issue with ARM images)
-RUN apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get update --allow-insecure-repositories && \
-    apt-get install -y --allow-unauthenticated ubuntu-keyring && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libsndfile1-dev \
-    zsh \
-    git \
-    curl \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        pkg-config \
+        libsndfile1-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy source code
-WORKDIR /src/PVCplus
-COPY . .
+COPY legacy /src/legacy
 
-# Fix hardcoded MacPorts paths in Makefiles
-# Remove /opt/local/include from CFLAGS and /opt/local/lib from LDFLAGS
-# (libsndfile is installed in standard system locations in the container)
-RUN sed -i 's|-I/opt/local/include||g' pvc_lib/Makefile pvc_src/Makefile cmusic_gen/gen/Makefile && \
-    sed -i 's|-L/opt/local/lib/||g' pvc_lib/Makefile pvc_src/Makefile
+RUN cmake -S /src/legacy -B /build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build /build -j"$(nproc)" \
+    && cmake --install /build --prefix /opt/pvc-legacy
 
-# Fix library linking order: libpvoc depends on libsndfile and libm
-# On Linux, dependent libraries must come after the library that uses them
-RUN sed -i 's/LDFLAGS.*=.*/LDFLAGS = -lpvoc -lsndfile -lm/' pvc_src/Makefile
+# ---- dev: interactive devcontainer image (adds a shell + dev tools) ----
+FROM legacy-build AS dev
 
-# Add -fcommon flag to handle legacy C code with duplicate global definitions
-# (required for GCC 10+ which defaults to -fno-common)
-RUN sed -i 's/^CFLAGS =/CFLAGS = -fcommon/' cmusic_gen/lib/libran/Makefile
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        zsh \
+        git \
+        curl \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Fix macOS-specific ranlib -s flag (Linux ranlib doesn't need it)
-RUN sed -i 's/ranlib -s/ranlib/' pvc_lib/Makefile
+ENV PATH="/opt/pvc-legacy/bin:${PATH}"
+WORKDIR /workspaces/docker-pvcplus
+CMD ["zsh"]
 
-# Build cmusic_gen libraries and generators
-RUN cd cmusic_gen && make
+# ---- rust-build: placeholder for the Rust CLI (wired up in Phase 2+) ----
+FROM rust:1-bookworm AS rust-build
 
-# Build the PVC library
-RUN cd pvc_lib && make clean && make
+WORKDIR /src
+# COPY rust /src/rust
+# RUN cargo build --release --locked --manifest-path rust/Cargo.toml
 
-# Build all PVC tools (explicitly run 'make all' as lib: is the first target)
-RUN cd pvc_src && make clean && make all
-RUN cd pvc_src && make install
+# ---- runtime: minimal image with just the built tools ----
+FROM debian:bookworm-slim AS runtime
 
-# Add bin directory to PATH
-ENV PATH="/src/PVCplus/bin:${PATH}"
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create directories for audio input and output
+COPY --from=legacy-build /opt/pvc-legacy /opt/pvc-legacy
+# COPY --from=rust-build /src/rust/target/release/pvc /usr/local/bin/pvc
+
+ENV PATH="/opt/pvc-legacy/bin:${PATH}"
+
 RUN mkdir -p /audio/input /audio/output
-
-# Declare volumes so hosts can mount local folders
 VOLUME ["/audio/input", "/audio/output"]
-
-# Set working directory to the parent for convenience
 WORKDIR /audio
 
-# Default command shows available tools
-CMD ["sh", "-c", "echo 'PVCplus tools available:' && ls /src/PVCplus/bin && echo 'Input dir: /audio/input | Output dir: /audio/output'"]
+# ENTRYPOINT ["pvc"]   # switch on once the Rust CLI exists (Phase 2+)
+CMD ["sh", "-c", "echo 'pvc-legacy tools available in /opt/pvc-legacy/bin:' && ls /opt/pvc-legacy/bin && echo 'Input dir: /audio/input | Output dir: /audio/output'"]
