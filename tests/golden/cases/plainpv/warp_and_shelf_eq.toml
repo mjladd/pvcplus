@@ -1,9 +1,9 @@
 tool = "plainpv"
 input = "sine440_2s_44k.wav"
-description = "magnitude warp + shelf EQ, overlap-add path"
+description = "magnitude warp + shelf EQ"
 legacy_steps = [
     "plainpv -N1024 -W0.5 -H-6 -X6 {input} {output}",
 ]
 output_ext = "wav"
-tolerance = { kind = "sample", max_abs_error = 1e-4 }
-notes = "No pitch/freq shift, so still overlap-add; exercises spectmagwarp + eq2."
+tolerance = { kind = "spectral", max_db_error = 0.5 }
+notes = "Exercises spectmagwarp + eq2. Note corrected: this uses oscillator-bank resynthesis like every other plainpv case (see stretch.toml's note) - it was never overlap-add. Tolerance switched from tight sample-level to spectral for the same reason as stretch.toml: oscillator-bank resynthesis has a real, expected precision ceiling above 1e-4 absolute sample error."

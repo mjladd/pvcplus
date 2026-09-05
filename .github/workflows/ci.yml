@@ -85,6 +85,18 @@ jobs:
           path: tests/golden/expected/
           retention-days: 14
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Build pvc (release)
+        run: cargo build --release -p pvc-cli
+        working-directory: rust
+
+      - name: Compare pvc pv output against the C oracle (Task 3.2)
+        run: cargo test --release -p pvc-cli --test golden_plainpv -- --nocapture
+        working-directory: rust
+
   rust:
     name: rust (fmt, clippy, test)
     runs-on: ubuntu-latest
@@ -111,8 +123,3 @@ jobs:
 
       - name: cargo test
         run: cargo test --workspace
-
-  # Added in Phase 3+ once a ported tool exists to check with compare.py:
-  #   golden gets a second step that runs the candidate and compares it
-  #   against expected/ per case, instead of only proving every case still
-  #   runs clean against the C oracle (which is all there is to check today).

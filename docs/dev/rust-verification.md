@@ -171,3 +171,72 @@ Worth remembering for anything else in `pvc_lib`/`pvc_src` reached via
 an old bare forward declaration rather than a `pv.h` prototype: don't
 "upgrade" the call site to a modern typed signature just because the
 compiler will accept it - match how the real code actually calls it.
+
+## Task 3.2's `pv` assembly: individually-verified primitives weren't enough
+
+Every DSP primitive `pvc-core::tools::pv::process_channel` calls -
+`Analyzer`, `phaselock`, `Smoother`, `spectmagwarp`, `eq2`, `OscBank`,
+`getthresh` - had already been oracle-verified in isolation before this
+task started. Wiring them together against the real golden-harness
+`plainpv` cases still surfaced five more real bugs, none of which an
+isolated unit test could have caught, because each lives in the *glue*
+between primitives or in a legacy behavior that only manifests at the
+whole-tool level:
+
+1. **`OscBank`'s `N` was actually `N2`.** `noscbank(channel, N2, R, Nw,
+   I, P, output)` - the call site passes `N2`, but the C's own parameter
+   is *named* `N`, and `tabscale`/`NP` are both computed from it. A
+   first draft of `OscBank::new` took the real FFT size, producing a
+   constant, clean ~2.4x-too-loud output - the kind of bug that looks
+   exactly like a missing gain factor until traced further. Fixed by
+   renaming the parameter to `n2` outright (`pvoc.rs`) so the mistake
+   can't recur at a future call site.
+2. **`OSCILBANKGAIN` (+5dB, `10^(5/20) = 1.7782794`)**, applied to every
+   oscillator-bank sample in `bufferout()` - a file-I/O function, not
+   DSP code, easy to miss on a read-through focused on the signal path.
+3. **`plainpv`'s hardcoded window-size default is a literal `2048`**,
+   not `2 * fft_size` - despite `if (Nw <= 0) Nw = 2 * N` existing right
+   there in the source, that branch only triggers on an explicit `-M0`/
+   negative override, never by default. Silently correct for the
+   common `--fft 1024` case (`2 * 1024` coincidentally equals `2048`)
+   and silently wrong for every other FFT size - a case worth
+   remembering: a code path that's dead by default can still look live
+   if your first test case happens to land on the same answer either way.
+4. **`timenow(dur)` sets `t = samps / R`**, where `samps` only advances
+   inside `bufferout()` - which only runs once `shiftout`'s write gate
+   has passed. `t` (and therefore every `fval()`-driven control value)
+   stays at exactly `0.0` through the startup-suppressed hops, not a
+   smoothly-running `t += I/R` from frame zero. Invisible with constant
+   parameters; a 13dB spectral mismatch with a time-varying one
+   (`-P@ramp.txt`) before this was found.
+5. **`rescalev` defaults to `1`, not `0`** (`globals.h`), which
+   triggers a whole-*file* post-pass (`rescaleThisBuffer`, called from a
+   temp-file readback after every frame is written) that rescales the
+   entire output so its peak matches the *input* file's peak. On by
+   default, not a debug/display feature, and it lives in file-I/O code
+   far from the DSP - the single largest contributor to an initial
+   ~19% constant amplitude mismatch across an entire test file.
+
+Also found, in the *test* infrastructure rather than the port: the
+Phase 1 golden case files assumed `plainpv` picks overlap-add resynthesis
+whenever no pitch/frequency shift is requested (`stretch.toml`,
+`warp_and_shelf_eq.toml`) and that `-P@path` is a valid way to point the
+*legacy* tool at a control file (`pitch_control_function.toml`). Both
+were wrong, confirmed against the real binary's own startup banner and
+`crackstring()`'s source respectively - see those files' own notes for
+the detail. `crackstring()` never recognizes `@`; it treats an argument
+as a filename only if it starts with a letter or `/`, so `-P@...`
+silently fails to parse as a number and the parameter just stays at its
+default. The `@path` convention is real, but it's this repo's *new*
+`pvc` CLI's own explicit design choice (`docs/dev/parameter-inventory.md`),
+not something that ever applied to invoking the legacy tool directly -
+mixing the two up produced a "golden" oracle recording that didn't
+actually exercise what its case description said it did.
+
+**Takeaway:** oracle-verifying each primitive in isolation is necessary
+but not sufficient. Budget real time for whole-tool integration against
+the actual golden harness cases before calling a ported tool done - and
+when a whole-file comparison shows a clean, constant ratio or a
+suspiciously large-but-uniform error, look for a *global* post-process
+step (a final rescale, a fixed makeup gain) before assuming the bug is
+in the per-frame DSP math itself.

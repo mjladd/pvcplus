@@ -120,7 +120,7 @@ def compare_exact(expected_path, candidate_path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("case", help="tool/case-name, e.g. plainpv/stretch_overlap_add")
+    ap.add_argument("case", help="tool/case-name, e.g. plainpv/stretch")
     ap.add_argument("candidate", help="path to the candidate output file")
     args = ap.parse_args()
 

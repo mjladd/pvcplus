@@ -25,6 +25,13 @@ use crate::warp::spectmagwarp;
 use crate::window::{make_windows, Window};
 use crate::ControlFn;
 
+/// `legacy/pvc_lib/fileio.c`'s `OSCILBANKGAIN` (`#define OSCILBANKGAIN
+/// 1.7782794`, i.e. `10^(5/20)`): a fixed +5dB makeup gain `bufferout()`
+/// applies to every sample on the oscillator-bank resynthesis path only,
+/// found while chasing an output-length discrepancy against the real
+/// tool - see `process_channel`'s use of it.
+const OSCILBANKGAIN: f32 = 1.7782794;
+
 /// Ports `plainpv`'s `-T` flag (`filttype`): bandpass keeps bins inside
 /// `[lowfreq, hifreq]`; band-reject keeps bins outside it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,10 +45,17 @@ pub enum FilterType {
 /// `fval()`), plus its fixed structural parameters. Field names follow
 /// the plan's proposed long-option names (`docs/dev/parameter-inventory.md`
 /// §12/§14) rather than the C's single-letter flags.
+#[derive(Debug, Clone)]
 pub struct PvParams {
     pub fft_size: usize,
-    /// `0` means "auto" (`2 * fft_size`, or larger still if needed to fit
-    /// the resynthesis hop - see `process_channel`), matching the C.
+    /// `0` means "auto": `2 * fft_size`, or larger still if needed to fit
+    /// the resynthesis hop (see `process_channel`). The C's own hardcoded
+    /// default is a literal `2048`, *not* `2 * fft_size` (confirmed
+    /// against the real tool: `--fft 2048` still reports window size
+    /// 2048, not 4096) - that auto-scaling rule only actually triggers
+    /// in the C via an explicit `-M0` or negative override. Callers
+    /// wanting the C's real default behavior should pass `2048`
+    /// directly, not `0` - `pvc-cli` does this.
     pub window_size: usize,
     pub window: Window,
     pub frames_per_sec: f32,
@@ -99,25 +113,61 @@ pub fn process_channel(input: &[f32], sample_rate: u32, params: &PvParams, dur: 
     let mut analyzer = Analyzer::new(n, window_pair.analysis, d, sample_rate);
     // `P` is always 1.0 in the real tool (see this module's doc comment)
     // - pitch transposition happens by directly scaling bin frequencies
-    // below, not through OscBank's own pitch parameter.
-    let mut osc = OscBank::new(n, nw, sample_rate, i_factor, 1.0);
+    // below, not through OscBank's own pitch parameter. `n2`, not `n` -
+    // see OscBank::new's doc comment for why that distinction matters.
+    let mut osc = OscBank::new(n2, nw, sample_rate, i_factor, 1.0);
     let mut smoother = Smoother::new(n + 2);
 
     let db_to_amp = DbToAmp::new();
     let semitones_to_mult = SemitonesToMult::new();
 
-    // Enough hops to let the analysis window fully slide past the last
-    // real sample (matching `shiftin`'s end-of-input zero-padding).
-    let total_hops = (input.len() + nw).div_ceil(d);
+    // Replicates `shiftin`'s own end-of-input bookkeeping exactly (see
+    // that function's doc comment in pvoc.rs's module docs and
+    // `docs/dev/rust-verification.md`) rather than a rough "enough hops"
+    // estimate: `valid` starts at `nw` and stays there as long as real
+    // input remains; once a hop can't fully fill with `d` real samples,
+    // it drops by `d` more each following hop until `<= 0`, at which
+    // point that hop is the last one processed - matching this exactly
+    // is what makes the output length match the real tool's.
+    let mut valid: i64 = nw as i64;
+    let mut pos = 0usize;
 
-    let mut output = Vec::with_capacity(total_hops * i_factor);
-    let mut t = 0.0f32;
+    // Replicates `shiftout`'s write gate for the oscillator-bank path
+    // (`shiftout(output, Nw, I, on + Nw - I, 0)`), which suppresses the
+    // first several hops of output entirely while the window is still
+    // filling - not a cosmetic startup transient, an actual "not enough
+    // real data yet" gate matching `Synthesizer::overlap_add`'s own
+    // documented latency (see pvoc.rs).
+    let mut on: i64 = (-(nw as i64) * i_factor as i64) / d as i64;
 
-    for hop_idx in 0..total_hops {
-        let start = hop_idx * d;
-        let hop: Vec<f32> = (0..d)
-            .map(|k| input.get(start + k).copied().unwrap_or(0.0))
-            .collect();
+    let mut output = Vec::new();
+    // `timenow(dur)`: `t = samps / R`, where the global `samps` counts
+    // samples *actually written so far* - incremented inside
+    // `bufferout()`, which only ever runs once the write gate above has
+    // passed. `t` (and therefore every `fval()`-driven control value
+    // this frame) reflects output written through the *previous* frame,
+    // not a plain per-hop `t += IR`: during the suppressed startup hops,
+    // `t` stays at exactly `0.0`, not advancing at all. Confirmed to
+    // matter, not just a cosmetic startup delay: a control function that
+    // ramps over the file's duration (e.g. `-P@ramp.txt`, semitones 0..12
+    // linearly) came out audibly mistimed against real `plainpv` output
+    // until this replaced a naive running `t`.
+    let mut samps_written: usize = 0;
+
+    loop {
+        let mut hop = vec![0.0f32; d];
+        if valid == nw as i64 {
+            let available = d.min(input.len().saturating_sub(pos));
+            hop[..available].copy_from_slice(&input[pos..pos + available]);
+            pos += available;
+            if available < d {
+                valid = nw as i64 - d as i64 + available as i64;
+            }
+        }
+        if valid < nw as i64 {
+            valid -= d as i64;
+        }
+        let eof_after_this_hop = valid <= 0;
 
         let frame = analyzer.push(&hop).expect("hop is exactly d samples");
         let mut frame = frame;
@@ -129,6 +179,7 @@ pub fn process_channel(input: &[f32], sample_rate: u32, params: &PvParams, dur: 
             channel_freqdev[k] = 1.0;
         }
 
+        let t = samps_written as f32 / r;
         let harmadd = params.freq_shift_hz.at(t, dur);
         let gain = db_to_amp.convert(params.gain_db.at(t, dur));
         let pm = semitones_to_mult.convert(params.pitch_transpose_semitones.at(t, dur));
@@ -193,10 +244,37 @@ pub fn process_channel(input: &[f32], sample_rate: u32, params: &PvParams, dur: 
         // size, not N+2 - excludes the Nyquist bin too, not just bin 0
         // (see getthresh's own doc comment).
         let synt = getthresh(&frame.bins[..n2], threshfac);
-        output.extend(osc.synthesize(&frame, synt));
+        let hop_out = osc.synthesize(&frame, synt);
 
-        t += ir;
+        on += i_factor as i64;
+        if on + nw as i64 - i_factor as i64 >= 0 {
+            // `bufferout()`'s `in[numsamps] = outbuff[outbuffpt] * gain`
+            // with `gain = OSCILBANKGAIN` whenever `oscilbankon` - a
+            // fixed +5dB makeup gain applied to *every* oscillator-bank
+            // sample on its way to the output file (never applied to the
+            // overlap-add path). Easy to miss since it lives in a
+            // buffering/file-I/O function, not the DSP code, but it's a
+            // real, audible amplitude difference this port would
+            // otherwise silently omit.
+            output.extend(hop_out.iter().map(|&s| s * OSCILBANKGAIN));
+            samps_written += i_factor;
+        }
+
+        if eof_after_this_hop {
+            break;
+        }
     }
+
+    // `shiftout(output, Nw, I, 1, 1)` - the unconditional final flush
+    // called once after the frame loop ends, regardless of the write
+    // gate above. It still transfers one more `I`-sized chunk from the
+    // (already fully shifted-and-zeroed, for the oscillator-bank path -
+    // `noscbank` only ever writes indices `0..I`, so nothing survives
+    // repeated shift+zero-pad) output ring, i.e. `I` samples of silence.
+    // Confirmed empirically against a direct `shiftin`/`shiftout` C
+    // harness before trusting it: omitting this trailing chunk undercuts
+    // the real tool's output length by exactly one hop.
+    output.extend(vec![0.0f32; i_factor]);
 
     output
 }
