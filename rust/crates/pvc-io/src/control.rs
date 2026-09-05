@@ -82,6 +82,34 @@ pub fn read_control_file(path: &Path) -> Result<ControlFileData, ControlFileErro
     })
 }
 
+/// Writes a control-function file: `.txt` => ASCII (one value per line),
+/// otherwise binary (little-endian f32) - the write-side mirror of
+/// `read_control_file`'s extension rule, so a file this writes always
+/// round-trips through that reader without triggering its content-sniffing
+/// fallback.
+pub fn write_control_file(path: &Path, values: &[f32]) -> Result<(), ControlFileError> {
+    let is_txt = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("txt"));
+
+    if is_txt {
+        let mut text = String::with_capacity(values.len() * 12);
+        for v in values {
+            text.push_str(&v.to_string());
+            text.push('\n');
+        }
+        fs::write(path, text)?;
+    } else {
+        let mut bytes = Vec::with_capacity(values.len() * 4);
+        for v in values {
+            bytes.extend_from_slice(&v.to_le_bytes());
+        }
+        fs::write(path, bytes)?;
+    }
+    Ok(())
+}
+
 /// Mirrors `crackstring.c`'s heuristic: sniff up to the first 1000 bytes: if
 /// they're all printable ASCII/whitespace, it's a text file.
 fn looks_like_ascii(bytes: &[u8]) -> bool {
@@ -189,5 +217,25 @@ mod tests {
         let path = tempfile("empty.txt", b"");
         let err = read_control_file(&path).unwrap_err();
         assert!(matches!(err, ControlFileError::Empty(_)));
+    }
+
+    #[test]
+    fn write_then_read_ascii_round_trips() {
+        let path = tempfile("out.txt", b""); // just reserves a temp dir/path
+        let values = vec![0.0, 0.25, 0.5, -1.5];
+        write_control_file(&path, &values).unwrap();
+        let data = read_control_file(&path).unwrap();
+        assert_eq!(data.format, ControlFileFormat::Ascii);
+        assert_eq!(data.values, values);
+    }
+
+    #[test]
+    fn write_then_read_binary_round_trips() {
+        let path = tempfile("out.bin", b"");
+        let values = vec![1.0, -2.5, 3.25];
+        write_control_file(&path, &values).unwrap();
+        let data = read_control_file(&path).unwrap();
+        assert_eq!(data.format, ControlFileFormat::Binary);
+        assert_eq!(data.values, values);
     }
 }

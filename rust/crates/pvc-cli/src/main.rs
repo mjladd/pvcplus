@@ -21,5 +21,7 @@ fn main() -> anyhow::Result<()> {
         Command::Run { preset, set } => {
             commands::run::run(&preset, &set, cli.json, cli.dry_run, cli.quiet)
         }
+
+        Command::Fn { generator } => commands::gen::run(generator),
     }
 }
