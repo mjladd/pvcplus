@@ -94,7 +94,54 @@ errors throughout) plus targeted smoke tests:
 | `-Wstringop-overflow=` | 6 | Not yet triaged; at least one (`prb()` in `roomresponsemaker.c`) looked like a real over-read, worth a look before assuming it's long-tail-only. |
 | `-Warray-parameter=` | 3 | `roomresponsemaker.c` — a forward declaration and definition disagree on array-parameter bounds (`float[4]` vs `float[]`). Harmless at the ABI level (arrays decay to pointers) but worth a one-line fix if that file is ever touched again. |
 
+## Task 0.5 getlogin()/system() cleanup (2026-09-06)
+
+The remaining named items in Task 0.5 are done, in
+`fix(legacy): replace getlogin()/system() diagnostic calls with safe
+equivalents`:
+
+- New `pvc_user_tag()` (`pvc_lib/miscellania.c`) replaces every `getlogin()`
+  call (~24 sites, 17 files). `getlogin()` returns NULL with no controlling
+  terminal — always true in a container — which fed straight into
+  `sprintf("%s",...)` temp-file names, producing a literal `(null)` filename
+  that then broke any shell command built from it. Reproduced live via
+  `noisefilter` before the fix; confirmed fixed after (falls back to `$USER`,
+  then `uid<N>`, never NULL).
+- Temp file names now include the PID (21 sites, 11 files), so concurrent
+  runs by the same user no longer share `/tmp/<user>.InputChan.<N>` etc.
+  Verified by running two `plainpv` invocations in parallel: both completed
+  with correct, independent output.
+- `filesToRemove.c` now `unlink()`s directly instead of shelling out to
+  `system("rm ...")`, and registers cleanup via `atexit()` so it runs even
+  on an early `exit(EXIT_FAILURE)` path that skips the tool's own explicit
+  cleanup call (`roomresponsemaker.c` had no such call at all — its temp
+  files were previously never removed).
+- The three `system("ls -l ...")` / `system("sndfile-info ...")` banners
+  (`crackstring.c`, `fileio.c`, `autoplay.c`) are now direct `stat()` /
+  libsndfile calls — those external binaries aren't even present in the
+  target runtime image (every smoke test this session printed
+  `sndfile-info: not found`), so the banners were already silently broken
+  in addition to the injection-shaped risk.
+
+Verified: 0 build errors; warnings **592** (down 2 more, both incidental —
+removing the banners left a couple of buffers unused). Task 0.5 is now
+functionally complete; what's left is purely the warning categories below.
+
+## Remaining warning categories (592)
+
+| Category | Count | Notes |
+|---|---|---|
+| `-Wunused-but-set-variable` | 217 | Declaration is genuinely dead, but safely removing it means tracing every assignment site for a side-effecting RHS first — a slower, more manual pass than the `-Wunused-variable` sweep above. |
+| `-Wmaybe-uninitialized` | 143 | Not yet triaged. Given a real bug was hiding in the 6-instance `-Wuninitialized` group, this larger group deserves the same care, not a blanket suppression. |
+| `-Wformat-overflow=` | 109 | ~106 of these are in `roomresponsemaker.c` / `roomresponsesequencer.c` / `irconvolvesequencer.c` (the same self-appending `sprintf(cmd, "%s...", cmd, ...)` idiom as the `-Wrestrict` row below). |
+| `-Wrestrict` | 101 | All in the same 3 long-tail files. The idiom is technically UB but appears safe in practice (source read always precedes the write position for this specific left-to-right `%s`-prepend pattern). Fixing for real means ~100 call sites rewritten to use a temp buffer or `sprintf(dst + strlen(dst), ...)`; these files are already flagged in the plan as "don't port unless someone asks" (Phase 5), so this is low priority unless one of them gets ported. |
+| `-Wformat-truncation=` | 11 | A side effect of the earlier `sprintf`→`snprintf` pass: trades a real overflow risk for a benign "could truncate if the source is already at its own max length" warning. Not chased further since it's inherent to the codebase's fixed-size string buffers. |
+| `-Wstringop-overflow=` | 6 | Not yet triaged; at least one (`prb()` in `roomresponsemaker.c`) looked like a real over-read, worth a look before assuming it's long-tail-only. |
+| `-Warray-parameter=` | 3 | `roomresponsemaker.c` — a forward declaration and definition disagree on array-parameter bounds (`float[4]` vs `float[]`). Harmless at the ABI level (arrays decay to pointers) but worth a one-line fix if that file is ever touched again. |
+| `-Wunused-variable` | 2 | Intentionally left: `chordmapperplus.c`/`tvfilter.c` declarators whose initializer could have a side effect, skipped by the automated `-Wunused-variable` sweep. |
+
 Next step, if resumed: `-Wmaybe-uninitialized` is the highest-value remaining
-category (real-bug risk, same class as the `nyquist` fix above), followed by
+category (real-bug risk, same class as the `nyquist` fix earlier), followed by
 `-Wunused-but-set-variable`. The `-Wrestrict`/`-Wformat-overflow` cluster in
 the 3 long-tail files is the least urgent given Phase 5's own prioritization.
+Otherwise, the next planned task is 0.6 (multi-stage, multi-arch Dockerfile).
