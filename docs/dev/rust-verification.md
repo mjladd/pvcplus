@@ -136,3 +136,13 @@ figures, not bit-for-bit - go expression-by-expression checking which
 literals are bare (`96.`, promotes) vs already-`float` operands
 (nothing added here); don't assume a whole function is uniformly one
 precision just because most of its literals are.
+
+Later extended with `smooth()`/`smooth_setup()`, `curve()`/
+`spectmagwarp()`, and `eq2()` cases (`legacy/pvc_lib/`), including
+setting the `frame_count` global directly (declared `extern` in `pv.h`
+but only *defined* by a real tool's `globals.h` normally, so a
+standalone dumper needs its own `int frame_count = 0;`) to drive
+`smooth`'s first-frame behavior and `eq2`'s startup banner. All of
+these matched on the first try once written against the precision
+rules established above - worth noting as the payoff: the rules
+generalize once you've been burned by them a couple of times.
