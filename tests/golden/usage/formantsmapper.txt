@@ -1,0 +1,91 @@
+formantsmapper:  generic phase vocoder with dynamic controls  
+formantsmapper   [flags] [input file] [output file]
+	    Most formats accepted. Output format copied from input file.
+	    (Values in brackets denote defaults.)
+	h:	bank_A_decibel_rolloff_per_octave (func) [0.]
+	B:	Bank B Decibel Rolloff per Octave (func) [0.]
+	r:	Bank A Frequency Interpolation (func) [0]
+	v:	Bank A Amplitude Interpolation (func) [0.]
+	G:	Bank A Gain in Decibels (func) [0.]
+	f:	bank_A_pitch_transposition_in_semitones (func) [0]
+	::	Bank B Frequency Interpolation (func) [0.]
+	J:	Bank B Amplitude Interpolation [0]
+	F:	bank_B_gain_in_decibels (func) [0.]
+	W:	Bank B Pitch Transposition in Semitones (func) [0.] 
+	/:	Number of Banks -- 0: bank A, 1: banks A and B [0]
+	~:	Amplitude Normalization Decibel Gain Limit [200]
+	Y:	Added Formants Partial dB Rolloff per Partial [0.]
+			The amplitude of extended partial formants rolls
+			off as a function of the partial number and the specified value.
+	@:	Source Formants Decibel Threshold [-200.]
+	Z:	Source Formants High Frequency Boundary [Nyquist]
+	z:	Source Formants Low Frequency Boundary [20.]
+			Source formants falling below the amplitude threshold or
+			outside the frequency bounds are omitted.
+	n:	Source Formants Partials Extension Switch -- 0: off, 1: on [0]
+	u:	Interpolation Path Diffusion Magnitude [0]
+			Values greater than 0 cause diffusion of the interpolation paths through
+			a variety of different curves. Higher magnitudes proportionally increase the
+			difference in curve paths.
+	T:	Target_formants_transposition_in_semitones (func) [0]
+	K:	Target Formants Decibel Threshold [-96]
+	O:	Target Formants High Frequency Boundary [0]
+	o:	Target Formants Low Frequency Boundary [0]
+			Following transposition to a fixed (pre-synthesis) position
+			target formants with amplitude less than the threshold or whose 
+			center frequency is outside the low/high boundaries are omitted.
+	j:	Highest Partial for Extended Target Partials; 0: All below Nyquist [0]
+	d:	Decibel Threshold for Formant Overtones Extension [-96]
+			Formants whose amplitude is above threshold are extended.
+	c:	Extend Target Formants Switch -- 0: off 1: on [0]
+	S:	Pre Synthesis Formant Bandwidth Extension Factor [1]
+			Before synthesis, the bandwidth of formants, measured in bins, 
+			can be expanded by the specified factor. A value of 0 will reduce all formants
+			to a single bin, and a value of 1 will bypass expansion.
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		      4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	P:	pitch transposition in semitones (func) [0]
+	a:	frequency shift factor 
+		    (bin frequency adder, before -P )(func) [0.] 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	     SHELF EQ:(post transpose/shift)
+	H:	SHELF EQ: Low shelf gain in dB (func) [0.] 
+	X:	SHELF EQ: High shelf gain in dB (func) [0.] 
+	m:	SHELF EQ: Low shelf frequency in Hz (func) [200.] 
+	R:	SHELF EQ: High shelf frequency in Hz (func) [2000.] 
+	A:	gain in decibels (func) [0.] 
+	l:      envelope attack time  (func) [0.]
+	L:      envelope release time   (func) [0.]
+	V:	Highest Partial for Extended Source Partials; 0: All below Nyquist [0]
+	k:	Target Partials Extension -- Octaves Switch 0: off, 1: on [0]
+	y:	Source Partials Extension -- Octaves Switch 0: off, 1: on  [0]
+			Adds upper octaves to source or target partials.
+	x:	Residue Bins -- 0: off, 1: on [0]
+	s:	Residue Bins Gain in decibels (func) [0]
+	E:	Target Formants File 
+	g:	Target Formants File 
+	U:	Source Formant Extension Decibel Threshold  [-96.]
+			Formants whose amplitudes are greater than or equal to the threshold
+			are extended through added partials.
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 AUTO OUTPUT SOUND FILE PLAY:
+		    0  = off 
+		    -1 = interactive: Prompt for each play.
+		    -2 = interactive: Play once, then prompt for more.
+                   1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 PEAK RESCALE LEVEL 0 to -96 dB 
+		    1 = Rescale to level of input file.
+		    2 = Bypass rescaling. [ 1 ]
+	t:	oscillator resynthesis threshold in decibels [ -96 ]

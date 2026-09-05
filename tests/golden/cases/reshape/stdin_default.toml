@@ -1,0 +1,8 @@
+tool = "reshape"
+description = "default reshape mode (-A0) over a piped breakpoint list"
+legacy_steps = [
+    "reshape < {fixtures}/ramp.txt > {output}",
+]
+output_ext = "txt"
+tolerance = { kind = "exact" }
+notes = "reshape has ~26 flags across many modes (see docs/dev/parameter-inventory.md); only the default stdin-pipe mode is covered here, matching the plan's own scoping for reshape's port ('port the modes used by utilities/S.* scripts first, document rest as TODO')."

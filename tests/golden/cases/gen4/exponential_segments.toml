@@ -1,0 +1,7 @@
+tool = "gen4"
+description = "gen4: exponential-segment envelope"
+legacy_steps = [
+    "gen4 -L1024 0 0 1 512 1 1 1023 0.5 > {output}",
+]
+output_ext = "f32"
+tolerance = { kind = "exact" }

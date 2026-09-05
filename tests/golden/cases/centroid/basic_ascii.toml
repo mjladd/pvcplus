@@ -1,0 +1,8 @@
+tool = "centroid"
+input = "sine440_2s_44k.wav"
+description = "spectral centroid, ASCII output"
+legacy_steps = [
+    "centroid {input} {output}",
+]
+output_ext = "txt"
+tolerance = { kind = "numeric", max_abs_error = 1e-3 }

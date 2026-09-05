@@ -1,0 +1,1 @@
+Usage: gen3 -Llength v1 v2 ... vN

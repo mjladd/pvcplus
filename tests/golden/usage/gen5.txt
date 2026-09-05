@@ -1,0 +1,1 @@
+Usage: gen5 -Llength h1 a1 p2 ... hN aN pN

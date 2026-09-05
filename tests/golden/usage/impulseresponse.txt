@@ -1,0 +1,13 @@
+impulseresponse:  impulse response analysis 
+impulseresponse   [flags] [input sound file] [output impulseresponse file]
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	d:	amplitude normalization level in decibels [0]
+	N:       normalization:                [1]
+	   0: Do not normalize. 
+	   1: Normalize channels independently.
+	   2: Normalize channels together against channel with peak amplitude.
+	a:	Decibels Spectrum Plot File
+	P:	FREQUENCY RESPONSE PRINTOUT: high cutoff frequency in Hz [0]
+		     (0 = off)

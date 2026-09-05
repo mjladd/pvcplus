@@ -1,0 +1,180 @@
+roomresponsemaker:    
+roomresponsemaker   [flags]
+	    Most formats accepted.
+	    (Values in brackets denote defaults.)
+	    ** All distances are expressed in feet.
+	f:  polygonal room coordinates source: 
+	       0 = synthesized (see synthesis flags below), 
+	       1 = Cartesian (X-Y) coordinates from file (see -c) 
+	       2 = Polar (Angle-radius) Coordinates from file (see -c) [0]
+	c:  polygonal-room, corner coordinates file
+	    **** POLYGONAL ROOM SYNTHESIS:
+		(If a coordinates file is not supplied, a room will
+		be synthesized according to the following constraints.)
+	w:  number of walls [4]
+	r:  synthesized room rotation in degrees [0.]
+	    ** Distance to Room Corners from Origin:
+	d:  minimum distance in feet [30]
+	D:  maximum distance  in feet [30]
+	R:  wall origin-to-corners angle uniformity proportion
+	    0. (maximum variability) to 1. (maximum uniformity) [1.]
+	    *****************************
+	    ** Room Modification Parameters:
+	X:  room X translation factor [0]
+	Y:  room Y translation factor [0]
+	b:  room negative X scale factor [1]
+	B:  room positive X scale factor [1]
+	e:  room negative Y scale factor [1]
+	E:  room positive Y scale factor [1]
+	A:  room rotation In degrees [0]
+	M:  room scale factor [1]
+	C:  output channel 1-?; 0 = all channels[0]
+	4:  plot mode: 0 = all channels to one file,
+     	    1 = separate channel files using channel number (i.e. name.1, name.2, etc.)
+	    2 = separate channel.order files using 
+	    channel and order numbers (i.e. name.1.1, name.1.2)
+	p:  sound paths plot file name
+	L: listener coordinates file
+	     (Multiple listener pairs are applied in sequence to successive channels,
+	     looping as needed. Standard use is to have one listener position for all
+	     speaker channels. Coordinates are expressed in feet.)
+	i: source coordinates file
+	     (Multiple source pairs are applied in sequence to successive channels,
+	     looping as needed. Standard use is to have one source position for all
+	     speaker channels, although multiple source positions can be specified
+	     for use with one speaker positions so as to audition, across multiple
+	     channels, several source positions relative to one speaker.
+             Coordinates are expressed in feet.)
+	o: speaker coordinates file
+	     (Multiple speaker pairs are applied in sequence to successive channels,
+	     looping as needed. Standard use is to apply single listener and source
+	     positions to a series of speakers. Coordinates are expressed in feet.)
+	S:  Speaker configuration: 
+	       0 = sequence (i.e. non-enclosing array), 1 = polygon (surround) [0]
+	    ** Speaker Position Modification Parameters:
+	F:  speaker coordinates X translation factor [0]
+	g:  speaker coordinates Y translation factor [0]
+	h:  speaker coordinates negative X scale factor [1]
+	H:  speaker coordinates positive X scale factor [1]
+	I:  speaker coordinates negative Y scale factor [1]
+	j:  speaker coordinates positive Y scale factor [1]
+	J:  speaker coordinates rotation In degrees [0]
+	k:  speaker coordinates scale factor [1]
+	s:  output mix components -- 0 = both direct and reflected sound
+		1 = only direct sound, 2 = only reflected sound [0]
+	/k:  reflected sound gain in decibels [0]
+	/l:  direct sound gain in decibels [0]
+	/o:  listener space cross reflections: 0 = include, 1 = exclude [0]
+	/m:  direct sound air-absorption exponent: 
+  	       amplitude of direct sound = (reference distance / source distance)**exponent
+	       Positive/negative values produce distance-correlated decrease/increase
+	       in amplitude, respectively, with severity of decrease or increase 
+	       increasing with greater magnitudes. Exponent of 2 corresponds to 
+	       inverse square law; value of 0 produces all amplitudes to be equal.
+	       Values between 1 and 2 generally work best. [2.]
+	/p:	air absorption exponent for real space source (i.e. sound in front
+						of speakers) [2]
+	a:  reflections air-absorption exponent: 
+  	       amplitude of reflection = (reference distance / reflection distance)**exponent
+	       Positive/negative values produce distance-correlated decrease/increase
+	       in amplitude, respectively, with severity of decrease or increase 
+	       increasing with greater magnitudes. Exponent of 2 corresponds to 
+	       inverse square law; value of 0 produces all amplitudes to be equal.
+	       Values between 1 and 2 generally work best. [2.]
+	m:  reference distance for air absorption computation
+	       Distance, in feet, at which source or reflection will produce amplitude
+	        of 0dB. Amplitudes for shorter distances are limited to the
+	       reference distance amplitude, i.e. to 0dB. [1]
+	l:  reflection order high limit (greatest number of wall reflections)
+	       The high reflection order determines the highest number of computed 
+	       reflection surfaces included in response.
+	u:  reflection order low limit (least number of wall reflections)
+	       The low reflection order determines the least number of computed 
+	       reflection surfaces included in response.
+	P: source dispersion pattern rolloff. 0dB to -90dB or less.
+	       0 = off (i.e. omnidirectional) 
+	       Given the directional or forward orientation of source, rolloff determines 
+	       amplitude of off-axis, non-forward radiations. Rear radiations 
+	       (i.e. deviations of +/- 180 degrees) are attenuated by full rolloff;
+              lesser angles by corresponding proportion of rolloff. Rolloff is applied
+	       to both direct (i.e. source-to-speaker) and reflected (i.e. source-to-wall) 
+	       radiations.[0]
+	/q: forward orientation of non-rotated source:
+		0 = orient to 0 degrees of polar room coordinates (i.e. source as origin)
+		1 = orient to listener (facing listener, i.e. listener as origin) [0]
+	O: rotation of source, in degrees.[0]
+	       0 = no rotation, +/- 180 degrees = reversed orientation.
+	       Sources are rotated relative to the orientation specified in -/q.
+	       Source rotation requires directional (i.e. non-zero) dispersion rolloff.
+	       (See -P above.)
+	       ** Source and Impulse Time Position Modification Parameters:
+	q:     reflection impulses time position scaler: 1 = no change [1]
+	  ** REFLECTION ORDER IMPULSE RESPONSES **
+	8:     reflection order impulse responses switch: 0 = off, 1 = on [0]
+	9:     reflection order impulse response sound file name
+	          Channels of audio sound file are used as the impulse responses for
+	          reflection order. Application of impulse responses are handled
+	          according to the -? parameter. If no file is given, then single impulses,
+	          are used, modified in amplitude in accord with  their distance, 
+                 orientation to the source, and reflection order response filter settings.
+	/b:  reflection order impulse response convolution mode [-1]
+	V:  reflection order channel assignments file (1-?)
+	/a:  reflection order gainscale factors file (in dB)
+	/n: reflection order impulse response presence levels file (in dB)
+	/i:   reflection order impulse response truncation envelope file
+	/h:   reflection order impulse response truncate duration
+	  ** REFLECTION ORDER IMPULSE RESPONSE FILTER **
+	/c:   Filter Mode: 0 = off, 1 = pre-filter input response, 
+	        2 = compounded filtering of convolution outputs, 3 = both modes 1 and 2.
+	/d:   reflection order impulse response filter low rolloff frequency [?]
+	/e:   reflection order impulse response filter high rolloff frequency [?]
+	/f:   reflection order impulse response filter low amplitude rolloff per octave in dB [?]
+	/g:   reflection order impulse response filter high amplitude rolloff per octave in dB [?]
+	   ** Reflection Order Impulse Response Window Sample Mode **
+	Q:   reflection order impulse response window sample mode: 
+               0 = off, 1 = on, 2 = on with sync [0]
+	~: low order attack duration 
+	=: low order release duration 
+	@: high order attack duration 
+	/v: high order release duration 
+	:: envelope shape index 
+	0:  Substitute delay time air absorption amplitude level with 
+	    peak amplitude from sampled impulse response window range
+	     0 = off, 1 = on [0]
+	  ** WALL IMPULSE RESPONSES **
+	5:     wall impulse responses switch: 0 = off, 1 = on [0]
+	K:     wall impulse response sound file name
+	          Channels of audio sound file are used as the impulse responses of the walls
+	          of the virtual space. Application of impulse responses are handled
+	          according to the -? parameter. If no file is given, then single impulses,
+	          are used, modified in amplitude in accord with  their distance, 
+                 orientation to the source, and wall response filter settings.
+	t:  wall impulse response convolution mode [-1]
+	1:  wall channel assignments file (1-?)
+	2:  wall gainscale factors file (in dB)
+	/j: wall impulse response presence levels file (in dB)
+	7:   wall impulse response truncation envelope file
+	6:   wall impulse response truncate duration
+	  ** WALL IMPULSE RESPONSE FILTER **
+	T:   Filter Mode: 0 = off, 1 = pre-filter input response, 
+	        2 = compounded filtering of convolution outputs, 3 = both modes 1 and 2.
+	x:   wall impulse response filter low rolloff frequency [?]
+	y:   wall impulse response filter high rolloff frequency [?]
+	z:   wall impulse response filter low amplitude rolloff per octave in dB [?]
+	Z:   wall impulse response filter high amplitude rolloff per octave in dB [?]
+	/t:	source minimum distance from listener 
+	/u:	use collapsed threshold amplitudes  0 = no, 1 = yes [0]
+	3:	impulse inclusion threshold in dB [-96]
+	U:	impulse end truncation threshold in dB [-96]
+	v:	impulse end truncation release time in seconds [0]
+	G: master gain in decibels (pre-normalization) [0]
+	N: normalization:                [1]
+	   0: Do not normalize. 
+	   1: Normalize channels independently.
+	   2: Normalize channels together against channel with peak amplitude.
+	   3: Normalize channels together if any channel exceeds 0 decibels.
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]

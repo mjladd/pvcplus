@@ -1,0 +1,89 @@
+ringfilter:  phase vocoder reverberator/resonator
+		with switchable input/feedback loop filter 
+ringfilter   [flags] [input file] [output file]
+	    Most formats accepted. Output format copied from input file.
+	    (Values in brackets denote defaults.)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	h:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		      4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	A:	MASTER (source + reverb) gain in decibels (func)[0.] 
+	S:	SOURCE gain in decibels (func)[0.] 
+	f:	SOURCE frequency shift factor (bin frequency adder, before -P )(func) [0.] 
+	p:	SOURCE pitch transposition in semitones (func) [0]
+	B:	TRANSPOSITION/SHIFT application FLAG [0]
+		 Apply -P and -a to:
+		  source only -- prefilter (0),
+		  or to  source and filter -- postfilter (1)
+	    *** y(n) ****
+	F:	REVERB gain in decibels (func)[0.] 
+	H:	REVERB frequency shift factor (bin frequency adder, before -P )(func) [0.] 
+	P:	REVERB pitch transposition in semitones (func) [0]
+	Z:	REVERB decay time in seconds (func) [0.] 
+	j:      REVERB random frequency deviation in Hz (0 -> ?) (func) [0.]
+	K:      REVERB random frequency deviation lowpass 
+			filter response time  (func) [0.]
+	W:      REVERB random amplitude deviation floor in dB (0 -> -96) (func) [0.]
+	a:      REVERB random amplitude deviation lowpass 
+			filter response time  (func) [0.]
+	    *** x(n) **** INPUT  AND EQ FILTER **
+	z:	REVERB (input) threshold in dB (0. > v >= -96.) (func) [-96.] 
+	g:	REVERB threshold pass mode [1] 
+		    (1 = pass bins > threshold,  0 = bins < threshold)
+	l:      REVERB (input) envelope attack time  (func) [0.]
+	L:      REVERB (input) envelope release time   (func) [0.]
+	O:	REVERB (input) EQ: Low shelf gain in dB (func)[0.] 
+	Y:	REVERB (input) EQ: High shelf gain in dB (func) [0.] 
+	d:	REVERB (input) EQ: Low shelf frequency in Hz (func) [200.] 
+	n:	REVERB (input) EQ: High shelf frequency in Hz (func) [2000.] 
+	    *** y(n-1) **** FEEDBACK EQ FILTER **
+	T:	REVERB (feedback) EQ: decay time (func) [1.] 
+	E:	REVERB (feedback): 
+		    signal balance gain limiter level (0 to 96dB) [0.] 
+		    (reverb EQ filter output is balanced against input)
+		     0 = balance off (balance gain limited to 0 dB),  
+		     96 = balance full-on (balance gain limited to 96 dB, unlimited)
+	X:	REVERB (feedback) EQ: Low shelf gain in dB (func) [0.] 
+	Q:	REVERB (feedback) EQ: High shelf gain in dB (func) [0.] 
+	U:	REVERB (feedback) EQ: Low shelf frequency in Hz (func) [200.] 
+	m:	REVERB (feedback) EQ: High shelf frequency in Hz (func) [2000.] 
+	    *** y(n) **** OUTPUT EQ FILTER **
+	k:	REVERB (output) EQ: Low shelf gain in dB (func) [0.] 
+	c:	REVERB (output) EQ: High shelf gain in dB (func) [0.] 
+	s:	REVERB (output) EQ: Low shelf frequency in Hz (func) [200.] 
+	G:	REVERB (output) EQ: High shelf frequency in Hz (func) [2000.] 
+	    *******  FILTER **
+	y:	FILTER frequency response file 
+	v:	FILTER FREQUENCY RESPONSE PRINTOUT: high cutoff frequency in Hz [0]
+		    (0 = off)
+	o:	FILTER placement: for transfer function: y(n) = a * x(n) + b * y(n-1) 
+		    0 = a,  1 = b [0] 
+	u: 	FILTER frequency response transposition in semitones (func) [0]
+	V:	FILTER frequency response shifter (before -U) (func) [0.] 
+	x:	FILTER source decibels (reduces filtered signal in proportion)(func) [0.] 
+	q:	FILTER warp index for reshaping frequency response (func) [0.] 
+		    values > 0 close down response, < 0 open it up
+	r:	FILTER (feedback) : decay time (func) [1.] 
+	t:	oscillator resynthesis threshold in dB 
+		    (both reverb and source) [-96]
+	w:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	J:	Optional Analysis Sound File Source (for playback comparison only) [none]
+	_:	 AUTO OUTPUT SOUND FILE PLAY:
+		    0  = off 
+		    -1 = interactive: Prompt for each play.
+		    -2 = interactive: Play once, then prompt for more.
+                   1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 PEAK RESCALE LEVEL 0 to -96 dB 
+		    1 = Rescale to level of input file.
+		    2 = Bypass rescaling. [ 1 ]

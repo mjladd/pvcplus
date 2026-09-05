@@ -1,0 +1,8 @@
+tool = "gen2"
+description = "gen2: polynomial-defined curve"
+legacy_steps = [
+    "gen2 -L1024 -o 1 1 > {output}",
+]
+output_ext = "f32"
+tolerance = { kind = "exact" }
+notes = "The trailing N in gen2's usage ('a1...aN b0...bM N') is the count of sine coefficients to actually use from the list, not the output length (that's -L) - passing a plausible-looking large N (e.g. 1024) reads N-1 uninitialized stack floats as extra coefficients, which is undefined behavior that happens to print 'GEN2: all-zero function' rather than producing a curve. -o 1 1 is a single sine coefficient (a1=1), matching N=1 exactly."

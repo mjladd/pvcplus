@@ -1,0 +1,7 @@
+USAGE:
+
+   dBtoamp decibel value(s)
+
+   This routine prints out the amplitude for the decibel level(s).
+   ( amplitude = 10^( decibel / 20.) )
+

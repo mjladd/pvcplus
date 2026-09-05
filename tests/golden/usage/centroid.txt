@@ -1,0 +1,42 @@
+centroid:  brightness envelope tracker
+centroid [flags] [input file] [output centroid file (optional)]
+                    (16-bit shorts)     (default: centroid.out)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		      4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+	D:	analysis frames per second [200]
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (-1. = end of file) [0.] 
+	C:	analysis channel (1 -> ?) (0 = average of all) [0] 
+	X:	multiple channel method: [0] 
+		    0 = average,  1 = peak
+	Q:	DETECTION BAND: data type [0]
+		    0 = freq,  1 = octave.pitchclass
+	f:	DETECTION  BAND: lower freq/pitch boundary (func) [0]
+	F:	DETECTION  BAND: upper freq/pitch boundary (func) [Nyquist]
+	H:	warp index for reshaping magnitude response (func) [0.] 
+		    Values > 0 expand the dynamic range, 
+		    values < 0 compress the dynamic range. 
+	l:      envelope ascent time  (func) [0.]
+	L:      envelope descent time   (func) [0.]
+	W:	centroid distribution warp index  [0]
+		    value of 0: no warp
+		    values > 0 warp the  distribution downward
+		    values < 0 warp the distribution upward
+	p:	print elapsed time (1 = on,  0 = off) [0]
+	r:	output samples per second (interpolated) [500.]
+	g:	output data type 0 = ascii,  1 = floats [0]
+	q:	output data format [0] 
+		    0 = frequency units, 
+		    1 = as pitch in octave units, 
+		    3 = octave.pitchclass code
+		    4 = semitones of deviation from reference 
+		    4 = inverted semitones of deviation from reference 
+	G:	reference pitch in octave.pitchclass for -q2
+		    semitones of deviation [0]
+	P:	plot output, 1 = yes, 0 = no [0]

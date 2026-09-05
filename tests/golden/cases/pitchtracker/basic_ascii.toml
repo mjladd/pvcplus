@@ -1,0 +1,9 @@
+tool = "pitchtracker"
+input = "partials_vibrato_2s_44k.wav"
+description = "pitch trajectory over the vibrato fixture"
+legacy_steps = [
+    "pitchtracker {input} {output}",
+]
+output_ext = "txt"
+tolerance = { kind = "numeric", max_abs_error = 1e-3 }
+notes = "Uses the vibrato/harmonic-partials fixture specifically (time-varying pitch, not a fixed tone)."

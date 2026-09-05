@@ -1,0 +1,50 @@
+
+
+UNIX COMMAND:
+/opt/pvc-legacy/bin/pitchtracker 
+
+
+pitchtracker:  pitch trajectory tracker
+pitchtracker [flags] [input sound file] [output file]
+	    Most input soundfile formats accepted.
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	D:	analysis frames per second [200]
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds (-1. = end of file) [0.] 
+	C:	analysis channel (1 -> ?) (0 = average of all) [0] 
+	X:	multiple channel method: [0] 
+		    0 = average,  1 = peak
+	m:	DETECTION METHOD: 0 = optimal comb,  1 = strongest frequency,
+			2 = centroid frequency [0]
+	f:	DETECTION  BAND: lower freq/pitch boundary (func) [13]
+	F:	DETECTION  BAND: upper freq/pitch boundary (func) [Nyquist]
+		   Values less than or equal to 12 are treated as octave.pitchclass.
+	j:	DETECTION  WINDOW SIZE: BEGIN/MINIMUM (seconds) [.05]
+	J:	DETECTION  WINDOW SIZE: MAXIMUM (seconds) [.3]
+	d:	DETECTION  THRESHOLD:  (0 to -96 dB) [-40]
+	    COMPRESSOR/GATE
+	H:	mode filter window size in seconds [0]
+	E:	amplitude weighted oversampling factor [0]
+	T:	compression threshold level in decibels (0 to -96) (func) [0]
+	G:	decibels of compression 
+		    (0 to -96) (0 = no compression)(func) [0(off)]
+	S:	gate threshold level in decibels (0 to -96) (func) [-96 (off)]
+	l:      envelope attack time  (func) [0.]
+	L:      envelope release time   (func) [0.]
+	W:	distribution warp index (post compression) [0]
+		    value of 0: no warp
+		    values > 0 warp the distribution downward
+		    values < 0 warp the distribution upward
+	p:	print elapsed time (1 = on,  0 = off) [0]
+	O:	OUTPUT FORMAT 0 = frequencies,  1 = octave.decimal
+		    	2 = semitones of deviation above/below -o [0]
+		    	3 = negative of semitones of deviation above/below
+			4 = MIDI, 5 = octave.pitchclass [0]
+	o:	reference frequency or pitch (in octave.pitchclass)
+			 for semitones of deviation (func) [440]
+	r:	OUTPUT samples per second (interpolated) [500.]
+	g:	OUTPUT data type 0 = ascii,  1 = floats [1]
+	a:	OUTPUT lowpass filter smoothing response time [0.]
+	P:	plot output file using gnplot

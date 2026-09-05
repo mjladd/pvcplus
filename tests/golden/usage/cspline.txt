@@ -1,0 +1,2 @@
+usage: cspline len_flag [flags] x0 y0 x1 y1 ... xN yN
+where len_flag is e.g.: -L1024

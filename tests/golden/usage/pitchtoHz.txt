@@ -1,0 +1,7 @@
+USAGE:
+
+   pitchtoHz octave.pitch class value(s)
+
+   This routine prints out the frequency
+    for the specified octave.pitch class value(s).
+

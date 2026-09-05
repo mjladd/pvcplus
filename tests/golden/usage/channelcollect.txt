@@ -1,0 +1,26 @@
+channelcollect:    
+channelcollect   [flags] [input files]
+	    Most formats accepted.
+	    (Values in brackets denote defaults.)
+	o:	output file
+		OUTPUT MODE:
+	i:	Interleave input channels into a multi-channel output file;
+			Channel interleave order corresponds to input order or -f file, if specified.
+	c:	Concatenate input channels into a one-channel output file;
+			Channel sequence order corresponds to input order or -f file, if specified.
+	n:	normalize all output channels (as selected): 0 = off, 1 = normalize channels independently, 
+			2 = normalize channels together against channel with peak amplitude. [0]
+	d: 	maximum truncate duration [off]
+	a: 	amplitude envelope file (optional) [off]
+	f:	optional order/selection file for output channels
+			The ASCII integer file determines the selection, number, and order of output channels;
+			input channels are indexed as listed, beginning at 0. Input channel order serves as default.
+	l:	number of output channels  (optional) [all]
+			When  left unspecified, full input or file index list of channels is output, by default.
+			Values less than list length truncate output; values greater than list length are extended by
+			padding through repeat of output channel list, as needed.
+	g:	optional decibel gain values file for output channels, as selected and ordered;
+			The ASCII file of decibel values are applied to the output channels, as listed
+			or as selected, ordered, and limited in number by the -f flag file.
+			Lists longer than output files list are truncated; shorter lists are extended
+			through repetition of the list, as needed.

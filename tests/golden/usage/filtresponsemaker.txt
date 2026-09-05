@@ -1,0 +1,21 @@
+filtresponsemaker:  frequency response synthesizer
+			(frequency gradient format)  
+			(values in brackets represent defaults)
+filtresponsemaker   [flags]  [output freqresponse file]
+	N:	FFT length (must be a power of 2) [1024]
+	A:	Auto-adjust FFT size limit (0 = auto-adjust off) [0.]
+		    (In auto-adjust mode, the smallest  difference between
+		     adjacent breakpoint frequencies is used to set the FFT size, 
+		    -A sets the maximum size; 0 turns auto-adjustment off.)
+	F:	(ascii) DATA FILE of unordered breakpoint duples:
+		     Each represented by: 
+		     (1) octave.pitchclass or frequency 
+			(Values of 12 or less are treated as octave.pitchclass.)
+		     (2) decibels
+	f:	target sound file name 
+		     The frequency response sample rate is taken from the
+			target sound file.
+	i:	filter type: bandpass (0),  band reject (1) [0]
+	a:	decibels spectrum plot file
+	v:	FREQUENCY RESPONSE PRINTOUT: high cutoff frequency in Hz [0]
+		     (0 = off)

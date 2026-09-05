@@ -1,0 +1,77 @@
+harmonizer:  multiple level, phase vocoder harmonizer 
+		    with selectable frequency-band window 
+harmonizer   [flags] [input file] [output file]
+	    Most formats accepted. Output format copied from input file.
+	    (Values in brackets denote defaults.)
+	N:	FFT length (must be a power of 2) [1024]
+	M:	window size in samples (must be a power of 2) [2*FFT]
+		    (0 will automatically set window to 2*FFT size or larger)
+	w:	window type: 0 = hamming,  1 = rectangular  
+		    2 = Blackman,  3 = Bartlett triangular [0.]
+		    4-12 = Kaiser windows for alpha = 4-12,  respectively
+		    (representative sidelobe levels for alpha: 
+		     4 = -30dB,  8 = -58 dB,  12 = -90 dB)
+		    13 = Blackman-Harris, 14 = Nuttal, 15 = Blackman-Nuttal
+		    16 = Flat top
+	D:	analysis frames per second [200]
+	I:	time expansion/contraction factor  [1.] 
+		  (duration = duration * factor, 1. = original time) 
+	b:	begin time in seconds  [0.] 
+	e:	end time in seconds ( 0. = end of file) [0.] 
+	C:	resynthesis channel (1 -> ?) (0 = all) [0] 
+	A:	gain in decibels (func) [0.] 
+	    SOURCE
+	a:	source frequency shift factor 
+		    (bin frequency adder, before -P )(func)[0.] 
+	P:	source pitch transposition in semitones (func) [0]
+	G:	source gain control in decibels (func) [0.] 
+	g:	source delay time in seconds (func)[0.]
+	    HARMONIZER
+	q:	harmonizer frequency shift factor 
+		    (bin frequency adder, before -X )(func)[0.] 
+	X:	harmonizer pitch transposition in semitones (func) [0]
+	m:	harmonizer gain control in decibels (func) [0.] 
+	W:	harmonizer warp index for reshaping magnitude response (func) [0.] 
+		    Values > 0 expand the dynamic range, 
+		    values < 0 compress the dynamic range. 
+	    DATA FILE
+	F:	ascii data file name:
+		  data line parameter fields: 
+		    (1) shift factor (see -z for format) 
+		    (2) window: low boundary (in Hz or octave.pitchclass) 
+		    (3) window: high boundary   
+		    (4) decibels 
+		    (5) peak decibels 
+		    (6) stopband/boundary decibels 
+		    (7) Q-index (0: linear, positive: sharper/thinner, negative: smoother/wider ) 
+		    (8) time delay in seconds 
+	z:	data file shift method format [0]
+		     0 = frequency multipler
+		     1 = frequency adder
+		     2 = semitones of transposition
+	     INPUT DATA MACRO MODIFIERS:
+	U:	data frequency scaler [1] 
+	y:	data frequency shifter [0] 
+	o:	data peak dB_scaler [1] 
+	O:	data stopband dB scaler [1] 
+	Q:	data stopband dB shifter [0] 
+	r:	data Q index shifter [0] 
+	j:	data time delay scaler [1] 
+	n:	data time delay shifter [0] 
+	@:	shift factor shifter [0] 
+	Y:	shift factor scaler [1] 
+	J:	harmonizer amplitude interpolation control (0-1): 0 = original, 1 = modified (func) [1] 
+	K:	harmonizer frequency interpolation control (0-1): 0 = original, 1 = modified (func) [1] 
+	Z:	harmonizer time interpolation control (0-1): 0 = original, 1 = modified (func) [1] 
+	t:	oscillator re-synthesis threshold in decibels [ -96 ]
+	p:	amplitude reports print mode: 0 = off, 1 = on [0]
+	i:	time interval between amplitude reports [.25]
+	_:	 auto output sound file play:
+		    0  = off 
+		   -1 = interactive: Prompt for each play.
+		   -2 = interactive: Play once, then prompt for more.
+		    1 or greater = Auto-repeat for specified repetitions. [0]
+	=:	 peak rescale level 0 to -96 dB 
+		   1 = Rescale to level of input file.
+		   2 = Bypass rescaling.
+		   3 = Rescale only if peak exceeds 0dB. [ 1 ]
