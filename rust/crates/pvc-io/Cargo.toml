@@ -1,0 +1,12 @@
+[package]
+name = "pvc-io"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Audio, analysis-file (.pva), and control-file I/O for pvc. No libsndfile dependency."
+
+[dependencies]
+
+[dev-dependencies]

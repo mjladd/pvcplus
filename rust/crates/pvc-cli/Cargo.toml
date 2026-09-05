@@ -1,0 +1,18 @@
+[package]
+name = "pvc-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "pvc: a modern CLI for the PVCplus phase-vocoder toolkit."
+
+[[bin]]
+name = "pvc"
+path = "src/main.rs"
+
+[dependencies]
+pvc-core = { path = "../pvc-core" }
+pvc-io = { path = "../pvc-io" }
+
+[dev-dependencies]
