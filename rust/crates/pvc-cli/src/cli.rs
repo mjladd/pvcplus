@@ -223,6 +223,17 @@ pub enum FnCommand {
 
         output: PathBuf,
     },
+
+    /// gen6: uniform noise in `[-1.0, 1.0)` (`legacy/cmusic_gen/gen/
+    /// gen6.c`), using the exact `rand()` sequence the C gets by never
+    /// seeding one (glibc's default state, as if `srandom(1)` had been
+    /// called) - deterministic, not a fresh random table on every run.
+    Gen6 {
+        #[arg(short = 'L', long)]
+        length: usize,
+
+        output: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
