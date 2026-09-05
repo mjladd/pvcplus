@@ -377,9 +377,9 @@ pri( ochan, "NUMBER OF OUTPUT CHANNELS" ) ;
 
 
     // CLOSE  INPUT  AND OUTPUT FILES
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 //    close(ofd) ; 
-    fclose( ofd ) ; 
+    if(ofd)fclose(ofd); 
 
 
 

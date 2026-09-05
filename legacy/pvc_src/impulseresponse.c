@@ -321,7 +321,7 @@ for(outchan = beginchan,  channow = 0; outchan < endchan; outchan++,  channow++ 
 
 
 // CLOSE INPUT IMPULSE FILE
-fclose(ifd) ;  
+if(ifd)fclose(ifd);  
 
 // FIND GREATEST PEAK AMP
 peakAmp = peakInputChannelAmps[ 0 ] ; peakAmpChannelNumber = 1 ;

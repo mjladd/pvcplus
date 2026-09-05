@@ -1109,7 +1109,7 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
 } 
 
     // CLOSE  INPUT FILE
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 
     temp = (float) limitcount / (float) (ochan * frame_count) ; 
     prf( temp,  "\nBALANCE LIMITER USAGE: PROPORTION OF TIME USED" ) ; 

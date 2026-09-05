@@ -701,7 +701,7 @@ for(outchan = beginchan, channow = 0; outchan < endchan; outchan++, channow++ ){
 
 
 // CLOSE  INPUT FILE
-fclose(ifd) ;  
+if(ifd)fclose(ifd);  
 
 // CLOSE IMPULSE FILE
 fclose( impulseData ) ; 

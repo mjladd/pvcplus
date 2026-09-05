@@ -1401,7 +1401,7 @@ pri( (ainchan+1), "INPUT ANALYSIS (FILTER) CHANNEL" ) ;
 } 
 
     // CLOSE  INPUT FILE
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 
 
     fprintf(stderr,"\nTVFILTDEVIATOR : RESYNTHESIS COMPLETED\n");

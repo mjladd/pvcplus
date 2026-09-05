@@ -1408,7 +1408,7 @@ if( !frame_count )prt( "HERE: OVERLAPP-ADD  FOR FILTER ONLY" ) ;
 } 
 
     // CLOSE  INPUT FILE
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 
 
 

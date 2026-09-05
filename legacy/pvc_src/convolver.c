@@ -1018,7 +1018,7 @@ for(channow = 0, outchan = beginchan; channow < ochan; channow++, outchan++ ){
 } 
 
     // CLOSE  INPUT FILE
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
     fprintf(stderr,"\nCONVOLVER : RESYNTHESIS COMPLETED\n");
  
 

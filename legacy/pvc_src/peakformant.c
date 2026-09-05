@@ -651,7 +651,7 @@ fprintf( stderr, "HERE\n");
     
     fclose( fscratch ) ;
     // CLOSE  INPUT  FILES
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 
 
     // CLOSE  OUTPUT  FILES

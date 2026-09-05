@@ -639,7 +639,7 @@ prf( f_spect_t,  "f_spect_t" ) ;
 
 
     // CLOSE  INPUT FILE
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 
 
    if( harmadd.n != 1. ) fclose(harmadd.fp ) ;

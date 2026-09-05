@@ -537,7 +537,7 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
 } 
 
     // CLOSE  INPUT FILE
-fclose(ifd) ;  
+if(ifd)fclose(ifd);  
 
 //    fclose( adata ) ; 
 
@@ -688,7 +688,7 @@ temp = findPeakAmp( OutputSpectrum, (N + 2) );
 // WRITE RESPONSE TO file
 for( i = 0; i < (N + 2); i++ )fwrite( &OutputSpectrum[ i ], sizeof(float), 1, ofd ) ;
 
-fclose(ofd) ; 
+if(ofd)fclose(ofd); 
 
 // WRITE RESPONSE TO BINARY DECIBELS SPECTRUM FILE
 if( strcmp( decibelsSpectrumPlotFile, "" ) != 0 ) 

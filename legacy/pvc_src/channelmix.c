@@ -366,7 +366,7 @@ for(l = 0; l < 2; l++ ){
     // *******
 
     // CLOSE  INPUT FILE
-fclose(ifd) ;  
+if(ifd)fclose(ifd);  
 
 for( chan = 0; chan < ichan; chan++ ) fclose( inputTempChanFiles[ chan ] ); 
 

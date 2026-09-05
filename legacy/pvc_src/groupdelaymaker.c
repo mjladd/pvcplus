@@ -416,7 +416,7 @@ prf( fundamental,  "FUNDAMENTAL" ) ;
     for( i = 0; i < (N + 2); i++ ) fwrite( &F[ i ], sizeof(float), 1, ofd ) ;
 
 //    close(ofd) ; 
-    fclose( ofd ) ; 
+    if(ofd)fclose(ofd); 
 
 //fprintf( stderr,  "\n\nNUMBER OF SYNTHESIS OUTPUT AMP/FREQ PAIRS:    %d\n",  i/2 ) ; 
     

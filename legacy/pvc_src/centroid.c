@@ -664,7 +664,7 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
 
 
     // CLOSE  INPUT  FILES
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 
 
     // CLOSE  OUTPUT  FILES

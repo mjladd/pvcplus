@@ -1087,7 +1087,7 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
 } 
 
     // CLOSE  INPUT FILE
-fclose(ifd) ;  
+if(ifd)fclose(ifd);  
 
 
 

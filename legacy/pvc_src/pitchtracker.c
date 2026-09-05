@@ -1430,7 +1430,7 @@ if( DEBUGFLAG ) fprintf( stderr, "\nnote_ampthresh: %f  ampnow: %f, outval: %f",
 	fclose( famp2 ) ;
 	fclose( ffreq2 ) ;
 	// CLOSE INPUT FILES
-	fclose(ifd) ;  
+	if(ifd)fclose(ifd);  
 	fclose( fofd ); 
 
 

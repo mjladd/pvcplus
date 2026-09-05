@@ -657,7 +657,7 @@ prt( "INITIALIZING THE PREVIOUS CHANNEL . . . " ) ;
 
 
     // CLOSE  INPUT  FILES
-    fclose(ifd) ;  
+    if(ifd)fclose(ifd);  
 
 
     // CLOSE  OUTPUT  FILES
