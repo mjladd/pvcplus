@@ -6,4 +6,4 @@ legacy_steps = [
 ]
 output_ext = "pva"
 tolerance = { kind = "exact" }
-notes = "pvanalysis.c's per-channel loop re-seeks to the start of the frame data on every channel pass and writes each frame's channels interleaved (frame 0 ch0, frame 0 ch1, frame 1 ch0, ...), not sequential per-channel blocks (channel 0's frames, then channel 1's frames) - confirmed against real 2-channel output, since the mono basic_analysis.toml case can't distinguish the two layouts at all. See pvc-io::pva's module doc comment."
+notes = "pvanalysis.c's per-channel loop re-seeks to the start of the frame data on every channel pass and writes each frame's channels interleaved (frame 0 ch0, frame 0 ch1, frame 1 ch0, ...), not sequential per-channel blocks (channel 0's frames, then channel 1's frames) - confirmed against real 2-channel output, since the mono basic_analysis.toml case can't distinguish the two layouts at all. See pvc-io::pva's module doc comment. Also exercised by rust/crates/pvc-cli/tests/golden_pvanalysis.rs (see basic_analysis.toml's note for how that comparison actually works - the `exact` tolerance kind below is a placeholder, not read by that test)."

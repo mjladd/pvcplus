@@ -113,6 +113,16 @@ pub enum Command {
         input: PathBuf,
         output: PathBuf,
     },
+
+    /// Phase vocoder analysis only: writes a `.pva` frame file, no
+    /// resynthesis.
+    ///
+    /// Ports `pvanalysis`'s audio-processing path (`legacy/pvc_src/
+    /// pvanalysis.c`) - see `pvc-core::tools::analyze`'s doc comment for
+    /// what's in and out of scope. Always writes the new `PVA1` format
+    /// (see `pvc_io::pva`'s module doc comment) - never the legacy
+    /// layout, which is a read-only oracle-comparison format here.
+    Analyze(Box<AnalyzeArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -205,6 +215,68 @@ pub struct PvArgs {
     /// Brickwall filter high frequency bound in Hz (`-1` = Nyquist).
     #[arg(long = "filter-high", default_value_t = -1.0, allow_hyphen_values = true)]
     pub filter_high: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc analyze`'s flag surface. Long names follow the same convention as
+/// [`PvArgs`]; see `pvc-core::tools::analyze`'s doc comment for why these
+/// are plain numbers, not `@path`-capable control functions like `pv`'s -
+/// none of `pvanalysis.c`'s equivalent flags are control-function strings
+/// in the C either.
+#[derive(clap::Args, Debug)]
+pub struct AnalyzeArgs {
+    /// FFT size (must be a power of two).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis window length. Defaults to `4096` - the C's own hardcoded
+    /// default, *not* `2 * fft` (same gotcha as `pv`'s `--window-size`;
+    /// see `pvc-core::tools::analyze`'s doc comment). Pass `0` for the
+    /// `2 * fft` auto-scaling rule instead.
+    #[arg(long, default_value_t = 4096)]
+    pub window_size: usize,
+
+    /// Analysis window shape.
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// Analysis frames per second (sets the hop size).
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Gain in dB.
+    #[arg(long, default_value_t = 0.0, allow_hyphen_values = true)]
+    pub gain: f32,
+
+    /// Low shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    /// High shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    /// Low shelf EQ frequency in Hz.
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    /// High shelf EQ frequency in Hz.
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// Spectrum magnitude warp index (`0` = no warp).
+    #[arg(long, default_value_t = 0.0, allow_hyphen_values = true)]
+    pub warp: f32,
 
     pub input: PathBuf,
     pub output: PathBuf,
