@@ -3,9 +3,8 @@
   "build": {
     "context": "..",
     "dockerfile": "../Dockerfile",
-    "options": ["--platform=linux/arm64"]
+    "target": "dev"
   },
-  "runArgs": ["--platform=linux/arm64"],
 
   "customizations": {
     "vscode": {
