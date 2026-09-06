@@ -26,9 +26,11 @@ pub fn run(args: &AnalyzeArgs) -> Result<()> {
     };
 
     let mut channels: Vec<Vec<Vec<f32>>> = Vec::with_capacity(audio.channels.len());
+    let mut peak_amps = Vec::with_capacity(audio.channels.len());
     for channel in &audio.channels {
-        let frames = process_channel(channel, audio.sample_rate, &params);
+        let (frames, peak_amp) = process_channel(channel, audio.sample_rate, &params);
         channels.push(frames.iter().map(|f| f.to_pva_floats()).collect());
+        peak_amps.push(peak_amp);
     }
 
     // Same rationale as `pvc pv`'s per-channel length trim: each channel
@@ -50,6 +52,7 @@ pub fn run(args: &AnalyzeArgs) -> Result<()> {
             window_type: window_type_code(params.window),
         },
         channels,
+        peak_amps,
     };
 
     pvc_io::write_pva(&args.output, &data)

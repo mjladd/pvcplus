@@ -92,12 +92,24 @@ consistency with the rest of the shelf-EQ/gain family.
 
 ## 4. twarp → `pvc twarp`
 
-Time-varying resynthesis driven by a `.pva` analysis file; always
-oscillator-bank (no overlap-add path exists). **Output file must already
-exist** with a valid header (`outfile_setup` opens it `SFM_READ` first
-purely to read sample rate/channels - it never creates one; found via the
-golden harness, see `tests/golden/cases/twarp/*.toml`). The new CLI should
-just create the output file itself rather than reproducing this quirk.
+Time-varying resynthesis driven by a `.pva` analysis file. **Correction**
+(confirmed by reading `twarp.c` directly and empirically, via a debug
+build printing the resolved `obank` flag): this does *not* always use the
+oscillator bank - unlike `plainpv`, whose selector has an extra hardcoded
+`phaseLockFlag == 1 ||` clause forcing oscillator-bank unconditionally,
+`twarp`'s otherwise-identical-looking selector lacks that clause, so it
+genuinely takes the overlap-add path whenever pitch transposition (`-P`)
+and frequency shift (`-a`) are both left at their constant-zero defaults,
+switching to the oscillator bank only when either is used. Verified: a
+default invocation (no `-P`/`-a`) printed `obank=0`; adding `-P7` flipped
+it to `obank=1`. Both existing golden cases (`basic_chain.toml`,
+`rate_multiplier.toml`) use neither flag, so both were recorded via the
+overlap-add path, not the oscillator bank as this section previously
+(incorrectly) claimed. **Output file must already exist** with a valid
+header (`outfile_setup` opens it `SFM_READ` first purely to read sample
+rate/channels - it never creates one; found via the golden harness, see
+`tests/golden/cases/twarp/*.toml`). The new CLI should just create the
+output file itself rather than reproducing this quirk.
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|

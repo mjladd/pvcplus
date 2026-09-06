@@ -1,0 +1,11 @@
+tool = "twarp"
+input = "sine440_2s_44k.wav"
+description = "pvanalysis -> twarp with a pitch transposition, exercising the oscillator-bank resynthesis path"
+legacy_steps = [
+    "pvanalysis -N1024 {input} analysis.pva",
+    "cp {input} {output}",
+    "twarp -Fanalysis.pva -d2.0 -P7 {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.002 }
+notes = "-P7 (pitch transpose) makes twarp's obank selector pick the oscillator bank instead of overlap-add (confirmed via a debug build: obank=0 without -P/-a, obank=1 with -P7 - see basic_chain.toml's note and docs/dev/parameter-inventory.md §4). Tolerance kind is `sample`, not `spectral` - see basic_chain.toml's note on why (the default rescale-to-analysis-peak quirk makes this near-silent, where dB-relative comparison is meaningless - this case's near-silent-block dB error against the real oracle measured 73.7dB despite an absolute sample error under 0.001, which is what actually matters here)."

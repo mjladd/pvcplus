@@ -32,11 +32,11 @@
 //!
 //! - **New** (`read_pva`/`write_pva`): magic `PVA1`, u32 version, u32 N,
 //!   u32 D, u32 sample_rate, u32 channels, u32 window_type, u64
-//!   frames_per_channel, then per channel `frames_per_channel` frames of
-//!   `N+2` f32 LE mag/freq pairs - same per-channel frame layout as the
-//!   legacy format, but with an explicit frame count instead of one
-//!   derived from file size, and no side-channel data hidden in header
-//!   padding.
+//!   frames_per_channel, `channels` f32 LE peak amplitudes (one per
+//!   channel, explicit rather than packed into header padding), then per
+//!   channel `frames_per_channel` frames of `N+2` f32 LE mag/freq pairs -
+//!   same per-channel frame layout as the legacy format, but with an
+//!   explicit frame count instead of one derived from file size.
 
 use std::fs;
 use std::io::{Read, Write};
@@ -85,6 +85,13 @@ pub struct PvaData {
     pub header: PvaHeader,
     /// `channels[ch][frame]` is one frame's `n + 2` mag/freq floats.
     pub channels: Vec<Vec<Vec<f32>>>,
+    /// Per-channel peak amplitude, in whatever scale the analysis stage
+    /// tracked it in - for a legacy file, `pvanalysis.c`'s own
+    /// `peakamps[]` (an FFT-*magnitude*-domain peak, not a waveform
+    /// peak; the two are easy to conflate - see `tools::twarp`'s doc
+    /// comment on why that distinction matters to a caller). One value
+    /// per channel, same order as `channels`.
+    pub peak_amps: Vec<f32>,
 }
 
 impl PvaData {
@@ -127,6 +134,12 @@ pub fn read_legacy_pva(path: &Path) -> Result<PvaData, PvaError> {
     }
     let frames_per_channel = data_bytes / per_channel_bytes;
 
+    // `pvanalysis.c` seeks back after writing every channel's frames and
+    // overwrites the first `chans` of the header's 27 "spare" floats
+    // with per-channel peak amplitudes (see this module's doc comment) -
+    // floats 5..5+chans.
+    let peak_amps: Vec<f32> = (0..channels as usize).map(|i| read_f32(5 + i)).collect();
+
     // Interleaved by frame across channels - frame 0's channel 0, frame
     // 0's channel 1, ..., frame 1's channel 0, ... - not channel 0's
     // frames followed by channel 1's frames. See this module's doc
@@ -160,6 +173,7 @@ pub fn read_legacy_pva(path: &Path) -> Result<PvaData, PvaError> {
             window_type,
         },
         channels: channel_data,
+        peak_amps,
     })
 }
 
@@ -174,6 +188,9 @@ pub fn write_pva(path: &Path, data: &PvaData) -> Result<(), PvaError> {
     f.write_all(&data.header.channels.to_le_bytes())?;
     f.write_all(&data.header.window_type.to_le_bytes())?;
     f.write_all(&(data.frames_per_channel() as u64).to_le_bytes())?;
+    for &peak in &data.peak_amps {
+        f.write_all(&peak.to_le_bytes())?;
+    }
     for ch in &data.channels {
         for frame in ch {
             for &v in frame {
@@ -218,6 +235,14 @@ pub fn read_pva(path: &Path) -> Result<PvaData, PvaError> {
         .map_err(|_| PvaError::Truncated(display.clone()))?;
     let frames_per_channel = u64::from_le_bytes(frames_bytes) as usize;
 
+    let mut peak_amps = Vec::with_capacity(channels as usize);
+    for _ in 0..channels {
+        let mut b = [0u8; 4];
+        f.read_exact(&mut b)
+            .map_err(|_| PvaError::Truncated(display.clone()))?;
+        peak_amps.push(f32::from_le_bytes(b));
+    }
+
     let frame_floats = n as usize + 2;
     let mut rest = Vec::new();
     f.read_to_end(&mut rest)?;
@@ -255,6 +280,7 @@ pub fn read_pva(path: &Path) -> Result<PvaData, PvaError> {
             window_type,
         },
         channels: channel_data,
+        peak_amps,
     })
 }
 
@@ -297,6 +323,7 @@ mod tests {
                 window_type: 0,
             },
             channels: channel_data,
+            peak_amps: (0..channels).map(|ch| ch as f32 * 0.1 + 0.05).collect(),
         }
     }
 
@@ -335,8 +362,15 @@ mod tests {
         for v in [n as f32, d as f32, r as f32, chans as f32, 0.0f32] {
             bytes.extend_from_slice(&v.to_ne_bytes());
         }
-        for _ in 0..27 {
-            bytes.extend_from_slice(&0.0f32.to_ne_bytes());
+        // Floats 5..5+chans: per-channel peak amplitudes, matching where
+        // pvanalysis.c overwrites them after the fact (see this module's
+        // doc comment).
+        let mut spare = [0.0f32; 27];
+        for (ch, s) in spare.iter_mut().take(chans as usize).enumerate() {
+            *s = ch as f32 * 0.1 + 0.05;
+        }
+        for v in spare {
+            bytes.extend_from_slice(&v.to_ne_bytes());
         }
         let frame_floats = n as usize + 2;
         let frames_per_channel = 3;
@@ -364,6 +398,7 @@ mod tests {
         assert_eq!(data.frames_per_channel(), 3);
         assert_eq!(data.channels[0][0].len(), 1026); // N + 2
         assert_eq!(data.channels[1][2][5], (1000 + 20 + 5) as f32);
+        assert_eq!(data.peak_amps, vec![0.05, 0.15]);
     }
 
     #[test]

@@ -123,6 +123,17 @@ pub enum Command {
     /// (see `pvc_io::pva`'s module doc comment) - never the legacy
     /// layout, which is a read-only oracle-comparison format here.
     Analyze(Box<AnalyzeArgs>),
+
+    /// Time-varying resynthesis: navigates a virtual time position
+    /// through a `.pva` analysis file (rate/origin/window-driven) and
+    /// resynthesizes from whatever frame it lands on.
+    ///
+    /// Ports `twarp`'s audio-processing path (`legacy/pvc_src/twarp.c`);
+    /// see `pvc-core::tools::twarp`'s doc comment for what's in and out
+    /// of scope (time-point dither, loop-boundary amplitude
+    /// normalization, and random amplitude/frequency "shimmer" aren't
+    /// ported yet).
+    Twarp(Box<TwarpArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -280,6 +291,158 @@ pub struct AnalyzeArgs {
 
     pub input: PathBuf,
     pub output: PathBuf,
+}
+
+/// `pvc twarp`'s flag surface. Long names follow the same convention as
+/// [`PvArgs`]/[`AnalyzeArgs`]. See `pvc-core::tools::twarp`'s doc comment
+/// for the features deliberately not exposed here yet (time-point
+/// dither, loop-boundary normalization, shimmer).
+#[derive(clap::Args, Debug)]
+pub struct TwarpArgs {
+    /// Output duration in seconds. `0` (the default) means "use the
+    /// analysis file's own duration".
+    #[arg(long, default_value_t = 0.0)]
+    pub duration: f32,
+
+    /// Analysis window length. `0` means auto (`2 * fft`, where `fft` is
+    /// always the analysis file's own FFT size - `twarp` has no
+    /// independent `--fft`). The C's own hardcoded default is a literal
+    /// `2048`, matching `pv`'s `--window-size` gotcha.
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    /// Resynthesis window shape.
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// Resynthesis frames per second (sets the hop size; there's no
+    /// independent stretch factor - unlike `pv`, `twarp`'s hop always
+    /// equals its own decimation).
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time-position origin in seconds into the analysis data - a plain
+    /// number, or `@path`.
+    #[arg(long = "time-origin", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub time_origin: ControlFn,
+
+    /// Playback rate multiplier (`1` = original speed, `2` = double
+    /// speed, negative = reverse, `0` = stationary) - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub rate: ControlFn,
+
+    /// Analysis time window low boundary in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long = "window-low", value_parser = parse_control_fn, default_value = "0")]
+    pub window_low: ControlFn,
+
+    /// Analysis time window high boundary in seconds (negative = end of
+    /// analysis data) - a plain number, or `@path`.
+    #[arg(long = "window-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub window_high: ControlFn,
+
+    /// Time-position change response (smoothing) time in seconds - a
+    /// plain number, or `@path`.
+    #[arg(long = "time-response", value_parser = parse_control_fn, default_value = "0")]
+    pub time_response: ControlFn,
+
+    /// Sampler-loop boundary smoothing time in seconds - a plain number,
+    /// or `@path`.
+    #[arg(long = "loop-smooth", value_parser = parse_control_fn, default_value = "0.2")]
+    pub loop_smooth: ControlFn,
+
+    /// Time-window behavior: stop once time exits the window
+    /// (`autostop`), or wrap/fold/clip at its edges forever (`loop`).
+    #[arg(long = "window-mode", value_parser = parse_window_mode, default_value = "loop")]
+    pub window_mode: bool,
+
+    /// Sampler-loop boundary behavior (only used in `loop` window mode).
+    #[arg(long = "loop-mode", value_parser = parse_loop_mode, default_value = "wrap")]
+    pub loop_mode: pvc_core::timenav::LoopMode,
+
+    /// Trigger the time window only once it's first entered, and extend
+    /// the output duration on the way out to guarantee a full pass back
+    /// to the window's edge (used for percussive onset + sustain-loop +
+    /// release shaping).
+    #[arg(long = "onset-release")]
+    pub onset_release: bool,
+
+    /// Pitch shift in semitones - a plain number, or `@path`. Nonzero (or
+    /// time-varying) picks oscillator-bank resynthesis; left at `0`
+    /// (with `--freq-shift` also `0`) picks overlap-add instead - see
+    /// `pvc-core::tools::twarp`'s doc comment.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// Frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// Gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// Amplitude envelope attack time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// Amplitude envelope release time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// Frequency-change response (smoothing) time in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "freq-response-time", value_parser = parse_control_fn, default_value = "0")]
+    pub freq_response_time: ControlFn,
+
+    /// Spectrum magnitude warp index (`0` = no warp) - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    /// Low shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-low-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_low_gain: ControlFn,
+
+    /// High shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_high_gain: ControlFn,
+
+    /// Low shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-low-freq", value_parser = parse_control_fn, default_value = "200")]
+    pub shelf_low_freq: ControlFn,
+
+    /// High shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub shelf_high_freq: ControlFn,
+
+    /// Oscillator resynthesis threshold in dB.
+    #[arg(long, default_value_t = -60.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    /// Path to the `.pva` analysis file to resynthesize from.
+    pub analysis: PathBuf,
+
+    pub output: PathBuf,
+}
+
+fn parse_window_mode(s: &str) -> Result<bool, String> {
+    match s {
+        "loop" => Ok(false),
+        "autostop" => Ok(true),
+        _ => Err(format!("expected \"loop\" or \"autostop\", got {s:?}")),
+    }
+}
+
+fn parse_loop_mode(s: &str) -> Result<pvc_core::timenav::LoopMode, String> {
+    match s {
+        "wrap" => Ok(pvc_core::timenav::LoopMode::Wrap),
+        "fold" => Ok(pvc_core::timenav::LoopMode::Fold),
+        "clip" => Ok(pvc_core::timenav::LoopMode::Clip),
+        _ => Err(format!(
+            "expected \"wrap\", \"fold\", or \"clip\", got {s:?}"
+        )),
+    }
 }
 
 fn parse_window(s: &str) -> Result<Window, String> {
