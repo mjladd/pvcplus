@@ -965,3 +965,45 @@ clearest evidence yet in this project for oracle-driven porting's core
 thesis: for code this size and this densely interdependent, "port by
 reading, verify against the real binary" finds real bugs that "port by
 reading" alone - however careful - does not.
+
+## Phase 5's `pvc convert-units`: a printf round-trip is not the same as a bit-exact oracle
+
+The first Phase 5 tool (the long tail of minor legacy utilities, after
+Phase 3's core-tool parity): `amptodB`, `dBtoamp`, `Hztopitch`,
+`pitchtoHz` (four tiny standalone converters, 54-69 lines each)
+consolidated into one `pvc convert-units --from --to` command. All four
+conversions turned out to already exist as oracle-verified math
+elsewhere in this codebase (`units::amp_to_db`, `response::oppc_to_hz`,
+and `pitchtracker.rs`'s private `hz_to_oppc`, promoted to
+`response::hz_to_oppc` so both `pvc pitchtrack` and `pvc convert-units`
+share one definition) - except `dBtoamp`'s own math, which turned out to
+be a genuine *third* dB/amplitude convention: unlike the `dB_to_amp`
+lookup table (`pv`/`filter`/`envelope`-family) and unlike the exact
+`amp_to_db`, the standalone `dBtoamp` tool never calls into
+`miscellania.c` at all - it inlines `pow(10., dB/20.)` directly. Added
+as `units::db_to_amp_exact`, confirmed against the real compiled binary
+in `/tmp/pvcbuild` (built once locally outside Docker for this session;
+values transcribed into the unit test's oracle table).
+
+That same real-binary check caught a subtler trap while writing
+`hz_to_oppc`'s own oracle test. `Hztopitch 261.625` prints
+`7.119999` - a deliberately-faithful reproduction of a real C quirk
+already documented on `pitchtracker.rs`'s output-format path (a value
+landing a hair below an exact octave boundary truncates into the
+*previous* octave's pitch classes rather than rounding up). Writing
+`assert_eq!(hz_to_oppc(261.625), 7.119999)` from that printed text
+**failed**: the computed `f32` was `7.1199994`, one bit off from what
+`"7.119999"` parses to. The C's `%f` only prints six digits after the
+decimal point, which isn't enough to pin down a specific `f32` bit
+pattern near that magnitude - two adjacent floats round-print
+identically. The fix wasn't a code change (the computation was already
+correct, confirmed separately by formatting the same value with `{:.6}`
+and getting `"7.119999"` back, matching the C exactly) - it was using
+the panic's own `left: 7.1199994` as the test's expected value instead
+of the printed text, the same "cite oracle values at full `f32`
+round-trip precision, not truncated display precision" convention
+already flagged by `#[allow(clippy::excessive_precision)]` comments
+elsewhere in `units.rs`. A reminder that a `printf`-based oracle
+comparison is exact only down to the number of digits actually printed
+- getting a numeric match from truncated text is necessary, not
+sufficient, evidence of a bit-exact result.

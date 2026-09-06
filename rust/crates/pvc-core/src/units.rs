@@ -127,6 +127,18 @@ pub fn amp_to_db(amp: f32) -> f32 {
     (20.0 * (amp as f64).log10()) as f32
 }
 
+/// Ports `dBtoamp.c`'s own inline conversion - a *third* dB/amplitude
+/// convention alongside this module's other two. Unlike `dB_to_amp`
+/// above (the `pv`/`filter`/`envelope`-family lookup table) and unlike
+/// `amp_to_db` (exact, but the opposite direction), the standalone
+/// `dBtoamp` tool never calls into `miscellania.c` at all - it computes
+/// `pow(10., dB/20.)` directly inline, so there is no shared table-based
+/// counterpart to reuse here. Confirmed exact (not merely close) against
+/// the real compiled `dBtoamp` binary in the unit test below.
+pub fn db_to_amp_exact(db: f32) -> f32 {
+    10.0f64.powf(db as f64 / 20.0) as f32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,6 +182,26 @@ mod tests {
         for (semi, want) in cases {
             let got = conv.convert(semi);
             assert_eq!(got, want, "semitones_to_mult({semi})");
+        }
+    }
+
+    #[test]
+    #[allow(clippy::excessive_precision)] // deliberately transcribed at full C float32 precision
+    fn db_to_amp_exact_matches_c_oracle() {
+        // `/tmp/pvcbuild/pvc_src/dBtoamp -6.0 0.0 20.0 -96.0 96.5`
+        let cases: [(f32, f32); 5] = [
+            (-6.0, 0.501187),
+            (0.0, 1.000000),
+            (20.0, 10.000000),
+            (-96.0, 0.000016),
+            (96.5, 66834.390625),
+        ];
+        for (db, want) in cases {
+            let got = db_to_amp_exact(db);
+            assert!(
+                (got - want).abs() < 1e-3,
+                "db_to_amp_exact({db}) = {got}, want {want}"
+            );
         }
     }
 
