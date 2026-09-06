@@ -26,6 +26,7 @@ Commands:
   envelope      Amplitude envelope over a frequency band: a time-series of scalar values (ASCII or raw float), never audio
   centroid      Spectral centroid (amplitude²-weighted mean frequency) over a frequency band: a time-series of scalar values, never audio
   flux          Spectral flux (frame-to-frame frequency change, optionally amplitude-weighted) over a frequency band: a time-series of scalar values, never audio
+  pitchtrack    Fundamental-frequency tracker: a time-series of scalar pitch values, never audio
   help          Print this message or the help of the given subcommand(s)
 
 Options:

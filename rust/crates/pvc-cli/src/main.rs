@@ -59,5 +59,7 @@ fn main() -> anyhow::Result<()> {
         Command::Centroid(args) => commands::centroid::run(&args),
 
         Command::Flux(args) => commands::flux::run(&args),
+
+        Command::Pitchtrack(args) => commands::pitchtrack::run(&args),
     }
 }

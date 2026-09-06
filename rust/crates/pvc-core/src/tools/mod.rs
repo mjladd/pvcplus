@@ -9,6 +9,7 @@ pub mod fluxoid;
 pub mod freqresponse;
 pub mod harmonizer;
 pub mod noisefilter;
+pub mod pitchtracker;
 pub mod pv;
 pub mod spectwarper;
 pub mod twarp;

@@ -10,6 +10,7 @@ pub mod gen;
 pub mod harmonize;
 pub mod info;
 pub mod legacy;
+pub mod pitchtrack;
 pub mod plot;
 pub mod preset;
 pub mod pv;
