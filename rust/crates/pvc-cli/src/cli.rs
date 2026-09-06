@@ -199,6 +199,32 @@ pub enum Command {
     /// (including a real crash bug it validates against instead of
     /// reproducing, and a real cross-band bug it reproduces faithfully).
     Harmonize(Box<HarmonizeArgs>),
+
+    /// Amplitude envelope over a frequency band: a time-series of
+    /// scalar values (ASCII or raw float), never audio.
+    ///
+    /// Ports `envelope`'s audio-processing path (`legacy/pvc_src/
+    /// envelope.c`); see `pvc-core::tools::envelope`'s doc comment for
+    /// the two-pass design and a real pass-1/pass-2 state-carryover
+    /// quirk reproduced faithfully.
+    Envelope(Box<EnvelopeArgs>),
+
+    /// Spectral centroid (amplitude²-weighted mean frequency) over a
+    /// frequency band: a time-series of scalar values, never audio.
+    ///
+    /// Ports `centroid`'s audio-processing path (`legacy/pvc_src/
+    /// centroid.c`); see `pvc-core::tools::centroid`'s doc comment for
+    /// two provably-dead flags this port doesn't expose.
+    Centroid(Box<CentroidArgs>),
+
+    /// Spectral flux (frame-to-frame frequency change, optionally
+    /// amplitude-weighted) over a frequency band: a time-series of
+    /// scalar values, never audio.
+    ///
+    /// Ports `fluxoid`'s audio-processing path (`legacy/pvc_src/
+    /// fluxoid.c`); see `pvc-core::tools::fluxoid`'s doc comment for the
+    /// shared two-pass shape.
+    Flux(Box<FluxArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -1601,6 +1627,261 @@ pub struct HarmonizeArgs {
     /// relative to the frame's own peak, are skipped).
     #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
     pub threshold: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc envelope`'s flag surface - see `pvc-core::tools::envelope`'s doc
+/// comment for the two-pass (per-channel analysis, then combine/
+/// compress/gate/warp/interpolate) design these flags reflect.
+#[derive(clap::Args, Debug)]
+pub struct EnvelopeArgs {
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Detection-band boundaries are octave.pitchclass values instead of Hz.
+    #[arg(long = "band-octave-pitchclass")]
+    pub band_octave_pitchclass: bool,
+
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// `< 0` means Nyquist.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    #[arg(long = "channel-method", value_parser = parse_channel_method, default_value = "average")]
+    pub channel_method: pvc_core::tools::envelope::ChannelMethod,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// Attack time for the subtractable "filtered envelope" (`-j`).
+    #[arg(long = "filtered-attack", value_parser = parse_control_fn, default_value = "0")]
+    pub filtered_attack: ControlFn,
+
+    /// Release time for the subtractable "filtered envelope" (`-k`).
+    #[arg(long = "filtered-release", value_parser = parse_control_fn, default_value = "0")]
+    pub filtered_release: ControlFn,
+
+    /// Proportion of the filtered envelope subtracted from the raw band
+    /// sum before the main attack/release (`-m`; `0` = none, `1` = full).
+    #[arg(long = "filtered-cut", value_parser = parse_control_fn, default_value = "0")]
+    pub filtered_cut: ControlFn,
+
+    #[arg(long = "compress-threshold", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_threshold: ControlFn,
+
+    #[arg(long = "compress-amount", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_amount: ControlFn,
+
+    #[arg(long = "gate-threshold", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub gate_threshold: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    #[arg(long = "output-rate", default_value_t = 500.0)]
+    pub output_rate: f32,
+
+    #[arg(long = "output-scale", value_parser = parse_output_scale, default_value = "amp")]
+    pub output_scale: pvc_core::tools::envelope::OutputScale,
+
+    #[arg(long = "output-type", value_parser = parse_output_type, default_value = "ascii")]
+    pub output_type: OutputType,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `ascii` (one `%f\n` value per line) vs `float` (headerless native f32
+/// stream) - shared by `envelope`/`centroid`/`fluxoid`/`pitchtrack`'s
+/// `-g` flag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputType {
+    Ascii,
+    Float,
+}
+
+fn parse_output_type(s: &str) -> Result<OutputType, String> {
+    match s {
+        "ascii" => Ok(OutputType::Ascii),
+        "float" => Ok(OutputType::Float),
+        _ => Err(format!("expected \"ascii\" or \"float\", got {s:?}")),
+    }
+}
+
+fn parse_channel_method(s: &str) -> Result<pvc_core::tools::envelope::ChannelMethod, String> {
+    use pvc_core::tools::envelope::ChannelMethod;
+    match s {
+        "average" => Ok(ChannelMethod::Average),
+        "peak" => Ok(ChannelMethod::Peak),
+        _ => Err(format!("expected \"average\" or \"peak\", got {s:?}")),
+    }
+}
+
+fn parse_output_scale(s: &str) -> Result<pvc_core::tools::envelope::OutputScale, String> {
+    use pvc_core::tools::envelope::OutputScale;
+    match s {
+        "amp" => Ok(OutputScale::Amp),
+        "db" => Ok(OutputScale::Db),
+        "inverted-amp" => Ok(OutputScale::InvertedAmp),
+        "inverted-db" => Ok(OutputScale::InvertedDb),
+        _ => Err(format!(
+            "expected \"amp\", \"db\", \"inverted-amp\", or \"inverted-db\", got {s:?}"
+        )),
+    }
+}
+
+/// `pvc centroid`'s flag surface - see `pvc-core::tools::centroid`'s doc
+/// comment for the two dead flags (`-T`/`-S` compress/gate, `-H` a
+/// second warp) not exposed here.
+#[derive(clap::Args, Debug)]
+pub struct CentroidArgs {
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    #[arg(long = "band-octave-pitchclass")]
+    pub band_octave_pitchclass: bool,
+
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// `< 0` means Nyquist.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    #[arg(long = "channel-method", value_parser = parse_channel_method, default_value = "average")]
+    pub channel_method: pvc_core::tools::centroid::ChannelMethod,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    #[arg(long = "output-rate", default_value_t = 500.0)]
+    pub output_rate: f32,
+
+    #[arg(long = "output-format", value_parser = parse_centroid_output_format, default_value = "freq")]
+    pub output_format: pvc_core::tools::centroid::OutputFormat,
+
+    /// Reference pitch in octave.pitchclass notation, used only by
+    /// `semitones-deviation`/`neg-semitones-deviation` output formats.
+    #[arg(long = "reference-pitch", default_value_t = 8.0)]
+    pub reference_pitch: f32,
+
+    #[arg(long = "output-type", value_parser = parse_output_type, default_value = "ascii")]
+    pub output_type: OutputType,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_centroid_output_format(
+    s: &str,
+) -> Result<pvc_core::tools::centroid::OutputFormat, String> {
+    use pvc_core::tools::centroid::OutputFormat;
+    match s {
+        "freq" => Ok(OutputFormat::Freq),
+        "octave" => Ok(OutputFormat::Octave),
+        "octave-pitchclass" => Ok(OutputFormat::OctavePitchclass),
+        "semitones-deviation" => Ok(OutputFormat::SemitonesDeviation),
+        "neg-semitones-deviation" => Ok(OutputFormat::NegSemitonesDeviation),
+        _ => Err(format!(
+            "expected \"freq\", \"octave\", \"octave-pitchclass\", \"semitones-deviation\", or \"neg-semitones-deviation\", got {s:?}"
+        )),
+    }
+}
+
+/// `pvc flux`'s flag surface - see `pvc-core::tools::fluxoid`'s doc
+/// comment for the shared two-pass shape.
+#[derive(clap::Args, Debug)]
+pub struct FluxArgs {
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    #[arg(long = "band-octave-pitchclass")]
+    pub band_octave_pitchclass: bool,
+
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// `< 0` means Nyquist.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    #[arg(long = "channel-method", value_parser = parse_channel_method, default_value = "average")]
+    pub channel_method: pvc_core::tools::fluxoid::ChannelMethod,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// Weight each bin's frequency change by its own amplitude.
+    #[arg(
+        long = "amplitude-weighting",
+        default_value_t = true,
+        action = clap::ArgAction::Set
+    )]
+    pub amplitude_weighting: bool,
+
+    #[arg(long = "compress-threshold", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_threshold: ControlFn,
+
+    #[arg(long = "compress-amount", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_amount: ControlFn,
+
+    #[arg(long = "gate-threshold", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub gate_threshold: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    #[arg(long = "output-rate", default_value_t = 500.0)]
+    pub output_rate: f32,
+
+    #[arg(long = "output-scale", value_parser = parse_output_scale, default_value = "amp")]
+    pub output_scale: pvc_core::tools::fluxoid::OutputScale,
+
+    #[arg(long = "output-type", value_parser = parse_output_type, default_value = "ascii")]
+    pub output_type: OutputType,
 
     pub input: PathBuf,
     pub output: PathBuf,

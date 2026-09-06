@@ -788,3 +788,96 @@ not the harmony bank's own very different bin count - ported by reading
 `noscbank2.c` closely rather than assuming two independent `OscBank::new`
 calls would suffice, since they would each derive their own (different,
 wrong) `tabscale`.
+
+## Task 3.10's `envelope`/`centroid`/`flux`: the first non-resynthesizing tools, and a shared shape that hides real per-tool differences
+
+`envelope.c`, `centroid.c`, and `fluxoid.c` are the first ported tools
+that never resynthesize audio at all - each outputs a time-series of
+scalar values (ASCII or a headerless raw `f32` stream), one per output
+sample, computed from a two-pass pipeline: pass 1 analyzes each channel
+independently (`fold`/`rfft`/`convert` via the existing `Analyzer`, a
+per-tool scalar metric over a frequency band, attack/release smoothing),
+combines channels index-wise (average or peak), then pass 2 normalizes,
+optionally compresses/gates, applies a distribution warp, and resamples
+onto an independent output rate via linear interpolation.
+
+The three tools' usage() texts and this project's own pre-existing
+parameter-inventory doc present them as near-identical, sharing one flag
+table - reading each source directly instead of trusting that symmetry
+turned up real, meaningful differences:
+
+- **`centroid` has no compress/gate stage at all.** `-T`/`-S` (compress-
+  threshold/gate-threshold) appear in the shared doc table as common
+  flags, but `centroid.c`'s `crack()` switch has no `case` for either
+  letter - confirmed by grepping every `case '` in the file. Its pass 2
+  only warps the raw centroid frequency and converts it to the requested
+  output format; the whole normalize/compress/gate/output-scale chain
+  `envelope`/`fluxoid` share is simply absent. Not exposed as CLI flags
+  at all, matching this project's established treatment of provably-dead
+  legacy flags elsewhere (`pvc compand`'s dead `-L`, `pvc harmonize`'s
+  dead `-J`).
+- **`centroid`'s `-H` (a second, different warp from `-W`) is also dead**
+  - parsed, printed in the startup banner, but its only call site
+    (`spectmagwarp(...)`) is commented out in the source.
+- **A frame-0 asymmetry between two structurally similar siblings**:
+  `find_centroid` seeds its fallback `old_value` to the band's midpoint
+  on frame 0 and centroid.c never overrides that, so frame 0's
+  smoothing compares the real centroid against the band midpoint - not
+  a no-op. `fluxoid`'s caller, by contrast, forces `old_temp = temp`
+  immediately after frame 0's (always-zero, by construction) flux
+  value, making its own frame-0 smoothing step a genuine no-op. Same
+  general shape, opposite frame-0 behavior - each confirmed by reading
+  the actual library function and its call site, not assumed from the
+  other.
+- **A real, if practically unreachable, out-of-bounds read found by
+  comparing three "identical-looking" band-sum loops**: `envelope.c`'s
+  own inline band-sum loop has no upper clamp against the bins array
+  size, while both `find_centroid.c` and `find_fluxoid.c` (the shared
+  library functions the other two tools call) do clamp `k2` to the
+  array's last valid bin before checking whether it collides with `k1`
+  and bumping it apart - and that *order* (clamp, then bump) matters: a
+  `k1`/`k2` that both land on the clamped max bin bumps `k2` one past
+  it, a real one-past-the-end read in the C for that narrow edge case.
+  Reproduced as a defensive double-clamp in the Rust port (panic-safe on
+  a slice index) rather than the OOB read itself.
+- **Two structurally-inlined attack/release smoothers that quietly
+  disagree with the shared `smooth_one_value` primitive at the exact-
+  equality boundary**: `centroid`/`fluxoid` both hand-roll their
+  attack-vs-decay branch (`if (temp > old_temp) ATTACK else DECAY`)
+  rather than calling `smooth_one_value`, and that hand-rolled condition
+  routes an exact tie to *decay*, while `smooth_one_value`'s own
+  condition (`if a < old_a { release } else { attack }`) routes the same
+  tie to *attack*. Implemented as bespoke inline branches in both
+  `centroid.rs` and `fluxoid.rs` rather than reusing `smooth_one_value`,
+  to match each tool's own boundary exactly.
+- **A real quirk carried over from a much earlier task's own precedent**
+  (state that outlives its own "pass"): pass 2's interpolation variable
+  (`old_temp`, the value the very first output sample interpolates
+  *from*) is never reset between passes in either `envelope.c` or
+  `fluxoid.c` - it's simply whatever pass 1's *last channel's last
+  frame* left it at. Under this task's own constant-control-function
+  golden cases this is invisible (verified bit-for-bit against the real
+  binaries with it reproduced faithfully), but it's a real quirk for any
+  future time-varying `-T`/`-G`/`-S`/`-W` table, documented in both
+  modules' doc comments.
+
+All three tools use exact `pow`/`log10` throughout (never the
+lookup-table `DbToAmp`/`SemitonesToMult` structs used by the
+resynthesis-family tools) - confirmed by reading every dB/amp conversion
+site in all three files, not assumed from the resynthesis tools'
+convention.
+
+A genuinely new modernization choice, not present in the C at all: the
+Nyquist-frequency sentinel these three use for `--band-high < 0` doesn't
+exist in the original tools (their own default is simply the literal
+Nyquist value computed once at startup) - it's this project's own
+already-established `pv`/`filter`-style CLI convention for deferring
+Nyquist resolution until the input's sample rate is known, applied here
+for consistency rather than hardcoding a fixed Hz default that would
+silently be wrong for any sample rate other than the golden fixture's
+44.1kHz.
+
+All three tools' pre-existing (Task-1-era) golden cases passed against a
+freshly built C oracle on the first try (after fixing the
+44.1kHz-specific default noted above, before any oracle run) - no
+further flag corrections needed.

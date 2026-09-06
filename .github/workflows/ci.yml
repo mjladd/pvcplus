@@ -133,6 +133,18 @@ jobs:
         run: cargo test --release -p pvc-cli --test golden_harmonizer -- --nocapture
         working-directory: rust
 
+      - name: Compare pvc envelope output against the C oracle (Task 3.10)
+        run: cargo test --release -p pvc-cli --test golden_envelope -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc centroid output against the C oracle (Task 3.10)
+        run: cargo test --release -p pvc-cli --test golden_centroid -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc flux output against the C oracle (Task 3.10)
+        run: cargo test --release -p pvc-cli --test golden_fluxoid -- --nocapture
+        working-directory: rust
+
   rust:
     name: rust (fmt, clippy, test)
     runs-on: ubuntu-latest
