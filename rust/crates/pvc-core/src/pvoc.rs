@@ -417,13 +417,56 @@ impl OscBank {
     /// samples synthesized per frame (legacy `I`). `pitch`: frequency
     /// scaling factor (legacy `P`; `1.0` = no transposition).
     pub fn new(n2: usize, nw: usize, sample_rate: u32, i_factor: usize, pitch: f32) -> Self {
-        let twopi: f32 = (8.0f64 * 1.0f64.atan()) as f32;
         let l = Self::TABLE_LEN;
         let tabscale = if nw >= n2 { n2 as f32 } else { 8.0 * n2 as f32 };
+        let table = Self::build_table(l, tabscale);
+        Self::from_table(n2, sample_rate, i_factor, pitch, table)
+    }
+
+    fn build_table(l: usize, tabscale: f32) -> Vec<f32> {
+        let twopi: f32 = (8.0f64 * 1.0f64.atan()) as f32;
         let twopi_over_l = twopi / l as f32;
-        let table = (0..l)
+        (0..l)
             .map(|k| tabscale * (twopi_over_l * k as f32).cos())
-            .collect();
+            .collect()
+    }
+
+    /// Constructs a bank that reuses another bank's already-built cosine
+    /// table (and the `tabscale` baked into it) instead of deriving its
+    /// own from this bank's own `n2`/`nw` - ports `noscbank2()`'s single
+    /// shared `table`, computed once from its *first* array's `N`/`Nw`
+    /// and reused unmodified for its second array's oscillator loop
+    /// despite that array's very different bin count
+    /// (`harmonizer.c:37-66`: `tabscale` is a `static`, set on the first
+    /// call and never recomputed). `harmonizer.rs` uses this to give its
+    /// harmony bank the *source* bank's table - a real, easy-to-miss
+    /// amplitude-scale coupling between the two banks that two
+    /// independent [`OscBank::new`] calls would not reproduce (each
+    /// would derive its own `tabscale` from its own `n2`).
+    pub fn with_shared_table(
+        n2: usize,
+        sample_rate: u32,
+        i_factor: usize,
+        pitch: f32,
+        table: Vec<f32>,
+    ) -> Self {
+        Self::from_table(n2, sample_rate, i_factor, pitch, table)
+    }
+
+    /// The precomputed cosine table, for handing to
+    /// [`Self::with_shared_table`].
+    pub fn table(&self) -> Vec<f32> {
+        self.table.clone()
+    }
+
+    fn from_table(
+        n2: usize,
+        sample_rate: u32,
+        i_factor: usize,
+        pitch: f32,
+        table: Vec<f32>,
+    ) -> Self {
+        let l = table.len();
         let num_bins = n2 + 1;
         OscBank {
             table,

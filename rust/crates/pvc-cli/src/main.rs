@@ -51,5 +51,7 @@ fn main() -> anyhow::Result<()> {
         Command::Compand(args) => commands::compand::run(&args),
 
         Command::Spectwarp(args) => commands::spectwarp::run(&args),
+
+        Command::Harmonize(args) => commands::harmonize::run(&args),
     }
 }

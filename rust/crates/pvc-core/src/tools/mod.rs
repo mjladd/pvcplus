@@ -4,6 +4,7 @@ pub mod compander;
 pub mod filter;
 pub mod filtresponsemaker;
 pub mod freqresponse;
+pub mod harmonizer;
 pub mod noisefilter;
 pub mod pv;
 pub mod spectwarper;
