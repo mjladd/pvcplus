@@ -45,5 +45,7 @@ fn main() -> anyhow::Result<()> {
         Command::Freqresponse(args) => commands::freqresponse::run(&args),
 
         Command::Filter(args) => commands::filter::run(&args),
+
+        Command::Denoise(args) => commands::denoise::run(&args),
     }
 }

@@ -3,5 +3,6 @@ pub mod chordresponsemaker;
 pub mod filter;
 pub mod filtresponsemaker;
 pub mod freqresponse;
+pub mod noisefilter;
 pub mod pv;
 pub mod twarp;

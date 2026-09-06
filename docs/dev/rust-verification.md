@@ -582,3 +582,71 @@ recently-ported sibling - the two other bugs found by reading alone
 (both in `spectmagwarp2`) came from a synthetic case constructed
 specifically to distinguish "did it divide by peak or not," not from
 a prior-pattern check at all.
+
+## Task 3.6's `pvc denoise`: a design decision confirmed by reading two call chains, and a real fatal quirk in the oracle itself
+
+`noisefilter.c`'s own architecture shells out to a separate `freqresponse`
+process at runtime (`system("freqresponse ... %s %s", ...)`), writing its
+noise-response analysis to a `/tmp` file and reading it back via
+`fillfunc`. Rather than reproducing that subprocess/tmp-file design, `pvc
+denoise` calls the already-ported `pvc_core::tools::freqresponse::process`
+in-process on a `[--noise-begin, --noise-end)` slice of the same channel
+it's about to filter (`pvc_core::tools::noisefilter::build_noise_response`).
+This only holds up if `-b`/`-e` genuinely restrict the analyzed samples
+in the real tool - confirmed by reading the actual call chain rather than
+assuming: `freqresponse.c` sets `begint`/`endt` from `-b`/`-e`, then
+`setupfiles()` → `getInputFileDataToSetOutputChannels()`
+(`legacy/pvc_lib/fileio.c`) seeks to `begint*R` and buffers only
+`(endt-begint)*R` frames into a scratch file *before* `openfiles()`
+re-opens it for the frame loop - real, sample-accurate trimming, not the
+display-only `dur` bookkeeping `-b`/`-e` amount to in `plainpv`/
+`pvanalysis` (a different call path, not revisited here).
+
+`threshold_limit` and `smooth_amp_change` (`legacy/pvc_lib/`) had no
+prior Rust port; both were small enough to verify by direct reading
+(`filter_response.rs`'s established amplitude-only-array convention
+covers `threshold_limit` too - it never touches frequency slots) - no
+oracle test needed beyond the existing unit-test style already used
+throughout this crate. The pitch/frequency-shift + gain loop reuses the
+same real bound already found the hard way in Task 3.8:
+`for(i=1;i<(N+2);i+=2)` in the C, covering every bin including Nyquist -
+not `plainpv`/`twarp`'s Nyquist-excluding `i<N`. Recognizing the pattern
+from `filter.c` this time didn't require re-discovering it via a
+tolerance mismatch, but it was still re-derived from `noisefilter.c`'s
+own source rather than assumed by similarity, per Task 3.8's takeaway.
+
+The oscillator-bank-vs-overlap-add selector is genuinely conditional
+here (like `twarp`, unlike `plainpv`'s hardcoded-always-oscbank quirk),
+decided once per channel from whether pitch transposition or frequency
+shift is non-default - `tools::twarp`'s existing dual-branch structure
+(`OscBank`/`Synthesizer` side by side, selected by one `bool`) transferred
+directly with no changes needed to either primitive.
+
+**A real fatal quirk in the oracle itself, not a porting bug:** the two
+pre-existing (Task-1-era, never oracle-tested) golden cases originally
+specified the default noise-analysis method (average). Run against the
+real binary, both crashed before writing any output:
+
+```
+ANALYSIS SEGMENT DURATION: 0.500000
+ALL ZERO AMPLITUDES!
+OUTPUT FILE: DURATION: 2.500000
+WARNING!  NOISE SAMPLE HAS ZERO AMPLITUDE! BYE
+```
+
+Traced to the shared `get_formants`/`NormalizeToPeaksOfSpectrumInBand`
+machinery (also used by `freqresponse`/`filtresponsemaker`/
+`chordresponsemaker`, Task 3.5): average-method formant detection finds
+*zero* formants in the fixture's whitenoise lead-in, and the band-
+normalization step collapses the entire response to all-zero amplitudes
+when that happens - confirmed by testing `-F1` (peak method) directly
+against the same binary/fixture/window, which finds formants fine and
+produces real (220,924-byte) output. This is a real behavior of the
+original toolkit for broadband-noise input, encountered only because
+this was the first time a case exercised `get_formants` on *noise*
+specifically rather than a tonal/harmonic source - not a bug in this
+port, and not worth "fixing" (reproducing it faithfully would mean `pvc
+denoise --noise-method average` also fails loudly on similar input,
+which is the correct, oracle-matching behavior). Both case `.toml`s were
+updated to add `-F1`/`--noise-method peak`, with the finding recorded
+inline in `basic_denoise.toml`'s notes.

@@ -1,4 +1,5 @@
 pub mod analyze;
+pub mod denoise;
 pub mod filter;
 pub mod freqresponse;
 pub mod gen;

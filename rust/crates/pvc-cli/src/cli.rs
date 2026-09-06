@@ -155,6 +155,17 @@ pub enum Command {
     /// in and out of scope (oscillator-bank resynthesis - needed only
     /// for pitch/frequency-shifted output - isn't ported yet).
     Filter(Box<FilterArgs>),
+
+    /// Spectral noise gate: builds a noise-response profile by analyzing
+    /// a `[--noise-begin, --noise-end)` window of the input itself
+    /// (default: the whole file - point these at an actual noise-only
+    /// stretch, e.g. leading silence), then expands any bin quieter than
+    /// its noise-response threshold toward silence.
+    ///
+    /// Ports `noisefilter`'s audio-processing path (`legacy/pvc_src/
+    /// noisefilter.c`); see `pvc-core::tools::noisefilter`'s doc comment
+    /// for what's in and out of scope.
+    Denoise(Box<DenoiseArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -1027,6 +1038,117 @@ pub struct FilterArgs {
     /// Envelope release time in seconds - a plain number, or `@path`.
     #[arg(long, value_parser = parse_control_fn, default_value = "0")]
     pub release: ControlFn,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc denoise`'s flag surface. Long names follow the same convention as
+/// the other tools' - see `pvc-core::tools::noisefilter`'s doc comment
+/// for the noise-window/gate design these flags reflect.
+#[derive(clap::Args, Debug)]
+pub struct DenoiseArgs {
+    /// FFT size (must be a power of two).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`);
+    /// the C's own hardcoded default is a literal `2048`, matching
+    /// `pv`'s `--window-size` gotcha.
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time-stretch factor (`1.0` = unchanged).
+    #[arg(long, default_value_t = 1.0)]
+    pub stretch: f32,
+
+    /// Start of the noise-sample window to analyze, in seconds - point
+    /// this at an actual noise-only stretch of the input (e.g. leading
+    /// silence).
+    #[arg(long = "noise-begin", default_value_t = 0.0)]
+    pub noise_begin: f32,
+
+    /// End of the noise-sample window, in seconds (`0` = end of file).
+    #[arg(long = "noise-end", default_value_t = 0.0)]
+    pub noise_end: f32,
+
+    /// How the noise-sample window's spectrum is accumulated.
+    #[arg(long = "noise-method", value_parser = parse_spectrum_type, default_value = "average")]
+    pub noise_method: pvc_core::tools::freqresponse::Method,
+
+    /// Noise-response bypass threshold in dB: bins in the (peak-
+    /// normalized) noise response louder than this are excluded from the
+    /// gate, letting those frequencies pass through unaffected.
+    #[arg(
+        long = "noise-bypass-threshold",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub noise_bypass_threshold: f32,
+
+    /// Pitch shift in semitones - a plain number, or `@path`. Selects
+    /// oscillator-bank resynthesis whenever nonzero/time-varying.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// Frequency shift in Hz - a plain number, or `@path`. Selects
+    /// oscillator-bank resynthesis whenever nonzero/time-varying.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// Gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// Noise threshold adjust in dB - a plain number, or `@path`.
+    /// Positive values increase noise reduction, negative values reduce
+    /// it.
+    #[arg(long = "noise-threshold-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub noise_threshold_gain: ControlFn,
+
+    /// Shape of the noise gate's expansion curve - a plain number, or
+    /// `@path`.
+    #[arg(long = "expansion-index", value_parser = parse_control_fn, default_value = "3")]
+    pub expansion_index: ControlFn,
+
+    /// Envelope attack time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// Envelope release time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// Oscillator resynthesis threshold in dB (bins quieter than this,
+    /// relative to the frame's own peak, are skipped).
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
 
     pub input: PathBuf,
     pub output: PathBuf,
