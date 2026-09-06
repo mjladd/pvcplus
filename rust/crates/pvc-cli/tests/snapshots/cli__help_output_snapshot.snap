@@ -20,6 +20,8 @@ Commands:
   freqresponse  Analysis-driven `.fr` frequency response: accumulates a sound file's spectrum (by average or peak amplitude, across all channels combined) into a response file, with formant detection and optional formant-band normalization/companding
   filter        Fixed-spectrum phase-vocoder filter: multiplies each frame's amplitude by a shaped copy of a `.fr` response, then mixes the filtered signal with (unless disabled) the original source
   denoise       Spectral noise gate: builds a noise-response profile by analyzing a `[--noise-begin, --noise-end)` window of the input itself (default: the whole file - point these at an actual noise-only stretch, e.g. leading silence), then expands any bin quieter than its noise-response threshold toward silence
+  compand       Per-bin dynamics processor: compresses or expands each bin's amplitude relative to a static peaks/reference file (e.g. from `pvc freqresponse`), within an adjustable frequency band
+  spectwarp     Per-bin dynamics processor: compresses or expands each bin's amplitude relative to its *own frame's* live spectral peak (a self-referential envelope-follower), within an adjustable frequency band
   help          Print this message or the help of the given subcommand(s)
 
 Options:

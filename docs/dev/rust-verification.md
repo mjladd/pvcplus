@@ -650,3 +650,66 @@ denoise --noise-method average` also fails loudly on similar input,
 which is the correct, oracle-matching behavior). Both case `.toml`s were
 updated to add `-F1`/`--noise-method peak`, with the finding recorded
 inline in `basic_denoise.toml`'s notes.
+
+## Task 3.7's `pvc compand`/`pvc spectwarp`: two per-bin dynamics processors that only look alike from a distance
+
+`compander.c` and `spectwarper.c` share the same overall shape (companding
+loop over a rolloff-widened `[lowbin, hibin)` band, then a full-spectrum
+pitch/freq-shift+gain loop, then shelf EQ, then oscbank-or-overlap-add) -
+close enough that reading one first creates a real risk of pattern-
+matching the other's details onto it. Three genuine per-tool differences,
+each re-derived from source rather than assumed by similarity:
+
+- **What's being companded against.** `compander.c` normalizes each bin
+  against a *separately loaded, static* peaks/reference file (`-F`,
+  required - same raw `N+2`-float layout as `filter.c`'s `.fr`,
+  `smoothspec`'d once at load time). `spectwarper.c` has no such file at
+  all (`-F` is in its `crack()` accept string but has no `case` - dead) -
+  it normalizes each bin against *its own frame's own live spectral
+  peak*, recomputed fresh every frame. Architecturally distinct enough
+  that they don't share a companding primitive - `compander.rs` doesn't
+  call anything from `spectwarper.rs` or vice versa.
+- **`getthresh`'s `N` vs. `N+2`.** `compander.c` calls
+  `getthresh(channel, N+2, threshfac)` (the full bins array, including
+  Nyquist); `spectwarper.c` calls `getthresh(channel, N, threshfac)`
+  (excluding Nyquist, matching `plainpv`/`twarp`'s convention). Same
+  function, same-looking call site one file over, opposite answer -
+  exactly the "which N reaches the call site" gotcha this project keeps
+  finding (`getthresh`/`get_formants`/`smoothspec`/`filter.c`'s pitch
+  loop), now confirmed to vary *between two structurally similar
+  siblings*, not just within one tool's own internals.
+- **Is `-L`/release real?** Dead in `compander.c` (both its attack and
+  decay smoothing branches use the same attack coefficients - a real bug,
+  reproduced faithfully, not exposed as a CLI flag since exposing a
+  provably-dead one would mislead). Fully live in `spectwarper.c`, which
+  uses a *different* single-value smoothing primitive
+  (`smooth_one_value`, newly ported to `pvc-core::smooth` - genuinely
+  attack/release-conditional, unlike `compander.c`'s broken pair) for its
+  peak-follower, plus a third, distinct smoothing role (`-r`, a plain
+  lerp with no attack/release branching at all) for the per-bin
+  amplitude-change multiplier itself.
+
+**A real out-of-bounds read found via a Rust panic, not by reading:**
+`spectwarper.c`'s sliding-window mode (`-S > 0`) computes a per-bin local
+peak-search window, with a bound-clamp that reads backwards
+(`if (hib < N) hib = N - 1;` where a real clamp would test `hib > N`).
+Since `hib` is almost always far smaller than `N` for a realistic
+window, this fires on nearly every bin, so the "local" window nearly
+always becomes `[lowb, N-1)` - defeating the sliding-window design
+almost entirely, reproduced faithfully here (not "fixed"). But for bins
+near Nyquist with a wide (especially octave-mode) window, the
+*un*-clamped `hib` can genuinely exceed the array's real allocation
+(`N+2`) - this port's own
+`sliding_window_compression_runs_without_panicking` test hit exactly
+this, panicking with `index out of bounds: the len is 1026 but the
+index is 1026` on first run. Same class of bug as `filter_response::
+smooth_response`'s documented OOB read (Task 3.8) - clamped to the last
+valid index here instead of reproducing undefined behavior, since Rust's
+bounds checking makes the difference between "silently reads adjacent
+heap memory" and "panics" immediate and impossible to ignore, unlike C.
+
+Both tools' pre-existing (Task-1-era) golden cases passed against a
+freshly built C oracle on the first try, no case-flag corrections needed
+this time (unlike Task 3.6's) - `compander`'s `freqresponse_driven` case
+and both of `spectwarper`'s cases (`basic_compand`, `warp_curve`) matched
+within tolerance immediately once the ported math was correct.

@@ -1,4 +1,5 @@
 pub mod analyze;
+pub mod compand;
 pub mod denoise;
 pub mod filter;
 pub mod freqresponse;
@@ -10,4 +11,5 @@ pub mod preset;
 pub mod pv;
 pub mod response;
 pub mod run;
+pub mod spectwarp;
 pub mod twarp;
