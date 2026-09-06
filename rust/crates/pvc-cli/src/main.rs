@@ -47,5 +47,9 @@ fn main() -> anyhow::Result<()> {
         Command::Filter(args) => commands::filter::run(&args),
 
         Command::Denoise(args) => commands::denoise::run(&args),
+
+        Command::Compand(args) => commands::compand::run(&args),
+
+        Command::Spectwarp(args) => commands::spectwarp::run(&args),
     }
 }

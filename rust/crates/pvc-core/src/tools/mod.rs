@@ -1,8 +1,10 @@
 pub mod analyze;
 pub mod chordresponsemaker;
+pub mod compander;
 pub mod filter;
 pub mod filtresponsemaker;
 pub mod freqresponse;
 pub mod noisefilter;
 pub mod pv;
+pub mod spectwarper;
 pub mod twarp;

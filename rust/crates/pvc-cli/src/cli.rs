@@ -166,6 +166,27 @@ pub enum Command {
     /// noisefilter.c`); see `pvc-core::tools::noisefilter`'s doc comment
     /// for what's in and out of scope.
     Denoise(Box<DenoiseArgs>),
+
+    /// Per-bin dynamics processor: compresses or expands each bin's
+    /// amplitude relative to a static peaks/reference file (e.g. from
+    /// `pvc freqresponse`), within an adjustable frequency band.
+    ///
+    /// Ports `compander`'s audio-processing path (`legacy/pvc_src/
+    /// compander.c`); see `pvc-core::tools::compander`'s doc comment for
+    /// what's in and out of scope (`-L`/release is a real no-op in the
+    /// original tool, not exposed here).
+    Compand(Box<CompanderArgs>),
+
+    /// Per-bin dynamics processor: compresses or expands each bin's
+    /// amplitude relative to its *own frame's* live spectral peak (a
+    /// self-referential envelope-follower), within an adjustable
+    /// frequency band.
+    ///
+    /// Ports `spectwarper`'s audio-processing path (`legacy/pvc_src/
+    /// spectwarper.c`); see `pvc-core::tools::spectwarper`'s doc comment
+    /// for what's in and out of scope, including a real bound bug in the
+    /// original tool's sliding-window mode, reproduced faithfully.
+    Spectwarp(Box<SpectwarpArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -1144,6 +1165,261 @@ pub struct DenoiseArgs {
 
     #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
     pub shelf_high_freq: f32,
+
+    /// Oscillator resynthesis threshold in dB (bins quieter than this,
+    /// relative to the frame's own peak, are skipped).
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc compand`'s flag surface. Long names follow the same convention as
+/// the other tools' - see `pvc-core::tools::compander`'s doc comment for
+/// the static-peaks-file design these flags reflect.
+#[derive(clap::Args, Debug)]
+pub struct CompanderArgs {
+    /// Path to the peaks/reference file (`.fr`-layout raw `N+2` binary
+    /// floats, e.g. from `pvc freqresponse`). Its size must match `--fft`
+    /// exactly - the real tool exits with an error on mismatch rather
+    /// than adjusting either value.
+    #[arg(long)]
+    pub peaks: PathBuf,
+
+    /// FFT size (must be a power of two, and must match `--peaks`'s own
+    /// size).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`);
+    /// the C's own hardcoded default is a literal `2048`, matching
+    /// `pv`'s `--window-size` gotcha.
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time-stretch factor (`1.0` = unchanged).
+    #[arg(long, default_value_t = 1.0)]
+    pub stretch: f32,
+
+    /// Pitch shift in semitones - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// Frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// Gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// Compression threshold in dB (bins louder than this, relative to
+    /// the peaks file, are compressed) - a plain number, or `@path`.
+    #[arg(long = "compress-threshold", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_threshold: ControlFn,
+
+    /// Compression amount in dB (ratio; must be negative to actually
+    /// compress - a non-negative value is a no-op in the real tool) - a
+    /// plain number, or `@path`.
+    #[arg(long = "compress-amount", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_amount: ControlFn,
+
+    /// Expansion threshold in dB - a plain number, or `@path`.
+    #[arg(long = "expand-threshold", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub expand_threshold: ControlFn,
+
+    /// Expansion amount in dB (must be negative to actually expand) - a
+    /// plain number, or `@path`.
+    #[arg(long = "expand-amount", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub expand_amount: ControlFn,
+
+    /// Companding band low edge in Hz - a plain number, or `@path`.
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// Companding band high edge in Hz (`< 0` = Nyquist) - a plain
+    /// number, or `@path`.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    /// Companding band rolloff width in octaves - a plain number, or
+    /// `@path`.
+    #[arg(long = "band-rolloff", value_parser = parse_control_fn, default_value = "0")]
+    pub band_rolloff: ControlFn,
+
+    /// Peaks-file smoothing bandwidth, applied once at load time (`< 0`
+    /// = octaves, `>= 0` = Hz; `0` = no smoothing).
+    #[arg(
+        long = "peaks-smoothing",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub peaks_smoothing: f32,
+
+    /// Per-bin amplitude-change attack time in seconds - a plain number,
+    /// or `@path`. (`-L`/release has no effect in the real tool - see
+    /// `pvc-core::tools::compander`'s doc comment - so it isn't exposed
+    /// here.)
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// Low shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-low-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_low_gain: ControlFn,
+
+    /// High shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_high_gain: ControlFn,
+
+    /// Low shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-low-freq", value_parser = parse_control_fn, default_value = "200")]
+    pub shelf_low_freq: ControlFn,
+
+    /// High shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub shelf_high_freq: ControlFn,
+
+    /// Oscillator resynthesis threshold in dB (bins quieter than this,
+    /// relative to the frame's own peak, are skipped).
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc spectwarp`'s flag surface. Long names follow the same convention
+/// as the other tools' - see `pvc-core::tools::spectwarper`'s doc
+/// comment for the self-referential (live-spectrum) companding design
+/// these flags reflect, distinct from `pvc compand`'s static peaks file.
+#[derive(clap::Args, Debug)]
+pub struct SpectwarpArgs {
+    /// FFT size (must be a power of two).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`);
+    /// the C's own hardcoded default is a literal `2048`, matching
+    /// `pv`'s `--window-size` gotcha.
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time-stretch factor (`1.0` = unchanged).
+    #[arg(long, default_value_t = 1.0)]
+    pub stretch: f32,
+
+    /// Pitch shift in semitones - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// Frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// Gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// Compression threshold in dB, relative to the live peak - a plain
+    /// number, or `@path`.
+    #[arg(long = "compress-threshold", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_threshold: ControlFn,
+
+    /// Compression amount in dB (must be negative to actually compress -
+    /// a non-negative value is a no-op in the real tool) - a plain
+    /// number, or `@path`.
+    #[arg(long = "compress-amount", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_amount: ControlFn,
+
+    /// Expansion threshold in dB (clamped to `>= -95` in the real tool)
+    /// - a plain number, or `@path`.
+    #[arg(long = "expand-threshold", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub expand_threshold: ControlFn,
+
+    /// Expansion amount in dB (must be negative to actually expand) - a
+    /// plain number, or `@path`.
+    #[arg(long = "expand-amount", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub expand_amount: ControlFn,
+
+    /// Companding band low edge in Hz - a plain number, or `@path`.
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// Companding band high edge in Hz (`< 0` = Nyquist) - a plain
+    /// number, or `@path`.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    /// Companding band rolloff width in octaves - a plain number, or
+    /// `@path`.
+    #[arg(long = "band-rolloff", value_parser = parse_control_fn, default_value = "0")]
+    pub band_rolloff: ControlFn,
+
+    /// Shape exponent for the compress/expand gradient curve (`0` =
+    /// linear) - a plain number, or `@path`.
+    #[arg(long = "warp-curve", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp_curve: ControlFn,
+
+    /// Smoothing time in seconds for the per-bin amplitude-change
+    /// multiplier - a plain number, or `@path`.
+    #[arg(long = "response-time", value_parser = parse_control_fn, default_value = "0")]
+    pub response_time: ControlFn,
+
+    /// Proportion (`0..1`) of the unmodified source blended back into
+    /// the companded result - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub complement: ControlFn,
+
+    /// Sliding compression window size (`<= 0` = one global peak for the
+    /// whole band; `<= 8` = octaves, `> 8` = Hz) - a plain number, or
+    /// `@path`. See `pvc-core::tools::spectwarper`'s doc comment for a
+    /// real bound bug in the original tool this triggers.
+    #[arg(long = "compress-window", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_window: ControlFn,
+
+    /// Peak-reference attack time in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// Peak-reference release time in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// Per-frame amplitude normalization limit in dB (`0` disables
+    /// normalization) - a plain number, or `@path`.
+    #[arg(long = "normalize-limit", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub normalize_limit: ControlFn,
+
+    /// Low shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-low-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_low_gain: ControlFn,
+
+    /// High shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_high_gain: ControlFn,
+
+    /// Low shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-low-freq", value_parser = parse_control_fn, default_value = "200")]
+    pub shelf_low_freq: ControlFn,
+
+    /// High shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub shelf_high_freq: ControlFn,
 
     /// Oscillator resynthesis threshold in dB (bins quieter than this,
     /// relative to the frame's own peak, are skipped).

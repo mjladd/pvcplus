@@ -24,6 +24,22 @@ pub fn smooth_setup(t: f32, ir: f32) -> (f32, f32) {
     (c, minusc)
 }
 
+/// Ports `smooth_one_value(A, old_A, att, matt, rel, mrel)`
+/// (`legacy/pvc_lib/miscellania.c`): attack/release-smooths a single
+/// scalar (`spectwarper.c`'s per-frame or per-bin peak-follower) -
+/// distinct from [`Smoother`] (which smooths a whole spectrum array via
+/// [`smooth_setup`]'s coefficients, applied unconditionally); this picks
+/// between the release pair (`rel`/`mrel`) and the attack pair (`att`/
+/// `matt`) based on whether the new value is quieter or louder than the
+/// previous one.
+pub fn smooth_one_value(a: f32, old_a: f32, att: f32, matt: f32, rel: f32, mrel: f32) -> f32 {
+    if a < old_a {
+        rel * old_a + mrel * a
+    } else {
+        att * old_a + matt * a
+    }
+}
+
 /// Ports `smooth()`: attack/release-smooths the amplitude (even-indexed)
 /// slots of a mag/freq-interleaved spectrum array, one instance per
 /// channel (the C's `old_A` "previous channel" buffer plus its

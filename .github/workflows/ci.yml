@@ -121,6 +121,14 @@ jobs:
         run: cargo test --release -p pvc-cli --test golden_noisefilter -- --nocapture
         working-directory: rust
 
+      - name: Compare pvc compand output against the C oracle (Task 3.7)
+        run: cargo test --release -p pvc-cli --test golden_compander -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc spectwarp output against the C oracle (Task 3.7)
+        run: cargo test --release -p pvc-cli --test golden_spectwarper -- --nocapture
+        working-directory: rust
+
   rust:
     name: rust (fmt, clippy, test)
     runs-on: ubuntu-latest
