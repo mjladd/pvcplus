@@ -1,0 +1,10 @@
+tool = "irconvolver"
+input = "sweep_3s_44k.wav"
+description = "impulseresponse -> irconvolver: convolve a sweep against a 50ms slice of a sine tone"
+legacy_steps = [
+    "impulseresponse -b0 -e0.05 {fixtures}/sine440_2s_44k.wav impulse.ir",
+    "irconvolver -Eimpulse.ir {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.002 }
+notes = "Tolerance kind is `sample` (absolute), matching tests/golden/cases/twarp/basic_chain.toml's precedent (max observed error there ~0.00064; 0.002 leaves margin). The core convolution/overlap-add matches the real oracle far tighter than this (~6e-5 relative) - the dominant source of the residual error is the shared `rescaleThisBuffer`'s final whole-file amplitude-match step, which the real C computes as a one-time snapshot of input/output peak amplitude taken as of the very first output block flushed, not the true peak over the whole file (this port uses the latter, matching every other tool's existing rescale port in this project - see commands::irconvolver::run's doc comment). The two agree closely for a steady-amplitude signal but diverge by a fraction of a percent for this case's frequency sweep, whose post-convolution peak keeps changing well past the first block. Also exercises the real, faithfully-reproduced 'output length always a multiple of 1024' bug documented on pvc-core::tools::irconvolver's doc comment (a real compiled binary produces exactly 132096 samples from a 132300-sample input, not 132300 - confirmed by rebuilding irconvolver fresh via Docker after an initial run against a stale /tmp-cached binary gave a misleading result, per docs/dev/rust-verification.md)."

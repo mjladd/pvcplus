@@ -268,6 +268,15 @@ pub enum Command {
     /// Ports `impulseresponse`'s analysis path (`legacy/pvc_src/
     /// impulseresponse.c`).
     Impulseresponse(Box<ImpulseresponseArgs>),
+
+    /// Fast FFT convolution (or deconvolution) of each input channel
+    /// against a `.ir` file's spectrum (Phase 5's FFT-convolution family).
+    /// See `pvc-core::tools::irconvolver`'s doc comment for what's out of
+    /// scope, and a real usage-text bug in the C corrected here.
+    ///
+    /// Ports `irconvolver`'s resynthesis path (`legacy/pvc_src/
+    /// irconvolver.c`).
+    Irconvolver(Box<IrconvolverArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -2138,6 +2147,114 @@ fn parse_normalization(s: &str) -> Result<pvc_core::tools::impulseresponse::Norm
         "together" => Ok(Normalization::Together),
         _ => Err(format!(
             "expected \"off\", \"independent\", or \"together\", got {s:?}"
+        )),
+    }
+}
+
+#[derive(clap::Args, Debug)]
+pub struct IrconvolverArgs {
+    /// `-E`: path to the `.ir` impulse-response file (from `pvc
+    /// impulseresponse`).
+    #[arg(long = "ir")]
+    pub ir: PathBuf,
+
+    /// `-b`: analysis window start, in seconds.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: analysis window end, in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-d`: extend the processed window by one impulse-length of
+    /// trailing silence, so the reverb tail isn't cut off.
+    #[arg(long = "ring-tail")]
+    pub ring_tail: bool,
+
+    /// `-J`: which `.ir` channel to use (`0` = auto round-robin).
+    #[arg(long = "impulse-channel", default_value_t = 0)]
+    pub impulse_channel: usize,
+
+    /// `-a` (the C's own usage text mislabels this flag - see
+    /// `pvc-core::tools::irconvolver`'s doc comment).
+    #[arg(long, value_parser = parse_irconvolver_mode, default_value = "convolve")]
+    pub mode: pvc_core::tools::irconvolver::Mode,
+
+    /// `-s`: impulse response bandpass low rolloff point, Hz.
+    #[arg(long = "ir-low-freq", default_value_t = 0.0)]
+    pub ir_low_freq: f32,
+
+    /// `-t`: impulse response bandpass high rolloff point, Hz (`0` =
+    /// Nyquist).
+    #[arg(long = "ir-high-freq", default_value_t = 0.0)]
+    pub ir_high_freq: f32,
+
+    /// `-g`.
+    #[arg(
+        long = "ir-low-rolloff",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub ir_low_rolloff: f32,
+
+    /// `-G`.
+    #[arg(
+        long = "ir-high-rolloff",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub ir_high_rolloff: f32,
+
+    /// `-D`: input sound bandpass low rolloff point, Hz.
+    #[arg(long = "source-low-freq", default_value_t = 0.0)]
+    pub source_low_freq: f32,
+
+    /// `-f`: input sound bandpass high rolloff point, Hz (`0` = Nyquist).
+    #[arg(long = "source-high-freq", default_value_t = 0.0)]
+    pub source_high_freq: f32,
+
+    /// `-h`.
+    #[arg(
+        long = "source-low-rolloff",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub source_low_rolloff: f32,
+
+    /// `-H`.
+    #[arg(
+        long = "source-high-rolloff",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub source_high_rolloff: f32,
+
+    /// `-A`: dry-signal gain mixed back in after convolution, in dB - a
+    /// plain number, or `@path`.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// `-q`: gain applied before convolution, in dB - a plain number, or
+    /// `@path`.
+    #[arg(long = "input-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub input_gain: ControlFn,
+
+    /// `-r`: gain applied to the convolution output, in dB - a plain
+    /// number, or `@path`.
+    #[arg(long = "output-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub output_gain: ControlFn,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_irconvolver_mode(s: &str) -> Result<pvc_core::tools::irconvolver::Mode, String> {
+    use pvc_core::tools::irconvolver::Mode;
+    match s {
+        "convolve" => Ok(Mode::Convolution),
+        "deconvolve" => Ok(Mode::Deconvolution),
+        _ => Err(format!(
+            "expected \"convolve\" or \"deconvolve\", got {s:?}"
         )),
     }
 }

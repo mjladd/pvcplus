@@ -47,6 +47,23 @@ pub fn hz_to_oppc(hz: f32) -> f32 {
     temp1 + 0.12 * (temp2 - temp1)
 }
 
+/// Ports `Hz_to_MIDI()` (`legacy/pvc_lib/Hz_to_MIDI.c`): Hz to a MIDI note
+/// number (`60.0` = middle C), the same `log10`-ratio construction as
+/// [`hz_to_oppc`] with a plain `60 + 12*` linear mapping instead of the
+/// octave.pitchclass `8 + .12*` one - originally a private duplicate in
+/// `tools::pitchtracker`, promoted here once `tools::irconvolver` needed
+/// the same conversion for its MIDI-space bandpass rolloff.
+pub fn hz_to_midi(hz: f32) -> f32 {
+    let mid_c = (220.0 * 2.0f64.powf(3.0 / 12.0)) as f32;
+    60.0 + 12.0 * (hz / mid_c).log10() / 2.0f32.log10()
+}
+
+/// Ports `MIDI_to_Hz()`, `hz_to_midi`'s inverse.
+pub fn midi_to_hz(midi: f32) -> f32 {
+    let mid_c = (220.0 * 2.0f64.powf(3.0 / 12.0)) as f32;
+    mid_c * 2.0f32.powf((midi - 60.0) / 12.0)
+}
+
 /// Ports `normalize()`: scales every bin's amplitude so the peak becomes
 /// `1.0`, clamping anything that would exceed `1.0` after scaling
 /// (possible when `peakamp` is itself less than the true peak, e.g. a
@@ -78,6 +95,23 @@ mod tests {
         assert_eq!(oppc_to_hz(9.00), 523.25116);
         assert_eq!(oppc_to_hz(8.03), 311.126526);
         assert_eq!(oppc_to_hz(0.00), 1.02197492);
+    }
+
+    #[test]
+    fn hz_to_midi_matches_known_pitches() {
+        // No standalone oracle binary wraps Hz_to_MIDI/MIDI_to_Hz - unlike
+        // Hz_to_OPPC/OPPC_to_Hz (Hztopitch/pitchtoHz), both are internal-
+        // only library functions. Checked against well-known reference
+        // pitches instead (A440 = MIDI 69, middle C = MIDI 60).
+        assert!((hz_to_midi(440.0) - 69.0).abs() < 0.01);
+        assert!((hz_to_midi(261.62558) - 60.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn hz_midi_round_trip() {
+        let hz = 440.0f32;
+        let back = midi_to_hz(hz_to_midi(hz));
+        assert!((back - hz).abs() < 0.01);
     }
 
     #[test]
