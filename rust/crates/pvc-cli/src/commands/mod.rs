@@ -1,7 +1,10 @@
 pub mod analyze;
+pub mod centroid;
 pub mod compand;
 pub mod denoise;
+pub mod envelope;
 pub mod filter;
+pub mod flux;
 pub mod freqresponse;
 pub mod gen;
 pub mod harmonize;

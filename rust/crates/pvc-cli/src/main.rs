@@ -53,5 +53,11 @@ fn main() -> anyhow::Result<()> {
         Command::Spectwarp(args) => commands::spectwarp::run(&args),
 
         Command::Harmonize(args) => commands::harmonize::run(&args),
+
+        Command::Envelope(args) => commands::envelope::run(&args),
+
+        Command::Centroid(args) => commands::centroid::run(&args),
+
+        Command::Flux(args) => commands::flux::run(&args),
     }
 }

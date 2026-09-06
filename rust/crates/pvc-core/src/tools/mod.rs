@@ -1,8 +1,11 @@
 pub mod analyze;
+pub mod centroid;
 pub mod chordresponsemaker;
 pub mod compander;
+pub mod envelope;
 pub mod filter;
 pub mod filtresponsemaker;
+pub mod fluxoid;
 pub mod freqresponse;
 pub mod harmonizer;
 pub mod noisefilter;
