@@ -1064,3 +1064,69 @@ transforms. `tests/golden/cases/impulseresponse/basic.toml` uses a
 format, header plus raw spectra, not `compare_numeric`'s whitespace-
 separated text) - generous headroom over that ULP-level noise floor
 while still catching a real structural mismatch.
+
+## Phase 5's `pvc irconvolver`: a shared library function's own flush call doesn't flush
+
+`irconvolver.c` (the second tool in the FFT-convolution family: reads a
+`.ir` file, block-convolves or -deconvolves each input channel against
+it via classic overlap-add) surfaced a real bug in shared library code
+already flagged once before in this project, this time actually
+affecting a golden case's output length rather than just a synthesis
+ring's internal bookkeeping.
+
+**The bug**: `legacy/pvc_lib/fileio.c`'s `bufferout()` buffers output
+into `BLOCKSIZE` (`1024`)-sample chunks in a `static` scratch array,
+writing a chunk to the per-channel temp file only once it's full - or,
+its `flushflag` parameter promises, when told to flush regardless. The
+promise doesn't hold: the entire write path lives inside `while
+(outbuffpt < I)`, gated on the *new* sample count `I`, not on
+`flushflag`. `irconvolver.c`'s own final call is `bufferout(outbuffer,
+0, 1)` - `I = 0` - so that loop never runs even once, `flushflag`
+notwithstanding, and any pending sub-`BLOCKSIZE` remainder is silently
+never written. A 3-second, 132300-sample convolution's real output is
+132096 samples (`129 * 1024`), not 132300.
+
+This is the same `bufferout()` quirk Task 3.4's `pvc twarp` work already
+found from the *synthesis* side (`docs/dev/rust-verification.md`'s
+Task 3.4 section: "`bufferout(A, I, 1)` ... only ever reads `I` ... samples
+regardless of `flushflag`") - but `twarp`'s own flush call happens to
+pass a nonzero `I` (the hop size), so that tool's trailing block is
+written correctly and the quirk stays invisible in its own output. Only
+`irconvolver.c`'s specific `bufferout(_, 0, 1)` call pattern actually
+loses data: the same shared bug, a different call site, a different
+consequence - confirmed only by re-deriving it from scratch against a
+real length mismatch, not recognized from the earlier finding until
+after the fact. Reproduced faithfully (not "corrected") in
+`tools::irconvolver::process`: every channel's output is truncated to
+the largest multiple of `1024` samples, including down to *entirely
+empty* for an input under one `BLOCKSIZE` long.
+
+**A second, unrelated finding, caught by the same investigation**: after
+fixing the length mismatch, per-sample values still differed from the
+real oracle by up to ~0.05% of full scale - small, but non-trivial for a
+"sample" tolerance kind. Tracing it back: `legacy/pvc_lib/fileio.c`'s
+`rescaleThisBuffer` (the shared "rescale whole output to match input
+peak" feature every already-ported resynthesis tool in this project
+also uses) computes its rescale ratio *once*, from `ipeakamp`/`peakamp`
+as they stand at the moment the *first* output block is flushed - not
+the true peak over the whole file. This port uses the true whole-file
+peak instead (simpler, and consistent with every other tool's existing
+rescale port here), so the two agree only when a signal's peak
+amplitude doesn't drift much over time. The golden case's frequency
+sweep, convolved against a resonant-ish impulse, is exactly a case where
+it drifts: the post-convolution peak keeps changing well past the first
+block. Not chased further into an exact snapshot-timing replica - the
+discrepancy is small, well inside `twarp`'s own already-precedented
+`sample`-tolerance margin (`0.002`), and doing so would mean modeling
+the *exact* interleaving of `bufferin`/`bufferout`'s internal block
+counters, disproportionate to what this secondary reporting feature is
+worth.
+
+**Takeaway**: the same underlying shared-library bug can hide behind one
+call site and surface at another - "already found and documented
+elsewhere" is a reason to look there first, not a reason to assume a new
+symptom is already explained. Re-deriving the mechanism from the actual
+observed numbers (a suspiciously round `frameBeginSampNow`/`sampsRead`
+trace via a temporary oracle rebuild, then noticing `132300 - 132096 =
+204 = 132300 mod 1024`) was still necessary before the connection to the
+earlier `twarp` finding became obvious.

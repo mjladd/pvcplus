@@ -70,5 +70,7 @@ fn main() -> anyhow::Result<()> {
         } => commands::convert_units::run(from, to, norm, &values, cli.json),
 
         Command::Impulseresponse(args) => commands::impulseresponse::run(&args),
+
+        Command::Irconvolver(args) => commands::irconvolver::run(&args),
     }
 }

@@ -66,6 +66,7 @@
 //! secondary input modes).
 
 use crate::pvoc::Analyzer;
+use crate::response::{hz_to_midi, midi_to_hz};
 use crate::warp::curve;
 use crate::window::{make_windows, Window};
 use crate::ControlFn;
@@ -128,18 +129,6 @@ pub struct PitchtrackerParams {
 }
 
 const FREQUENCY_PROPORTION_THRESHOLD: f32 = 0.99;
-
-fn mid_c() -> f32 {
-    (220.0 * 2.0f64.powf(3.0 / 12.0)) as f32
-}
-
-fn hz_to_midi(hz: f32) -> f32 {
-    60.0 + 12.0 * (hz / mid_c()).log10() / 2.0f32.log10()
-}
-
-fn midi_to_hz(midi: f32) -> f32 {
-    mid_c() * 2.0f32.powf((midi - 60.0) / 12.0)
-}
 
 /// Resolves `--band-low`/`--band-high`/`--reference`'s own
 /// octave.pitchclass convention: `<= 12.0` is octave.pitchclass
@@ -1094,13 +1083,5 @@ mod tests {
             (mid - 440.0).abs() < 20.0,
             "tracked freq {mid} not near 440Hz"
         );
-    }
-
-    #[test]
-    fn hz_midi_round_trip() {
-        let hz = 440.0f32;
-        let midi = hz_to_midi(hz);
-        let back = midi_to_hz(midi);
-        assert!((back - hz).abs() < 0.01);
     }
 }
