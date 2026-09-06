@@ -482,3 +482,103 @@ tool:
   non-negligible amplitude, plus an exact peak-amplitude check (since
   that's the one value guaranteed stable regardless of noise-floor
   bins).
+
+## Task 3.8's `pvc filter`: a real off-by-one, a real "which N" bug, and a bug hunted down via a spike test
+
+`filter.c` turned out larger in scope than expected once actually read:
+it doesn't subtractively filter the source, it *additively mixes* a
+filtered copy of it with a separately delayed/shifted copy of the
+original (`sourceflag` defaults to *on*, not off - `SOURCE_dB`'s default
+gain, `0dB`, is `> -96dB`, the threshold that would disable it). New
+primitives needed: `compand`, `invertresponse`, `smoothspec`
+(`pvc-core::filter_response`), and `spectmagwarp2` (`pvc-core::warp`'s
+`filter_warp`).
+
+**A real, structural bug found and fixed only via the oracle** (unlike
+most findings this project has made, which were caught by reading the C
+carefully *before* running anything): the filter-output pitch/frequency-
+shift-and-gain loop's bound is `for (i=1; i<(N+2); i+=2)`, covering
+*every* bin including bin 0 - not `for (i=1; i<N; i+=2)`, the Nyquist-
+excluding pattern `plainpv`/`twarp`'s analogous loops use. A first draft
+assumed the familiar pattern by analogy (`for j in 1..=n2`, skipping bin
+0) and passed its own unit tests, but produced audio that was audibly
+close-but-off against the real oracle (max per-block RMS difference
+3.47dB against a 0.5dB tolerance, on an otherwise-correct-shaped
+waveform - frame counts, peak amplitude, and overall envelope all matched
+exactly). Fixing the loop to `0..=n2` (matching the C's `i<N+2` bound
+literally, not by analogy with other tools) brought all three golden
+cases into tolerance immediately (0.013dB, 0.002dB, 0.19dB). Worth
+restating as a general lesson: a loop bound that *looks* like a pattern
+already seen twice in this codebase is exactly the case most likely to
+get copied without re-checking the actual number in the source.
+
+**Two more `spectmagwarp2` bugs (its own dedicated `filter.c` variant of
+`spectmagwarp`), found by reading the C - not the oracle - since a
+one-line synthetic case caught both before any full-tool run**:
+1. In `normalize=true, warpshape=0.0` mode, the C normalizes into the
+   output array and then immediately *overwrites* that result with the
+   unnormalized input - the normalization loop's output is computed and
+   then thrown away, unconditionally, in the same branch.
+2. In `normalize=true, warpshape != 0.0` mode, the warp step calls
+   `curve(0, peakbinamp, SP[i], warpshape)` using the *raw, unnormalized*
+   `SP[i]` where `SP[i] / peakbinamp` was clearly intended (the sibling
+   non-normalizing branch a few lines down does divide first) -
+   confirmed against the oracle: a bin at exactly the peak warped to
+   `~466`, not `1.0`.
+
+Both reproduced faithfully; `filter.c`'s own warpshape control function
+defaults to a constant `0.0`, so bug 1 makes this a no-op by default,
+matching the oracle exactly.
+
+**A third "which N" bug, this time in `smoothspec()`** (see
+`pvc-core::filter_response`'s doc comment): its internal `fundamental =
+R / (N2plus1 * 2)` uses `N2plus1 * 2`, which is `N_actual + 2`, not
+`N_actual` - the same class of mistake as `get_formants`' fundamental
+(Task 3.5) and `getthresh`'s K&R calling convention (Task 3.2), each a
+different flavor of "the codebase has several `N` conventions in flight
+and it's easy to grab the wrong one." Confirmed against the oracle:
+`smoothspec` only actually smooths (rather than degenerating to a no-op
+single-bin window) under the *buggy* fundamental at bandwidths where the
+*true* fundamental would still round down to a single-bin window.
+
+**A separate, real out-of-bounds read in the same function**, found
+while writing its oracle tests rather than by reading alone: `hibin`'s
+clamp only fires on strictly-greater
+(`if (hibin > N2plus1) hibin = N2plus1;`), so a smoothing window can
+legitimately compute `hibin == N2plus1` - one past the last valid index -
+completely unclamped, and the loop reads it anyway. This isn't a narrow
+edge case reachable only with unusual inputs: *any* nonzero smoothing
+width reaches it for bins near the top of the array, and because the
+whole array is peak-rescaled by one shared factor afterward, the
+resulting undefined value can shift *every* bin's output, not just the
+ones whose own window touches the edge - confirmed directly: an initial
+oracle test using a small, all-comparable-magnitude array produced a
+uniform ~20% scale discrepancy between the C and this port, traced to
+the rescale factor itself differing (not the per-bin averaging formula,
+which matched). Worked around for testing purposes (not "fixed" in the
+port, which still just clamps safely) by deliberately setting one bin to
+a value far louder than any plausible adjacent-memory garbage, anchoring
+the peak-rescale reliably regardless of what the C's OOB read actually
+returns, then comparing only the bins whose own window never reaches the
+corrupted region.
+
+Scope deliberately deferred to a follow-up, each confirmed independently
+verifiable later without touching what's already landed: the oscillator-
+bank resynthesis path (`noscbank2` - needed only once a pitch/frequency
+shift is requested; every golden case exercises the overlap-add path
+`filter.c` also uses by default) and nonzero `--filter-time-delay`/
+`--source-time-delay` (the delay-line ring buffer itself is fully
+implemented and exercised even at zero delay, just not oracle-tested at
+a nonzero one).
+
+**Takeaway:** this tool had the highest ratio of "bugs only the oracle
+caught" to "bugs caught by reading" of anything ported so far - the
+off-by-one bound in particular looked completely unremarkable next to
+two structurally similar (but differently-bounded) loops already ported
+correctly elsewhere. Where a strong prior exists ("this is the same
+pattern as X"), it's worth explicitly re-deriving the bound from the
+source's actual numbers rather than pattern-matching against a
+recently-ported sibling - the two other bugs found by reading alone
+(both in `spectmagwarp2`) came from a synthetic case constructed
+specifically to distinguish "did it divide by peak or not," not from
+a prior-pattern check at all.

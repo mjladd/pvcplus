@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod chordresponsemaker;
+pub mod filter;
 pub mod filtresponsemaker;
 pub mod freqresponse;
 pub mod pv;

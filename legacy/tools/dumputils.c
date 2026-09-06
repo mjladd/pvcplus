@@ -99,6 +99,50 @@ int main(void) {
         printf("\n");
     }
 
+    /* compand(SP, Nplus2, compthreshamp, compamp, expthreshamp, expamp) */
+    {
+        float sp[10] = {0.1, 0, 0.5, 0, 1.0, 0, 0.05, 0, 0.02, 0};
+        compand(sp, 10, 0.8, 0.5, 0.1, 2.0);
+        printf("compand mags = %.9g %.9g %.9g %.9g %.9g\n", sp[0], sp[2], sp[4], sp[6], sp[8]);
+    }
+
+    /* invertresponse(SP, N, normflag) */
+    {
+        float sp[4] = {1.0, 0, 0.1, 0};
+        invertresponse(sp, 4, 0);
+        printf("invertresponse mags = %.9g %.9g\n", sp[0], sp[2]);
+    }
+
+    /* smoothspec(F, N2plus1, octavesOrFreqBW, R) - Hz-window mode */
+    {
+        float f[10] = {0.1, 0, 0.9, 0, 0.2, 0, 0.8, 0, 0.3, 0};
+        smoothspec(f, 5, 100.0, 1000);
+        printf("smoothspec(100Hz,R=1000) mags = %.9g %.9g %.9g %.9g %.9g\n",
+               f[0], f[2], f[4], f[6], f[8]);
+    }
+    {
+        float f[10] = {0.1, 0, 0.9, 0, 0.2, 0, 0.8, 0, 0.3, 0};
+        smoothspec(f, 5, -1.0, 1000);
+        printf("smoothspec(-1oct,R=1000) mags = %.9g %.9g %.9g %.9g %.9g\n",
+               f[0], f[2], f[4], f[6], f[8]);
+    }
+
+    /* spectmagwarp2(SP, SP_return, Nplus2, warpshape, normflag) */
+    {
+        float sp[10] = {1.0, 100, 4.0, 200, 2.0, 300, 0.5, 400, 3.0, 500};
+        float ret[10];
+        spectmagwarp2(sp, ret, 10, 2.0, 1);
+        printf("spectmagwarp2(warp=2,norm=1) mags = %.9g %.9g %.9g %.9g %.9g\n",
+               ret[0], ret[2], ret[4], ret[6], ret[8]);
+    }
+    {
+        float sp[10] = {1.0, 100, 4.0, 200, 2.0, 300, 0.5, 400, 3.0, 500};
+        float ret[10];
+        spectmagwarp2(sp, ret, 10, 0.0, 1);
+        printf("spectmagwarp2(warp=0,norm=1) mags = %.9g %.9g %.9g %.9g %.9g\n",
+               ret[0], ret[2], ret[4], ret[6], ret[8]);
+    }
+
     /* smooth(A, old_A, Nplus2, att, matt, rel, mrel) across 3 frames */
     {
         float a1[6] = {1.0, 0, 2.0, 0, 3.0, 0};

@@ -44,6 +44,33 @@ pub fn read_fr(path: &Path, n: usize) -> Result<Vec<f32>, ResponseError> {
         .collect())
 }
 
+/// Reads a `.fr` file without knowing `n` ahead of time, inferring it
+/// from the file's own byte size instead (`n = bytes/4 - 2`) - what
+/// `filter.c` effectively does too (it takes an explicit `-N`, but the
+/// file's size is all that's actually needed; see `pvc-core::
+/// tools::filter`'s doc comment on why this port derives its FFT size
+/// from the response file rather than requiring a separately-specified,
+/// easy-to-mismatch one). Returns `(amplitudes_only, n)` - just the even
+/// (magnitude) slots, since nothing in the `.fr`-consuming tools this
+/// crate supports ever reads the odd (frequency) ones back.
+pub fn read_fr_amplitudes(path: &Path) -> Result<(Vec<f32>, usize), ResponseError> {
+    let bytes = fs::read(path)?;
+    if !bytes.len().is_multiple_of(4) || bytes.len() < 8 {
+        return Err(ResponseError::SizeMismatch(
+            path.display().to_string(),
+            bytes.len(),
+            0,
+            0,
+        ));
+    }
+    let n = bytes.len() / 4 - 2;
+    let amps = bytes
+        .chunks_exact(8)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect();
+    Ok((amps, n))
+}
+
 /// Writes a `.fr` file: `data` (expected to be `n + 2` floats, but
 /// written as-is - the caller owns validating its length) as raw
 /// little-endian f32s.
