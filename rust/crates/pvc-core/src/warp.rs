@@ -59,6 +59,69 @@ pub fn spectmagwarp(sp: &mut [f32], warpshape: f32, normalize: bool) -> bool {
     }
 }
 
+/// Ports `spectmagwarp2(SP, SP_return, Nplus2, warpshape, normflag)`:
+/// `filter.c`'s variant of [`spectmagwarp`] that writes into a separate
+/// output array rather than modifying `sp` in place (so the caller can
+/// keep the unwarped original around - `filter.c` uses this to rebuild
+/// its working response `FF` fresh from the fixed, already-EQ'd/
+/// companded `F` every frame, since the warp itself is one step in a
+/// per-frame `EQ -> COMPANDING -> WARP -> INVERSION -> SMOOTHING ->
+/// NORMALIZATION` chain with a time-varying warpshape).
+///
+/// Has two real bugs, both reproduced here rather than fixed:
+///
+/// 1. In the `normalize=true, warpshape=0.0` case, the C normalizes into
+///    `SP_return` and then immediately *overwrites* that result with the
+///    unnormalized original `sp` values - so normalizing has no visible
+///    effect whenever warping is otherwise skipped. Confirmed by reading
+///    the C directly (not just inferred): the "LINEAR WARP -- SKIP"
+///    branch unconditionally does `SP_return[i] = SP[i]`, discarding the
+///    normalization loop that ran just above it in the same branch.
+///    `filter.c` always passes `normflag=true`, and its warpshape
+///    control function defaults to a constant `0.0`, so by default this
+///    makes [`filter_warp`] an exact copy - confirmed against the
+///    oracle.
+/// 2. In the `normalize=true, warpshape != 0.0` case, the C warps with
+///    `curve(0., peakbinamp(=1.0), SP[i], warpshape)` - using the *raw,
+///    unnormalized* `SP[i]` as `curve`'s `n` argument, not `SP[i] /
+///    peakbinamp` (the value the normalization loop just computed one
+///    line above, into `SP_return[i]`, and then never reads again). A
+///    copy-paste omission, not a design choice: the non-normalizing
+///    branch just below this one in the same function does divide by
+///    `peakbinamp` before calling `curve`. Confirmed against the oracle:
+///    for a peak of `4.0`, an original bin of `4.0` warps to `~466`, not
+///    `curve(0,1,1.0,warpshape)`'s `1.0` a correctly-normalized-first
+///    call would produce.
+pub fn filter_warp(sp: &[f32], warpshape: f32, normalize: bool) -> Vec<f32> {
+    let peak = sp.iter().step_by(2).copied().fold(f32::MIN, f32::max);
+
+    if normalize {
+        if peak <= 0.0 {
+            return sp.iter().step_by(2).copied().collect();
+        }
+        if warpshape == 0.0 {
+            // Bug 1: the normalized values computed here are discarded,
+            // and the original `sp` is returned instead.
+            return sp.iter().step_by(2).copied().collect();
+        }
+        // Bug 2: `m`, not `m / peak`, is `curve`'s `n` argument.
+        sp.iter()
+            .step_by(2)
+            .map(|&m| curve(0.0, 1.0, m, warpshape))
+            .collect()
+    } else if warpshape != 0.0 {
+        if peak <= 0.0 {
+            return sp.iter().step_by(2).copied().collect();
+        }
+        sp.iter()
+            .step_by(2)
+            .map(|&m| curve(0.0, peak, m / peak, warpshape))
+            .collect()
+    } else {
+        sp.iter().step_by(2).copied().collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,5 +179,30 @@ mod tests {
         let mut sp = [1.0f32, 0.0, 4.0, 0.0];
         assert!(!spectmagwarp(&mut sp, 0.0, false));
         assert_eq!(sp, [1.0, 0.0, 4.0, 0.0]);
+    }
+
+    #[test]
+    #[allow(clippy::excessive_precision)]
+    fn filter_warp_matches_c_oracle() {
+        let sp = [
+            1.0f32, 100.0, 4.0, 200.0, 2.0, 300.0, 0.5, 400.0, 3.0, 500.0,
+        ];
+        let warped = filter_warp(&sp, 2.0, true);
+        assert_eq!(
+            warped,
+            [1.0, 466.415985, 8.38905621, 0.268941432, 62.9872055]
+        );
+    }
+
+    #[test]
+    fn filter_warp_zero_warpshape_normalized_reproduces_the_copy_back_bug() {
+        // A real bug in spectmagwarp2, confirmed against the oracle:
+        // normalize=true, warpshape=0.0 discards the normalization and
+        // returns the original (unnormalized) amplitudes verbatim.
+        let sp = [
+            1.0f32, 100.0, 4.0, 200.0, 2.0, 300.0, 0.5, 400.0, 3.0, 500.0,
+        ];
+        let warped = filter_warp(&sp, 0.0, true);
+        assert_eq!(warped, [1.0, 4.0, 2.0, 0.5, 3.0]);
     }
 }

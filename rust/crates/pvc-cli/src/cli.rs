@@ -145,6 +145,16 @@ pub enum Command {
     /// comment for what's in and out of scope (plot/ASCII/binary formant
     /// report files aren't ported - pure reporting).
     Freqresponse(Box<FreqresponseArgs>),
+
+    /// Fixed-spectrum phase-vocoder filter: multiplies each frame's
+    /// amplitude by a shaped copy of a `.fr` response, then mixes the
+    /// filtered signal with (unless disabled) the original source.
+    ///
+    /// Ports `filter`'s audio-processing path (`legacy/pvc_src/
+    /// filter.c`); see `pvc-core::tools::filter`'s doc comment for what's
+    /// in and out of scope (oscillator-bank resynthesis - needed only
+    /// for pitch/frequency-shifted output - isn't ported yet).
+    Filter(Box<FilterArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -844,6 +854,179 @@ pub struct FreqresponseArgs {
     /// normalization", i.e. the opposite of this flag's name).
     #[arg(long = "no-normalize")]
     pub no_normalize: bool,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc filter`'s flag surface. Long names follow the same convention as
+/// the other tools' - see `pvc-core::tools::filter`'s doc comment for
+/// the source-mixing/response-file-size design decisions these flags
+/// reflect.
+#[derive(clap::Args, Debug)]
+pub struct FilterArgs {
+    /// Path to the `.fr` response file (its own size determines the FFT
+    /// size - see `pvc-core::tools::filter`'s doc comment).
+    #[arg(long)]
+    pub response: PathBuf,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`);
+    /// the C's own hardcoded default is a literal `2048`, matching
+    /// `pv`'s `--window-size` gotcha.
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time-stretch factor (`1.0` = unchanged).
+    #[arg(long, default_value_t = 1.0)]
+    pub stretch: f32,
+
+    /// Filter-output pitch shift in semitones - a plain number, or `@path`.
+    #[arg(long = "filter-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_pitch: ControlFn,
+
+    /// Filter-output frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "filter-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_freq_shift: ControlFn,
+
+    /// Filter-output gain in dB - a plain number, or `@path`.
+    #[arg(long = "filter-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_gain: ControlFn,
+
+    /// Filter-output time delay in seconds - a plain number, or `@path`.
+    #[arg(long = "filter-time-delay", value_parser = parse_control_fn, default_value = "0")]
+    pub filter_time_delay: ControlFn,
+
+    /// Scales the effective delay used when resolving time-varying
+    /// parameters against a delayed frame - a plain number, or `@path`.
+    #[arg(long = "delay-time-scaler", value_parser = parse_control_fn, default_value = "1")]
+    pub delay_time_scaler: ControlFn,
+
+    /// Mix the (delayed/shifted) original source in alongside the
+    /// filtered signal - on by default, matching the real tool (see
+    /// `pvc-core::tools::filter`'s doc comment).
+    #[arg(long = "source", default_value_t = true, action = clap::ArgAction::Set)]
+    pub source_enabled: bool,
+
+    /// Source gain in dB - a plain number, or `@path`.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// Source pitch shift in semitones - a plain number, or `@path`.
+    #[arg(long = "source-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_pitch: ControlFn,
+
+    /// Source frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "source-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_freq_shift: ControlFn,
+
+    /// Source time delay in seconds - a plain number, or `@path`.
+    #[arg(long = "source-time-delay", value_parser = parse_control_fn, default_value = "0")]
+    pub source_time_delay: ControlFn,
+
+    /// Response pitch shift in semitones - a plain number, or `@path`.
+    #[arg(long = "response-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub response_pitch: ControlFn,
+
+    /// Response frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "response-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub response_freq_shift: ControlFn,
+
+    /// Response magnitude warp index - a plain number, or `@path`.
+    #[arg(long = "response-warp", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub response_warp: ControlFn,
+
+    /// Response smoothing bandwidth: positive is Hz, negative is octaves
+    /// - a plain number, or `@path`.
+    #[arg(long = "response-smoothing", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub response_smoothing: ControlFn,
+
+    /// Source signal floor in dB - how much of the source passes through
+    /// unfiltered at the response's quietest points - a plain number, or
+    /// `@path`.
+    #[arg(long = "source-floor", default_value = "-96", value_parser = parse_control_fn, allow_hyphen_values = true)]
+    pub source_floor: ControlFn,
+
+    /// Apply the filter output's own pitch/frequency shift only to the
+    /// source, not to how the response is positioned (off by default:
+    /// the response tracks the filter output's shift too).
+    #[arg(long = "pitch-shift-source-only")]
+    pub pitch_shift_source_only: bool,
+
+    /// Invert the response (band-reject instead of band-pass).
+    #[arg(long = "band-reject")]
+    pub band_reject: bool,
+
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// Compression threshold in dB.
+    #[arg(
+        long = "comp-threshold",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub comp_threshold: f32,
+
+    /// Compression amount in dB.
+    #[arg(
+        long = "comp-amount",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub comp_amount: f32,
+
+    /// Expansion threshold in dB.
+    #[arg(long = "expand-threshold", default_value_t = -96.0, allow_hyphen_values = true)]
+    pub expand_threshold: f32,
+
+    /// Expansion amount in dB.
+    #[arg(
+        long = "expand-amount",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub expand_amount: f32,
+
+    /// Per-frame amplitude normalization limit in dB - a plain number,
+    /// or `@path`.
+    #[arg(long = "normalization-limit", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub normalization_limit: ControlFn,
+
+    /// Normalize each frame to match the filter response's own loudness
+    /// instead of the (delayed) input sound's.
+    #[arg(long = "normalize-to-response")]
+    pub normalize_to_response: bool,
+
+    /// Envelope attack time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// Envelope release time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
 
     pub input: PathBuf,
     pub output: PathBuf,

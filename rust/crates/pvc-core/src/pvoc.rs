@@ -229,7 +229,6 @@ pub struct Synthesizer {
     i_factor: usize,
     synthesis_window: Vec<f32>,
     output_ring: Vec<f32>, // length nw, shiftout's ring buffer
-    fft_buf: Vec<f32>,
     fold_pos: i64,
     phase: PhaseTracker,
 }
@@ -261,7 +260,6 @@ impl Synthesizer {
             i_factor,
             synthesis_window,
             output_ring: vec![0.0; nw],
-            fft_buf: vec![0.0; n],
             fold_pos,
             phase: PhaseTracker::new_synthesis(n / 2, i_factor, sample_rate),
         }
@@ -279,12 +277,36 @@ impl Synthesizer {
     /// here via `shift_out` always running. Skips roughly `Nw/I` hops at
     /// the very start of a stream, same as the reference tool.
     pub fn overlap_add(&mut self, frame: &Frame) -> Vec<f32> {
-        self.phase.unconvert(frame, &mut self.fft_buf);
-        rfft(&mut self.fft_buf, self.n / 2, false);
+        let mut buf = self.unconvert_only(frame);
+        self.finish(&mut buf)
+    }
+
+    /// The `unconvert()` half of [`Self::overlap_add`] alone, with its
+    /// own independent phase-tracking state - the split `filter.c` needs
+    /// for its dual source-and-filter-output combination:
+    /// `unconvert1(channel_filter, buffer_filter, ...)` and
+    /// `unconvert(channel, buffer, ...)` each keep separate phase memory
+    /// (the legacy hand-duplicated-function pattern this port already
+    /// replaces with per-instance state elsewhere - see this module's
+    /// doc comment), but `buffer[i] += buffer_filter[i]` combines them
+    /// into one spectrum *before* the shared inverse FFT/overlap-add/
+    /// `shiftout` - i.e. two independent [`Synthesizer`]s' worth of
+    /// `unconvert_only`, summed, fed into just one of their [`Self::finish`].
+    pub fn unconvert_only(&mut self, frame: &Frame) -> Vec<f32> {
+        let mut buf = vec![0.0f32; self.n];
+        self.phase.unconvert(frame, &mut buf);
+        buf
+    }
+
+    /// The rest of [`Self::overlap_add`] - inverse FFT, overlap-add,
+    /// `shiftout` - given an already-`unconvert`ed (and, for `filter.c`'s
+    /// dual-source case, already-summed) spectrum buffer (length `n`).
+    pub fn finish(&mut self, buffer: &mut [f32]) -> Vec<f32> {
+        rfft(buffer, self.n / 2, false);
         // `on += I` happens before overlapadd() is called in the C main loop.
         self.fold_pos += self.i_factor as i64;
         overlap_add(
-            &self.fft_buf,
+            buffer,
             &self.synthesis_window,
             &mut self.output_ring,
             self.fold_pos,

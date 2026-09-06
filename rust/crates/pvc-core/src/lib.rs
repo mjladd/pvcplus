@@ -1,6 +1,7 @@
 pub mod control;
 pub mod eq;
 pub mod fft;
+pub mod filter_response;
 pub mod formant;
 pub mod gen;
 pub mod pvoc;

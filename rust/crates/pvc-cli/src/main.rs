@@ -43,5 +43,7 @@ fn main() -> anyhow::Result<()> {
         Command::Twarp(args) => commands::twarp::run(&args),
 
         Command::Freqresponse(args) => commands::freqresponse::run(&args),
+
+        Command::Filter(args) => commands::filter::run(&args),
     }
 }

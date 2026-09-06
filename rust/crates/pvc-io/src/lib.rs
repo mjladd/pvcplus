@@ -10,4 +10,4 @@ pub use control::{
     read_control_file, write_control_file, ControlFileData, ControlFileError, ControlFileFormat,
 };
 pub use pva::{read_legacy_pva, read_pva, write_pva, PvaData, PvaError, PvaHeader};
-pub use response::{read_fr, write_fr, ResponseError};
+pub use response::{read_fr, read_fr_amplitudes, write_fr, ResponseError};
