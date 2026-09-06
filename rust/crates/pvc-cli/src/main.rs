@@ -39,5 +39,7 @@ fn main() -> anyhow::Result<()> {
         } => commands::pv::run_pitch(semitones, &input, &output),
 
         Command::Analyze(args) => commands::analyze::run(&args),
+
+        Command::Twarp(args) => commands::twarp::run(&args),
     }
 }

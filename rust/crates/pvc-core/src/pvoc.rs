@@ -307,15 +307,19 @@ impl Synthesizer {
         out
     }
 
-    /// Flushes any remaining tail without adding a new frame - matches
-    /// `shiftout`'s `flushflag` path (drops the "advance a hop" semantics,
-    /// just returns what's already accumulated in the ring for a final
-    /// partial output).
+    /// Flushes without adding a new frame - matches `shiftout`'s
+    /// `flushflag` path: `shiftout(output, Nw, I, 1, 1)` calls
+    /// `bufferout(output, I, 1)`, using the function's own `I` parameter
+    /// (the hop size) as the transfer count *regardless of flushflag* -
+    /// so even the final flush only ever transfers the ring's front
+    /// `i_factor` samples, never the rest of it (confirmed by reading
+    /// `bufferout`'s `while (outbuffpt < I)` loop, which never
+    /// references `N`/`Nw` at all). Returning the whole ring here was
+    /// tried first and produced ~2000 samples of extra output past the
+    /// real tool's length for a `twarp` overlap-add run - traced to this
+    /// exact mismatch.
     pub fn flush(&mut self) -> Vec<f32> {
-        std::mem::replace(
-            &mut self.output_ring,
-            vec![0.0; self.synthesis_window.len()],
-        )
+        self.shift_out()
     }
 }
 

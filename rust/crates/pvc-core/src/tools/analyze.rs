@@ -63,12 +63,24 @@ pub struct AnalyzeParams {
     pub warpshape: f32,
 }
 
-/// Processes one channel of audio into a list of analysis frames,
-/// matching `pvanalysis.c`'s per-channel frame loop exactly (fold/rfft/
-/// convert via [`Analyzer`], shelf [`eq`], `spectmagwarp`, then gain -
-/// see this module's doc comment for what's deliberately *not* here:
-/// no per-frame control functions, no `phaselock`, no resynthesis).
-pub fn process_channel(input: &[f32], sample_rate: u32, params: &AnalyzeParams) -> Vec<Frame> {
+/// Processes one channel of audio into a list of analysis frames, plus
+/// that channel's peak amplitude, matching `pvanalysis.c`'s per-channel
+/// frame loop exactly (fold/rfft/convert via [`Analyzer`], shelf [`eq`],
+/// `spectmagwarp`, then gain - see this module's doc comment for what's
+/// deliberately *not* here: no per-frame control functions, no
+/// `phaselock`, no resynthesis).
+///
+/// The peak amplitude is `pvanalysis.c`'s own `peakamps[channow]`: the
+/// largest post-gain bin amplitude seen across every frame (excluding
+/// the Nyquist bin - same `i < N` bound as the gain loop just above it).
+/// It's an FFT-*magnitude*-domain value, not a waveform-amplitude peak -
+/// easy to conflate, and `pvc_io::PvaData::peak_amps`'s doc comment (and
+/// `tools::twarp`'s) explain why the distinction matters to a caller.
+pub fn process_channel(
+    input: &[f32],
+    sample_rate: u32,
+    params: &AnalyzeParams,
+) -> (Vec<Frame>, f32) {
     let r = sample_rate as f32;
     let n = params.fft_size;
     let d = (r / params.frames_per_sec) as usize;
@@ -98,6 +110,7 @@ pub fn process_channel(input: &[f32], sample_rate: u32, params: &AnalyzeParams) 
     let mut pos = 0usize;
 
     let mut frames = Vec::new();
+    let mut peak_amp = 0.0f32;
 
     loop {
         let mut hop = vec![0.0f32; d];
@@ -135,8 +148,15 @@ pub fn process_channel(input: &[f32], sample_rate: u32, params: &AnalyzeParams) 
         // "excludes the Nyquist bin" `i < N` bound as `plainpv`'s gain
         // stage (`flat` is `N+2` long; index `N` is the Nyquist bin's
         // amplitude slot, one past this loop's last touched index `N-2`).
+        let mut peakampnow = 0.0f32;
         for k in (1..n).step_by(2) {
             flat[k - 1] *= ampgain;
+            if flat[k - 1] > peakampnow {
+                peakampnow = flat[k - 1];
+            }
+        }
+        if peakampnow > peak_amp {
+            peak_amp = peakampnow;
         }
 
         frames.push(Frame::from_pva_floats(&flat));
@@ -146,7 +166,7 @@ pub fn process_channel(input: &[f32], sample_rate: u32, params: &AnalyzeParams) 
         }
     }
 
-    frames
+    (frames, peak_amp)
 }
 
 #[cfg(test)]
@@ -172,13 +192,14 @@ mod tests {
     fn silence_in_zero_amplitude_frames_out() {
         let params = default_params(1024);
         let input = vec![0.0f32; 44100 / 4];
-        let frames = process_channel(&input, 44100, &params);
+        let (frames, peak_amp) = process_channel(&input, 44100, &params);
         assert!(!frames.is_empty());
         for frame in &frames {
             for &(mag, _freq) in &frame.bins {
                 assert!(mag.abs() < 1e-6);
             }
         }
+        assert!(peak_amp < 1e-6);
     }
 
     #[test]
@@ -190,7 +211,7 @@ mod tests {
                 0.5 * (2.0 * std::f32::consts::PI * 440.0 * i as f32 / sample_rate as f32).sin()
             })
             .collect();
-        let frames = process_channel(&input, sample_rate, &params);
+        let (frames, peak_amp) = process_channel(&input, sample_rate, &params);
 
         assert!(!frames.is_empty());
         let mid_frame = &frames[frames.len() / 2];
@@ -204,6 +225,10 @@ mod tests {
         assert!(
             (peak_freq - 440.0).abs() < 20.0,
             "dominant bin frequency {peak_freq} not near 440Hz"
+        );
+        assert!(
+            peak_amp >= peak_mag,
+            "peak_amp {peak_amp} should be >= any single frame's peak bin {peak_mag}"
         );
     }
 }

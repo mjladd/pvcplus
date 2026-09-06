@@ -310,3 +310,90 @@ being "wrong." Fixed by only checking frequency error on bins with
 non-negligible magnitude (magnitude error has no such floor and is
 checked everywhere) - not by loosening the tolerance blindly, which
 would have hidden a real regression just as easily as this noise.
+
+## Task 3.4's `pvc twarp`: a real interpolation bug, a real rescale bug, and a one-iteration-stale time check
+
+`twarp` (time-varying resynthesis navigating a `.pva` analysis file) is
+the largest tool ported so far, and turned up three genuine, empirically
+confirmed quirks in the real C - not porting mistakes, things the real
+tool actually does:
+
+1. **`makeInterpolatedFilterFrame()` never interpolates.** Its own
+   source comments describe computing a fractional position between two
+   analysis frames, but `filtfprop` is declared `int` on the same
+   declaration line as the frame indices (`int i, k, filtflow, filtfhigh,
+   filtfprop;`) - so `filtfprop = filtf - (float) filtflow`, always a
+   fractional value in `[0, 1)`, truncates to exactly `0` on every call.
+   The function always returns the floor frame verbatim; `F_higher` is
+   read from the file but its value is never used. Confirmed via a
+   dedicated oracle harness (`legacy/tools/dumptwarp.c`): querying a
+   fractional timepoint returned the floor frame's values exactly, not a
+   value partway toward the next one. `pvc-core::timenav::
+   interpolate_frame` reproduces this - it's a floor lookup, not a lerp,
+   matching the real tool's actual (if misleadingly-named) behavior.
+2. **`twarp`'s default whole-file rescale is a real bug, not just a
+   quirk.** Same shared `rescalev`-driven post-pass `pvc pv` already
+   found (`ipeakamp`/`rescaleThisBuffer`), but `twarp` copies its
+   *target* peak from the `.pva` analysis file's own stored peak
+   amplitudes (`for (k...) ipeakamp[k] = normamp[k];`) - an FFT-
+   *magnitude*-domain value from `pvanalysis.c`'s analysis pass, not a
+   waveform-amplitude peak. Confirmed empirically: a 0.5-amplitude 440Hz
+   sine's analysis peak came out around `0.00046`; real `twarp`'s default
+   output for that file was a 16-bit peak sample value of exactly `15` -
+   audible as near-total silence, for every default (no `-=0` override)
+   invocation. Reproduced for golden-harness parity in `commands::
+   twarp::run` (documented there in detail) rather than silently
+   "fixed." This also meant the existing golden cases' `spectral` (dB-
+   relative) tolerance was the wrong comparator: a dB-relative comparison
+   is meaningless on audio this quiet (one block went from a real
+   oracle's `-106dB` to this port's `-180dB` floor purely from noise-
+   floor-level differences, reporting a fabricated "73.7dB error" on a
+   file where the max *absolute* sample difference was under 0.001).
+   Switched `tests/golden/cases/twarp/*.toml` to `kind = "sample"`
+   (absolute) instead.
+3. **The frame-loop's own `t < dur` check reads one iteration stale.**
+   `t` is a plain global, set once per iteration by `timenow()` early in
+   the loop body - *before* that same iteration's own write can advance
+   `samps` - and never touched again until the next iteration's own
+   `timenow()` call. So the value the while-check sees before admitting
+   iteration `k+1` is `samps` as of the *start* of iteration `k`, one
+   full iteration stale relative to `samps` as of the *end* of iteration
+   `k`. A first draft recomputed `t` fresh at the top of the Rust loop
+   (the same approach `tools::pv`/`tools::analyze` correctly use, since
+   their loops terminate on an EOF/valid-samples state machine, not a
+   `t < dur` comparison) and came up exactly one hop (`I` samples) short
+   of the real tool's output length on every case. Diagnosed by
+   instrumenting a real debug build to print `t`/`samps`/`on` every frame
+   and tracing the exact iteration where the two diverged. Fixed by
+   carrying the previous iteration's `t` forward explicitly
+   (`t_for_check` in `tools::twarp::process_channel`) instead of
+   recomputing it fresh each time.
+
+Also found while wiring this up: `Synthesizer::flush()` (added for this
+task, since `plainpv` never uses the overlap-add path) initially returned
+the *entire* synthesis ring, but `shiftout(output, Nw, I, 1, 1)`'s flush
+call transfers samples via `bufferout(A, I, 1)`, which only ever reads
+`I` (the hop size) samples regardless of `flushflag` - confirmed by
+reading `bufferout`'s `while (outbuffpt < I)` loop, which never
+references `Nw` at all. Same "flush only ever adds one hop" finding
+`tools::pv` already made for the oscillator-bank path, now confirmed to
+apply identically to the overlap-add path (both go through the same
+generic `bufferout`).
+
+Also discovered, in the process of tracing all of this: `twarp` is *not*
+always oscillator-bank despite `docs/dev/parameter-inventory.md` §4
+claiming so - see that section's correction and `tests/golden/cases/
+twarp/basic_chain.toml`'s note for the detail (confirmed via a debug
+build printing the resolved `obank` flag: `0` by default, `1` once a
+pitch/frequency shift is requested).
+
+**Takeaway:** for a tool this size, oracle-verifying the individual
+library functions it calls (`makeInterpolatedFilterFrame`,
+`findFilterTimeAndConstrainByWindow`, `makeLoopSmoothTime`) *before*
+assembling them caught two of these three bugs early and cheaply, via a
+dedicated small C harness (`dumptwarp.c`) rather than debugging through a
+full end-to-end audio diff. The third (the stale-`t` loop check) only
+showed up at the whole-tool integration level, once real length
+mismatches appeared - consistent with Task 3.2's own takeaway that
+integration testing against the golden harness is still necessary even
+after every primitive checks out individually.
