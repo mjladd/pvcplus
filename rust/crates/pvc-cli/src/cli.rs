@@ -234,6 +234,31 @@ pub enum Command {
     /// comment for two doc-corrected defaults and several real bugs
     /// reproduced faithfully.
     Pitchtrack(Box<PitchtrackArgs>),
+
+    /// Convert between amplitude/decibel and Hz/octave.pitchclass units.
+    ///
+    /// Replaces the four standalone unit-conversion utilities `amptodB`,
+    /// `dBtoamp`, `Hztopitch`, `pitchtoHz` (`legacy/pvc_src/*.c`) with one
+    /// command taking a `--from`/`--to` unit pair (`amp`, `db`, `hz`,
+    /// `oppc`). `--norm` (`amptodB`'s `-n`) only applies to `amp -> db`.
+    ConvertUnits {
+        /// Unit to convert from: `amp`, `db`, `hz`, or `oppc`.
+        #[arg(long, value_parser = parse_convert_unit)]
+        from: ConvertUnit,
+
+        /// Unit to convert to: `amp`, `db`, `hz`, or `oppc`.
+        #[arg(long, value_parser = parse_convert_unit)]
+        to: ConvertUnit,
+
+        /// Normalization amplitude for `amp -> db`: divides the amplitude
+        /// by this before converting to decibels. Ignored otherwise.
+        #[arg(long, default_value_t = 1.0)]
+        norm: f32,
+
+        /// A value to convert; repeat for more than one.
+        #[arg(long = "value", required = true, allow_hyphen_values = true)]
+        values: Vec<f32>,
+    },
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -2067,6 +2092,30 @@ fn parse_band_window(s: &str) -> Result<pvc_core::tools::chordresponsemaker::Ban
         "triangle" => Ok(BandWindow::Triangle),
         "rectangle" => Ok(BandWindow::Rectangle),
         _ => Err(format!("expected \"triangle\" or \"rectangle\", got {s:?}")),
+    }
+}
+
+/// `pvc convert-units`'s `--from`/`--to` unit tag. Amplitude/dB
+/// (`amptodB`/`dBtoamp`) and Hz/octave.pitchclass (`Hztopitch`/
+/// `pitchtoHz`) are each other's only supported pair - `commands::
+/// convert_units::run` rejects any other combination.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConvertUnit {
+    Amp,
+    Db,
+    Hz,
+    Oppc,
+}
+
+fn parse_convert_unit(s: &str) -> Result<ConvertUnit, String> {
+    match s {
+        "amp" => Ok(ConvertUnit::Amp),
+        "db" => Ok(ConvertUnit::Db),
+        "hz" => Ok(ConvertUnit::Hz),
+        "oppc" => Ok(ConvertUnit::Oppc),
+        _ => Err(format!(
+            "expected \"amp\", \"db\", \"hz\", or \"oppc\", got {s:?}"
+        )),
     }
 }
 

@@ -141,12 +141,6 @@ fn midi_to_hz(midi: f32) -> f32 {
     mid_c() * 2.0f32.powf((midi - 60.0) / 12.0)
 }
 
-fn hz_to_oppc(hz: f32) -> f32 {
-    let temp2 = 8.0 + (hz / mid_c()).log10() / 2.0f32.log10();
-    let temp1 = temp2.trunc();
-    temp1 + 0.12 * (temp2 - temp1)
-}
-
 /// Resolves `--band-low`/`--band-high`/`--reference`'s own
 /// octave.pitchclass convention: `<= 12.0` is octave.pitchclass
 /// (converted via [`crate::response::oppc_to_hz`]), otherwise a literal
@@ -1035,7 +1029,7 @@ pub fn process(
                             -(12.0 * (ftemp4 / outfreqorigin).log10() / 2.0f32.log10())
                         }
                         OutputFormat::Midi => hz_to_midi(ftemp4),
-                        OutputFormat::OctavePitchclass => hz_to_oppc(ftemp4),
+                        OutputFormat::OctavePitchclass => crate::response::hz_to_oppc(ftemp4),
                     };
                     out.push(outval);
                     tp += tpinc;

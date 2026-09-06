@@ -61,5 +61,12 @@ fn main() -> anyhow::Result<()> {
         Command::Flux(args) => commands::flux::run(&args),
 
         Command::Pitchtrack(args) => commands::pitchtrack::run(&args),
+
+        Command::ConvertUnits {
+            from,
+            to,
+            norm,
+            values,
+        } => commands::convert_units::run(from, to, norm, &values, cli.json),
     }
 }

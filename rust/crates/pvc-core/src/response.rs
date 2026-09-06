@@ -29,6 +29,24 @@ pub fn oppc_to_hz(octave_point_pitch_class: f32) -> f32 {
     mid_c * 2.0f64.powf(temp as f64) as f32
 }
 
+/// Ports `Hz_to_OPPC()` (`legacy/pvc_lib/Hz_to_OPPC.c`), `oppc_to_hz`'s
+/// inverse: Hz to an "octave.pitchclass" pitch. Unlike `oppc_to_hz`, the
+/// fractional part isn't `.01` per pitch class - it's `.12 *` the raw
+/// fractional octave, so a value landing just under an integer octave
+/// (a float-precision artifact, not a real semitone) reads as `.11xxxx`
+/// pitch classes into the *previous* octave rather than rounding up -
+/// confirmed against the real compiled `Hztopitch` binary below, not
+/// just algebraically: `Hz_to_OPPC(261.625)` (a hair below middle C's
+/// exact 261.62558) is `7.119999`, not `8.00`. Reproduced exactly, not
+/// smoothed over - `pvc pitchtrack`'s `octave-pitchclass` output format
+/// depends on this same quirk.
+pub fn hz_to_oppc(hz: f32) -> f32 {
+    let mid_c = (220.0 * 2.0f64.powf(3.0 / 12.0)) as f32;
+    let temp2 = 8.0 + (hz / mid_c).log10() / 2.0f32.log10();
+    let temp1 = temp2.trunc();
+    temp1 + 0.12 * (temp2 - temp1)
+}
+
 /// Ports `normalize()`: scales every bin's amplitude so the peak becomes
 /// `1.0`, clamping anything that would exceed `1.0` after scaling
 /// (possible when `peakamp` is itself less than the true peak, e.g. a
@@ -60,6 +78,18 @@ mod tests {
         assert_eq!(oppc_to_hz(9.00), 523.25116);
         assert_eq!(oppc_to_hz(8.03), 311.126526);
         assert_eq!(oppc_to_hz(0.00), 1.02197492);
+    }
+
+    #[test]
+    #[allow(clippy::excessive_precision)]
+    fn hz_to_oppc_matches_c_oracle() {
+        // `/tmp/pvcbuild/pvc_src/Hztopitch 261.625 440.0 130.81`
+        assert_eq!(hz_to_oppc(261.625), 7.1199994);
+        assert_eq!(hz_to_oppc(440.0), 8.09);
+        assert_eq!(hz_to_oppc(130.81), 6.1199965);
+        // Exact middle C - lands squarely on the octave boundary, unlike
+        // the case above.
+        assert_eq!(hz_to_oppc(261.62558), 8.0);
     }
 
     #[test]
