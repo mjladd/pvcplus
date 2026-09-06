@@ -225,6 +225,15 @@ pub enum Command {
     /// fluxoid.c`); see `pvc-core::tools::fluxoid`'s doc comment for the
     /// shared two-pass shape.
     Flux(Box<FluxArgs>),
+
+    /// Fundamental-frequency tracker: a time-series of scalar pitch
+    /// values, never audio.
+    ///
+    /// Ports `pitchtracker`'s audio-processing path (`legacy/pvc_src/
+    /// pitchtracker.c`); see `pvc-core::tools::pitchtracker`'s doc
+    /// comment for two doc-corrected defaults and several real bugs
+    /// reproduced faithfully.
+    Pitchtrack(Box<PitchtrackArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -1885,6 +1894,131 @@ pub struct FluxArgs {
 
     pub input: PathBuf,
     pub output: PathBuf,
+}
+
+/// `pvc pitchtrack`'s flag surface - see
+/// `pvc-core::tools::pitchtracker`'s doc comment for two doc-corrected
+/// defaults (`--band-low` really defaults to `0` Hz, and ASCII output
+/// really is the default, not float) and several real bugs reproduced
+/// faithfully.
+#[derive(clap::Args, Debug)]
+pub struct PitchtrackArgs {
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// `< 0` means Nyquist.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    #[arg(long, value_parser = parse_detect_method, default_value = "optimal-comb")]
+    pub method: pvc_core::tools::pitchtracker::DetectMethod,
+
+    /// `-j`: beginning note-stabilization buffer size in seconds.
+    #[arg(long = "window-min", default_value_t = 0.05)]
+    pub window_min: f32,
+
+    /// `-J`: maximum note-stabilization buffer size in seconds.
+    #[arg(long = "window-max", default_value_t = 0.3)]
+    pub window_max: f32,
+
+    #[arg(
+        long = "detect-threshold",
+        default_value_t = -40.0,
+        allow_hyphen_values = true
+    )]
+    pub detect_threshold: f32,
+
+    /// `-H`: temporal mode-filter window, in seconds (`0` disables it).
+    #[arg(long = "mode-filter-window", default_value_t = 0.0)]
+    pub mode_filter_window: f32,
+
+    /// `-E`: amplitude-weighted oversampling factor (`0` disables it).
+    #[arg(long = "oversample", default_value_t = 0.0)]
+    pub oversample: f32,
+
+    /// `-a`: one-pole lowpass on the output frequency alone.
+    #[arg(long = "smooth-response", default_value_t = 0.0)]
+    pub smooth_response: f32,
+
+    #[arg(long = "channel-method", value_parser = parse_channel_method, default_value = "average")]
+    pub channel_method: pvc_core::tools::pitchtracker::ChannelMethod,
+
+    #[arg(long = "compress-threshold", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_threshold: ControlFn,
+
+    #[arg(long = "compress-amount", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub compress_amount: ControlFn,
+
+    #[arg(long = "gate-threshold", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub gate_threshold: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    #[arg(long = "output-rate", default_value_t = 500.0)]
+    pub output_rate: f32,
+
+    #[arg(long = "output-format", value_parser = parse_pitchtrack_output_format, default_value = "freq")]
+    pub output_format: pvc_core::tools::pitchtracker::OutputFormat,
+
+    /// `-o`: reference pitch, Hz or octave.pitchclass (`<= 12`) - only
+    /// affects `semitones-deviation`/`neg-semitones-deviation` output.
+    #[arg(long = "reference", value_parser = parse_control_fn, default_value = "440")]
+    pub reference: ControlFn,
+
+    /// ASCII (one value per line) or a headerless raw f32 stream.
+    #[arg(long = "output-type", value_parser = parse_output_type, default_value = "ascii")]
+    pub output_type: OutputType,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_detect_method(s: &str) -> Result<pvc_core::tools::pitchtracker::DetectMethod, String> {
+    use pvc_core::tools::pitchtracker::DetectMethod;
+    match s {
+        "optimal-comb" => Ok(DetectMethod::OptimalComb),
+        "strongest" => Ok(DetectMethod::Strongest),
+        "centroid" => Ok(DetectMethod::Centroid),
+        _ => Err(format!(
+            "expected \"optimal-comb\", \"strongest\", or \"centroid\", got {s:?}"
+        )),
+    }
+}
+
+fn parse_pitchtrack_output_format(
+    s: &str,
+) -> Result<pvc_core::tools::pitchtracker::OutputFormat, String> {
+    use pvc_core::tools::pitchtracker::OutputFormat;
+    match s {
+        "freq" => Ok(OutputFormat::Freq),
+        "octave-decimal" => Ok(OutputFormat::OctaveDecimal),
+        "semitones" => Ok(OutputFormat::SemitonesDeviation),
+        "neg-semitones" => Ok(OutputFormat::NegSemitonesDeviation),
+        "midi" => Ok(OutputFormat::Midi),
+        "octave-pitchclass" => Ok(OutputFormat::OctavePitchclass),
+        _ => Err(format!(
+            "expected \"freq\", \"octave-decimal\", \"semitones\", \"neg-semitones\", \"midi\", or \"octave-pitchclass\", got {s:?}"
+        )),
+    }
 }
 
 fn parse_shift_format(s: &str) -> Result<pvc_core::tools::harmonizer::ShiftFormat, String> {

@@ -881,3 +881,87 @@ All three tools' pre-existing (Task-1-era) golden cases passed against a
 freshly built C oracle on the first try (after fixing the
 44.1kHz-specific default noted above, before any oracle run) - no
 further flag corrections needed.
+
+## Task 3.10's `pvc pitchtrack`: three bugs, found by three different techniques, in the session's most complex tool
+
+`pitchtracker.c` (2593 lines) is a comb-filter fundamental-frequency
+detector with a top-20 ranked-candidate list, harmonic reinforcement,
+octave/subharmonic error correction, an optional temporal mode filter, a
+separate plateau-seeking note-stabilizer (`-j`/`-J`), and a backlog/hold
+voiced-gate state machine - by a wide margin the most structurally
+complex tool ported this session. Getting its one golden case
+(`partials_vibrato_2s_44k.wav`, all-default flags) to match required
+finding and fixing three distinct, unrelated bugs, using three different
+techniques:
+
+**1. A one-past-the-end read, found by the Rust port's own panic.**
+`find_common_freq`'s symmetric-pair index
+(`beginbufferindexpoint + begin_buffsize - i`) reaches exactly
+`max_buffsize` - one past `fbuff`/`abuff`'s real allocated size - during
+the "shrink toward end" phase of its search. The very first test run
+panicked with `index out of bounds: the len is 60 but the index is 60`
+before any oracle comparison was even possible. Clamped to the last
+valid index instead of reproduced, matching this project's now-
+established treatment of this exact bug class.
+
+**2. A dead-code trap, found by comparing raw per-frame output against a
+scratch-instrumented oracle binary.** With the panic fixed, the port ran
+but produced values with no resemblance to the real tool's (wild
+frame-to-frame jumps between ~44Hz/~220Hz where the real tool held a
+much steadier trajectory). A temporary `getenv("PDEBUG")`-gated
+`fprintf` spliced into a scratch-built copy of `pitchtracker.c` (never
+committed, reverted via `git checkout` once it had answered the
+question - the same technique already used for `harmonizer.c`) printed
+`optimal_comb()`'s own candidate list and final `*freqnow` side by side
+with the port's equivalent state. The candidate lists matched almost
+exactly - the divergence was in which value got *returned*: the
+function computes an octave/subharmonic-corrected `alternateFreq` and
+visibly uses it to seed the (disabled-by-default) mode filter's history
+buffer, which reads as "this is the value in play" on a first pass - but
+the actual fallback return statement for the common (mode-filter-
+disabled) code path uses `strongestFundamentals[0]` directly, silently
+ignoring the correction entirely. A single-letter-looking difference
+(`alternateFreq` vs. `strongestFundamentals[0]`) with no textual
+proximity to hint at it - the correction computation and its one real
+consumer are 20+ lines apart, separated by the entire mode-filter
+branch. Not findable by reading in isolation; only the side-by-side
+per-frame numeric comparison made the wrong-variable substitution
+visible.
+
+**3. An off-by-one in a "consumed one value before the loop starts" pre-
+fill, found by comparing pass-2 state frame-by-frame.** After fix #2,
+output matched far longer (31 of ~1158 samples before diverging, versus
+21 before) but was still shifted exactly one analysis frame late at the
+transition point, and 2 samples too long overall. `pitchtracker.c`'s
+pass 2 pre-fills its sliding buffers by reading exactly one value from
+the frequency/amplitude streams into `fbuff[0]`/`abuff[0]` *before* its
+main loop begins - meaning the main loop's own first read starts at
+stream index 1, not 0. This port's cursor-based reimplementation (no
+scratch files, just `Vec` indices) started both cursors at `0`,
+re-reading the same first value the pre-fill had already consumed
+instead of advancing past it - one whole frame of drift, invisible
+until a frame-by-frame `ampnow`/`freqnow` diff against the same
+scratch-instrumented oracle (technique #2, reused) showed every value
+matching exactly but shifted by one frame.
+
+Two additional bugs found by reading alone (both **reproduced
+faithfully**, not fixed): multi-channel amplitude averaging is
+completely broken (the C computes a real running average into a
+variable that's then discarded, so the final value is simply the *last*
+channel's own value - the parallel frequency-averaging code one block
+down does *not* have this bug, a real asymmetry between two near-
+identical-looking blocks); and pass 1's frequency output stream can grow
+longer than its amplitude stream (a duplicate-write mechanism for
+consecutive "no candidate found" frames applies only to the frequency
+file), so pass 2's read-one-from-each-in-lockstep loop can end when
+either stream individually runs dry.
+
+**Takeaway**: three real, independently-discovered bugs in a ~2600-line
+file, none reachable by static reading alone in reasonable time, each
+surfaced by a different technique (a Rust panic on an unsafe C read; a
+side-by-side raw-value comparison against a scratch-instrumented
+oracle; a frame-by-frame state diff against the same). This is the
+clearest evidence yet in this project for oracle-driven porting's core
+thesis: for code this size and this densely interdependent, "port by
+reading, verify against the real binary" finds real bugs that "port by
+reading" alone - however careful - does not.
