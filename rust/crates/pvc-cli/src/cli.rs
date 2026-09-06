@@ -134,6 +134,17 @@ pub enum Command {
     /// normalization, and random amplitude/frequency "shimmer" aren't
     /// ported yet).
     Twarp(Box<TwarpArgs>),
+
+    /// Analysis-driven `.fr` frequency response: accumulates a sound
+    /// file's spectrum (by average or peak amplitude, across all
+    /// channels combined) into a response file, with formant detection
+    /// and optional formant-band normalization/companding.
+    ///
+    /// Ports `freqresponse`'s audio-processing path (`legacy/pvc_src/
+    /// freqresponse.c`); see `pvc-core::tools::freqresponse`'s doc
+    /// comment for what's in and out of scope (plot/ASCII/binary formant
+    /// report files aren't ported - pure reporting).
+    Freqresponse(Box<FreqresponseArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -661,6 +672,218 @@ pub enum FnCommand {
         #[arg(long)]
         width: Option<usize>,
     },
+
+    /// Synthesize a `.fr` frequency-response file from a breakpoint or
+    /// partial table, rather than analyzing a sound file (`pvc
+    /// freqresponse` does that instead).
+    Response {
+        #[command(subcommand)]
+        tool: ResponseCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ResponseCommand {
+    /// Ports `filtresponsemaker` (`legacy/pvc_src/filtresponsemaker.c`):
+    /// a "frequency gradient" response, linearly interpolated in dB
+    /// between unordered `(frequency-or-octave.pitchclass, decibels)`
+    /// breakpoints.
+    Filtresponsemaker {
+        /// FFT size (must be a power of two).
+        #[arg(long, default_value_t = 1024)]
+        fft: usize,
+
+        /// ASCII data file of unordered breakpoint duples: each line (or
+        /// whitespace-separated pair) is `freq-or-octave.pitchclass,
+        /// decibels`. Values `<= 12` are octave.pitchclass, otherwise Hz.
+        #[arg(long)]
+        breakpoints: PathBuf,
+
+        /// Sound file to take the sample rate from.
+        #[arg(long = "target-sound-file")]
+        target_sound_file: PathBuf,
+
+        /// Bandpass (keep the breakpoint shape) or band-reject (invert
+        /// it: `1.0 - amplitude` at every bin).
+        #[arg(long, value_parser = parse_response_mode, default_value = "bandpass")]
+        mode: bool,
+
+        output: PathBuf,
+    },
+
+    /// Ports `chordresponsemaker` (`legacy/pvc_src/
+    /// chordresponsemaker.c`): a stack of harmonic-partial tones, each
+    /// with a triangular- or rectangular-windowed dB rolloff around its
+    /// center frequency, from unordered sextuples `(pitch-or-Hz,
+    /// num_partials, bandwidth, decibels, partial_spacing,
+    /// db_rolloff_per_octave)`.
+    Chordresponsemaker {
+        /// FFT size (must be a power of two).
+        #[arg(long, default_value_t = 1024)]
+        fft: usize,
+
+        /// Sample rate in Hz. The real tool takes this from a `-f
+        /// <soundfile>` it opens only to read the sample rate (and
+        /// doesn't even mention in its own `usage()` text, despite
+        /// requiring it) - this CLI just takes the number directly.
+        #[arg(long = "sample-rate", default_value_t = 44100)]
+        sample_rate: u32,
+
+        /// ASCII data file of unordered sextuples: `pitch-or-Hz,
+        /// num_partials, bandwidth, decibels, partial_spacing,
+        /// db_rolloff_per_octave` (whitespace-separated).
+        #[arg(long)]
+        partials: PathBuf,
+
+        /// How overlapping partial windows combine at a bin.
+        #[arg(long, value_parser = parse_accumulation, default_value = "peak")]
+        accumulation: pvc_core::tools::chordresponsemaker::Accumulation,
+
+        /// The dB rolloff shape around each partial.
+        #[arg(long = "band-window", value_parser = parse_band_window, default_value = "triangle")]
+        band_window: pvc_core::tools::chordresponsemaker::BandWindow,
+
+        /// Bandpass (keep the tone shape) or band-reject (invert it).
+        #[arg(long, value_parser = parse_response_mode, default_value = "bandpass")]
+        mode: bool,
+
+        output: PathBuf,
+    },
+}
+
+/// `pvc freqresponse`'s flag surface. Long names follow
+/// `docs/dev/parameter-inventory.md` §5's proposed mapping.
+#[derive(clap::Args, Debug)]
+pub struct FreqresponseArgs {
+    /// FFT size (must be a power of two).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis window length. `0` means auto (`2 * fft`); the C's own
+    /// hardcoded default is a literal `2048`, matching `pv`'s
+    /// `--window-size` gotcha.
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    /// Analysis window shape.
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// Analysis frames per second (sets the hop size).
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// How frames accumulate into the response spectrum.
+    #[arg(long = "spectrum-type", value_parser = parse_spectrum_type, default_value = "average")]
+    pub spectrum_type: pvc_core::tools::freqresponse::Method,
+
+    /// Weight the average toward louder frames (frame amplitude sum to
+    /// the 5th power) - only meaningful with `--spectrum-type average`.
+    #[arg(long = "weight-average")]
+    pub weight_average: bool,
+
+    /// Normalize the response according to its formant peaks; bins
+    /// between formants get cross-faded gain from the bounding formants.
+    #[arg(long = "formant-normalize")]
+    pub formant_normalize: bool,
+
+    /// Warp index for mid-formant amplitude compression/expansion
+    /// (`> 0` expands the dynamic range between formants, `< 0`
+    /// compresses it). Applies even with `--formant-normalize` off - see
+    /// `pvc-core::tools::freqresponse`'s doc comment.
+    #[arg(
+        long = "formant-warp",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub formant_warp: f32,
+
+    /// Low frequency limit for formant detection, in Hz.
+    #[arg(long = "freq-low", default_value_t = 0.0)]
+    pub freq_low: f32,
+
+    /// High frequency limit for formant detection, in Hz (`0` = Nyquist).
+    #[arg(long = "freq-high", default_value_t = 0.0)]
+    pub freq_high: f32,
+
+    /// Minimum formant peak amplitude, in dB.
+    #[arg(long = "formant-floor", default_value_t = -96.0, allow_hyphen_values = true)]
+    pub formant_floor: f32,
+
+    /// Formant selection/rejection threshold, `0..1` - higher values
+    /// select fewer, stronger formants.
+    #[arg(long = "formant-threshold", default_value_t = 0.5)]
+    pub formant_threshold: f32,
+
+    /// Low shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    /// High shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    /// Low shelf EQ frequency in Hz.
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    /// High shelf EQ frequency in Hz.
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// Skip EQ and its accompanying peak normalization entirely
+    /// (inverted from the C's own `-B`: `0` there means "EQ with
+    /// normalization", i.e. the opposite of this flag's name).
+    #[arg(long = "no-normalize")]
+    pub no_normalize: bool,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_spectrum_type(s: &str) -> Result<pvc_core::tools::freqresponse::Method, String> {
+    use pvc_core::tools::freqresponse::Method;
+    match s {
+        "average" => Ok(Method::Average),
+        "peak" => Ok(Method::Peak),
+        _ => Err(format!("expected \"average\" or \"peak\", got {s:?}")),
+    }
+}
+
+fn parse_response_mode(s: &str) -> Result<bool, String> {
+    match s {
+        "bandpass" => Ok(false),
+        "reject" => Ok(true),
+        _ => Err(format!("expected \"bandpass\" or \"reject\", got {s:?}")),
+    }
+}
+
+fn parse_accumulation(
+    s: &str,
+) -> Result<pvc_core::tools::chordresponsemaker::Accumulation, String> {
+    use pvc_core::tools::chordresponsemaker::Accumulation;
+    match s {
+        "peak" => Ok(Accumulation::Peak),
+        "sum" => Ok(Accumulation::Sum),
+        _ => Err(format!("expected \"peak\" or \"sum\", got {s:?}")),
+    }
+}
+
+fn parse_band_window(s: &str) -> Result<pvc_core::tools::chordresponsemaker::BandWindow, String> {
+    use pvc_core::tools::chordresponsemaker::BandWindow;
+    match s {
+        "triangle" => Ok(BandWindow::Triangle),
+        "rectangle" => Ok(BandWindow::Rectangle),
+        _ => Err(format!("expected \"triangle\" or \"rectangle\", got {s:?}")),
+    }
 }
 
 #[derive(Subcommand, Debug)]

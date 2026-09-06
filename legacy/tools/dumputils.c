@@ -126,6 +126,21 @@ int main(void) {
         printf("smooth_setup(t=0, IR=0.005) c=%.9g minusc=%.9g\n", c, minusc);
     }
 
+    /* OPPC_to_Hz(octave.pitchclass) */
+    {
+        float pitches[] = {8.00, 8.09, 7.00, 9.00, 8.03, 0.00};
+        for (int i = 0; i < 6; i++) {
+            printf("OPPC_to_Hz(%g) = %.9g\n", pitches[i], OPPC_to_Hz(pitches[i]));
+        }
+    }
+
+    /* normalize(SP, Nplus2, peakamp) */
+    {
+        float sp[6] = {0.5, 100, 2.0, 200, 1.0, 300};
+        int flag = normalize(sp, 6, 1.0);
+        printf("normalize mags = %.9g %.9g %.9g, flag=%d\n", sp[0], sp[2], sp[4], flag);
+    }
+
     /* getthresh(arr, Nplus2, tgen): peak amplitude among bins 1.. (bin 0
        excluded) times tgen. Not declared in pv.h - called in plainpv.c
        via a bare `float getthresh();` forward declaration (K&R-style

@@ -1,0 +1,9 @@
+tool = "freqresponse"
+input = "sine440_2s_44k.wav"
+description = "analysis-driven average-spectrum response of a 440Hz sine"
+legacy_steps = [
+    "freqresponse -c0 {input} {output}",
+]
+output_ext = "fr"
+tolerance = { kind = "numeric", max_abs_error = 0.01 }
+notes = "Compared by rust/crates/pvc-cli/tests/golden_freqresponse.rs (raw .fr floats read directly), not compare.py's kind=exact/numeric text comparator - the `numeric` kind here is a placeholder, not read by the actual comparator. Peak amplitude matches the oracle exactly (1.0, from eq()'s own peak-normalization). Some individual bins deep in the noise floor (raw pre-normalization amplitude ~1e-7 to 1e-8, far below the ~1.0 peak) show real, expected floating-point instability after 410 frames of accumulation - the same phenomenon already found and documented for pvanalysis's near-silent-bin frequency estimates (docs/dev/rust-verification.md), here affecting amplitude at near-silent bins instead. Max observed absolute error across all bins was ~0.003 (on a 0-1 scale) during development; 0.01 leaves margin for CI toolchain variance."

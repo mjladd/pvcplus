@@ -7,17 +7,18 @@ A modern CLI for the PVCplus phase-vocoder toolkit.
 Usage: pvc [OPTIONS] <COMMAND>
 
 Commands:
-  info     Print information about an audio file or a `.pva` analysis file
-  legacy   Run a legacy C tool directly (transition path)
-  preset   Manage presets (TOML files consumed by `pvc run`)
-  run      Run a preset, optionally overriding fields with `--set key=value`
-  fn       Control-function generators (the CARL/cmusic "GEN" family)
-  pv       Phase vocoder: analyze then resynthesize
-  stretch  Time-stretch only - `pvc pv --stretch <factor>` with everything else at its default
-  pitch    Pitch transposition only - `pvc pv --pitch <semitones>` with everything else at its default
-  analyze  Phase vocoder analysis only: writes a `.pva` frame file, no resynthesis
-  twarp    Time-varying resynthesis: navigates a virtual time position through a `.pva` analysis file (rate/origin/window-driven) and resynthesizes from whatever frame it lands on
-  help     Print this message or the help of the given subcommand(s)
+  info          Print information about an audio file or a `.pva` analysis file
+  legacy        Run a legacy C tool directly (transition path)
+  preset        Manage presets (TOML files consumed by `pvc run`)
+  run           Run a preset, optionally overriding fields with `--set key=value`
+  fn            Control-function generators (the CARL/cmusic "GEN" family)
+  pv            Phase vocoder: analyze then resynthesize
+  stretch       Time-stretch only - `pvc pv --stretch <factor>` with everything else at its default
+  pitch         Pitch transposition only - `pvc pv --pitch <semitones>` with everything else at its default
+  analyze       Phase vocoder analysis only: writes a `.pva` frame file, no resynthesis
+  twarp         Time-varying resynthesis: navigates a virtual time position through a `.pva` analysis file (rate/origin/window-driven) and resynthesizes from whatever frame it lands on
+  freqresponse  Analysis-driven `.fr` frequency response: accumulates a sound file's spectrum (by average or peak amplitude, across all channels combined) into a response file, with formant detection and optional formant-band normalization/companding
+  help          Print this message or the help of the given subcommand(s)
 
 Options:
       --quiet

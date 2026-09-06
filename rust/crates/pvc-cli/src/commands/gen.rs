@@ -5,7 +5,7 @@
 use anyhow::{ensure, Result};
 
 use crate::cli::FnCommand;
-use crate::commands::plot;
+use crate::commands::{plot, response};
 
 pub fn run(cmd: FnCommand) -> Result<()> {
     match cmd {
@@ -79,6 +79,7 @@ pub fn run(cmd: FnCommand) -> Result<()> {
             pvc_io::write_control_file(&output, &table)?;
         }
         FnCommand::Plot { input, width } => plot::run(&input, width)?,
+        FnCommand::Response { tool } => response::run(&tool)?,
     }
     Ok(())
 }

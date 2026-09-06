@@ -397,3 +397,88 @@ showed up at the whole-tool integration level, once real length
 mismatches appeared - consistent with Task 3.2's own takeaway that
 integration testing against the golden harness is still necessary even
 after every primitive checks out individually.
+
+## Task 3.5's `.fr` family: two byte-exact synthesizers, one noise-floor-sensitive analyzer
+
+`freqresponse`/`filtresponsemaker`/`chordresponsemaker` all write the
+same `.fr` format (headerless raw `N+2` floats - about as simple a format
+as exists in this codebase), but split into two very different kinds of
+tool:
+
+- **`filtresponsemaker`/`chordresponsemaker`** *synthesize* a response
+  from a breakpoint/partial table - pure deterministic arithmetic, no
+  audio analysis involved. Both ported and verified **byte-identical**
+  (max abs error `0.0`) against a real oracle build on the first attempt
+  that compiled - no bugs found in either. `chordresponsemaker` did need
+  one careful fix during porting, not a bug: the C's bin-range checks
+  (`(flat_index > 0) && (flat_index < N)`) are written against the
+  legacy `1 + 2*bin` *flat* array index, which translates to `bin >= 0`
+  (not `bin > 0`) in plain bin-index terms - an easy off-by-one to
+  introduce translating between the two conventions, caught before ever
+  running against the oracle by re-deriving the translation carefully
+  rather than guessing. `NormalizeToPeaksOfSpectrumInBand` (used by
+  `freqresponse`, see below) has the same flat/bin translation risk in
+  three separate branches; ported by mirroring the C's own flat-index
+  arithmetic literally rather than re-deriving bin-unit formulas, to
+  avoid the same class of mistake in more places at once.
+
+- **`freqresponse`** *analyzes* a sound file - fold/rfft/convert
+  accumulated across every frame of every channel into one combined
+  response (confirmed by reading the per-channel "REINITS" block: it
+  resets `frame_count`/`eof`/`t`/`samps` but not `AmplitudeSpectrum`/
+  `binAmpSumAndFreqSum`/`buffer_count`, so multi-channel input produces
+  one response, not one per channel), then `eq()` (always normalizing to
+  peak `1.0`, confirmed against the oracle: both peaked at exactly `1.0`
+  after this step), then formant detection
+  (`get_formants`/`NormalizeToPeaksOfSpectrumInBand`, ported into
+  `pvc-core::formant`).
+
+  Found and fixed one real bug in `get_formants` during porting, before
+  the oracle comparison ever ran: its own internal `fundamental =
+  (nyquist * 2.) / (float) N` uses the function's *own* `N` parameter,
+  which every real caller passes as `N_actual + 2` (`Nplus2`), not
+  `N_actual` - so this is really `R / (N_actual + 2)`, not the true
+  fundamental `R / N_actual`. The same "which N" mixup that's bitten
+  several other primitives this project already ported (`getthresh`,
+  `OscBank`'s `N2`, plainpv's Nyquist-exclusion bound) - reproduced
+  faithfully rather than corrected, since it's what the real tool
+  actually computes.
+
+  Also skipped, confirmed dead for every real caller (`freqresponse.c`
+  never sets the one flag - `CorrelateWithFreqStasisFlag` - that would
+  make either matter, and `symmetryFactor` is computed but never read
+  again afterward anywhere in the function): the "FREQ STASIS" block and
+  the "FIND SYMMETRIES" block, plus six hardcoded `fopen("/tmp/...")`
+  debug writes with no CLI flag controlling them at all.
+
+  The oracle comparison did turn up real *floating-point noise-floor
+  instability*, not a structural bug - the same phenomenon already found
+  and documented for `pvanalysis`'s near-silent-bin frequency estimates,
+  here affecting *amplitude* at near-silent bins in the accumulated
+  spectrum instead: bin 18 of the test fixture's raw (pre-`eq`)
+  accumulated amplitude came out `4.0e-8` in the real oracle vs `1.7e-7`
+  in this port - both far below the spectrum's actual peak (used for
+  `eq`'s normalization, confirmed to match exactly), but a real
+  difference at that scale after summing 410 frames' worth of `convert()`
+  output, in a bin that carries essentially no real energy for a 440Hz
+  test tone. `get_formants`' own decline-tracing (used to compute a
+  formant's reported bandwidth/Q/stopband indices) is similarly sensitive
+  in the same near-silent regions - the detected formant's *center*
+  matched exactly (same index, same frequency, same amplitude), but its
+  reported stopband index diverged (a real, if practically inconsequential
+  divergence: neither value is read back into the output spectrum -
+  `NormalizeToPeaksOfSpectrumInBand` only ever reads `formantIndices[]`,
+  confirmed by reading its full body - so this doesn't affect the `.fr`
+  file's actual content, only these two informational fields this port
+  doesn't expose anyway). Verified via a temporary, not-committed debug
+  build printing the smoothed amplitude array and pipeline peak values at
+  each stage, then reverted rather than kept as another dev tool - this
+  one didn't reveal a pattern worth a reusable harness the way
+  `dumpwin.c`/`dumputils.c`/`dumptwarp.c` did.
+
+  The golden case's tolerance follows `pvanalysis`'s precedent for the
+  same reason: amplitude error is checked everywhere (max observed
+  `~0.003` on a 0–1 scale) and frequency error only on bins with
+  non-negligible amplitude, plus an exact peak-amplitude check (since
+  that's the one value guaranteed stable regardless of noise-floor
+  bins).
