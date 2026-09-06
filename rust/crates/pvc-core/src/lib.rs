@@ -1,8 +1,10 @@
 pub mod control;
 pub mod eq;
 pub mod fft;
+pub mod formant;
 pub mod gen;
 pub mod pvoc;
+pub mod response;
 pub mod smooth;
 pub mod timenav;
 pub mod tools;

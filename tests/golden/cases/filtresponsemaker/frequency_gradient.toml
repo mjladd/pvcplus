@@ -1,0 +1,9 @@
+tool = "filtresponsemaker"
+input = "sine440_2s_44k.wav"
+description = "frequency-gradient response synthesized from breakpoint duples"
+legacy_steps = [
+    "filtresponsemaker -N1024 -F{fixtures}/filter_breakpoints.txt -f{input} {output}",
+]
+output_ext = "fr"
+tolerance = { kind = "exact" }
+notes = "The .fr format is headerless raw floats (N+2 native f32s, no magic, no length field) - byte-exact comparison is meaningful and achievable here, unlike .pva. Verified byte-identical (max abs err 0.0) against a real oracle build during development."

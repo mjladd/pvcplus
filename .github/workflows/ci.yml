@@ -105,6 +105,14 @@ jobs:
         run: cargo test --release -p pvc-cli --test golden_twarp -- --nocapture
         working-directory: rust
 
+      - name: Compare pvc fn response output against the C oracle (Task 3.5)
+        run: cargo test --release -p pvc-cli --test golden_response -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc freqresponse output against the C oracle (Task 3.5)
+        run: cargo test --release -p pvc-cli --test golden_freqresponse -- --nocapture
+        working-directory: rust
+
   rust:
     name: rust (fmt, clippy, test)
     runs-on: ubuntu-latest

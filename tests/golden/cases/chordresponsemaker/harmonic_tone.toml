@@ -1,0 +1,9 @@
+tool = "chordresponsemaker"
+input = "sine440_2s_44k.wav"
+description = "harmonic-tone response synthesized from a chord-tone sextuple table"
+legacy_steps = [
+    "chordresponsemaker -N1024 -f{input} -F{fixtures}/chord_table.txt {output}",
+]
+output_ext = "fr"
+tolerance = { kind = "exact" }
+notes = "Same headerless raw-float .fr format as filtresponsemaker - see that case's note. Verified byte-identical (max abs err 0.0) against a real oracle build during development."
