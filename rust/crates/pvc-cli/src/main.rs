@@ -68,5 +68,7 @@ fn main() -> anyhow::Result<()> {
             norm,
             values,
         } => commands::convert_units::run(from, to, norm, &values, cli.json),
+
+        Command::Impulseresponse(args) => commands::impulseresponse::run(&args),
     }
 }

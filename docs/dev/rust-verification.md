@@ -1007,3 +1007,60 @@ elsewhere in `units.rs`. A reminder that a `printf`-based oracle
 comparison is exact only down to the number of digits actually printed
 - getting a numeric match from truncated text is necessary, not
 sufficient, evidence of a bit-exact result.
+
+## Phase 5's `pvc impulseresponse`: a stale prebuilt oracle binary looks exactly like a real 15x bug
+
+`impulseresponse.c` (analyzes a `[-b, -e)` window into a zero-padded,
+peak-normalized rfft-format spectrum - the head of a small FFT-
+convolution family, `.ir` files later consumed by `irconvolver`/
+`irconvolvesequencer`) ported cleanly, its raw (pre-normalization)
+spectrum matching a locally-built C oracle to ~1e-6 relative on the
+first try. Its *normalized* output, though, was a uniform **15.165x**
+too large across every bin - not a bug pattern this project had seen
+before (a scale error, not a shape/timing one), and suspiciously
+precise (identical ratio to 6 significant figures across every sample),
+which usually means "one wrong constant," not "an algorithmic
+divergence."
+
+The wrong constant turned out to be the *oracle*, not the port. Earlier
+oracle-verification work this session had produced a full toolkit build
+under `/tmp/pvcbuild` (Docker `gcc:12-bookworm`, output copied to a
+host-visible bind mount so it would survive across separate `docker run`
+invocations - the project's established pattern, `docs/dev/
+rust-verification.md`'s own "Docker dev workflow" note). That build was
+never rebuilt as later commits touched `legacy/pvc_src/*.c` for
+unrelated oracle-debugging sessions (always `git checkout`-reverted
+before committing, per this project's own instrumentation-hygiene rule
+- reverted in the *source tree*, but the *binary* built from an
+in-between state stayed on disk in `/tmp`, outside git entirely, with no
+signal that it no longer matched `HEAD`). Rebuilding `impulseresponse`
+fresh (same Docker image, same `pvc_src/Makefile` invocation, this
+time with `getenv("PDEBUG")`-gated `fprintf`s added and reverted the
+usual way) against the *current* `legacy/pvc_src/impulseresponse.c`
+gave `peakAmp = 0.0657946542`, `normalizationLevel = 0.997791529` -
+ratio `15.166`, matching the port's own scale factor to five
+significant figures. The port was correct all along; the byte-exact
+`cmp` failure was two different, both-individually-reasonable build
+artifacts disagreeing with each other, not either of them disagreeing
+with the current source.
+
+**Takeaway**: a prebuilt oracle binary is a cached artifact like any
+other, and this project has no mechanism that invalidates one when the
+source it was built from changes - "rebuild before trusting a surprising
+result" belongs in the same checklist as "revert instrumentation before
+committing." A uniform, precisely-repeating scale-factor mismatch across
+every value is itself a useful signal that the *comparison inputs*, not
+the algorithm, are what's misaligned - a genuine algorithmic bug at this
+level of complexity essentially never produces a single perfectly
+uniform constant across every output value.
+
+Once compared against the freshly-rebuilt oracle, remaining error was
+~6e-8 absolute (one `f32` ULP) - accumulated summation-order noise in a
+16384-point FFT, the same class of essentially-exact-but-not-bit-
+identical result already accepted elsewhere in this project for large
+transforms. `tests/golden/cases/impulseresponse/basic.toml` uses a
+`numeric` tolerance of `1e-4` (checked by a custom Rust comparator,
+`golden_impulseresponse.rs`, not `compare.py` - `.ir` is a binary
+format, header plus raw spectra, not `compare_numeric`'s whitespace-
+separated text) - generous headroom over that ULP-level noise floor
+while still catching a real structural mismatch.
