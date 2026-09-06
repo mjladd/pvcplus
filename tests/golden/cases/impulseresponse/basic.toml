@@ -1,0 +1,9 @@
+tool = "impulseresponse"
+input = "sine440_2s_44k.wav"
+description = "100ms analysis window, default (together) normalization"
+legacy_steps = [
+    "impulseresponse -b0 -e0.1 {input} {output}",
+]
+output_ext = "ir"
+tolerance = { kind = "numeric", max_abs_error = 1e-4 }
+notes = "Compared by rust/crates/pvc-cli/tests/golden_impulseresponse.rs, not compare.py: the .ir file is binary (a 4-int header plus raw rfft-format spectra), not the whitespace-separated ASCII compare_numeric expects, so the `numeric` tolerance kind here is a placeholder, not read by the actual comparator. That test reads both files via pvc_io::read_ir, requires the header fields (channels/fft_size/impulse_len/sample_rate) to match exactly, and compares every spectrum value with a small absolute tolerance (observed max abs error against the real oracle for this exact case: ~6e-8, one f32 ULP - see docs/dev/rust-verification.md)."

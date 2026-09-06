@@ -8,6 +8,7 @@ pub mod filtresponsemaker;
 pub mod fluxoid;
 pub mod freqresponse;
 pub mod harmonizer;
+pub mod impulseresponse;
 pub mod noisefilter;
 pub mod pitchtracker;
 pub mod pv;

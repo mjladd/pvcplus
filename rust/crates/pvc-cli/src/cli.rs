@@ -259,6 +259,15 @@ pub enum Command {
         #[arg(long = "value", required = true, allow_hyphen_values = true)]
         values: Vec<f32>,
     },
+
+    /// Impulse-response analysis: zero-pads and FFTs a `[--begin, --end)`
+    /// window of each input channel into a peak-normalized `.ir` file
+    /// (Phase 5's FFT-convolution family - see `pvc-core::tools::
+    /// impulseresponse`'s doc comment for what's out of scope).
+    ///
+    /// Ports `impulseresponse`'s analysis path (`legacy/pvc_src/
+    /// impulseresponse.c`).
+    Impulseresponse(Box<ImpulseresponseArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -2092,6 +2101,44 @@ fn parse_band_window(s: &str) -> Result<pvc_core::tools::chordresponsemaker::Ban
         "triangle" => Ok(BandWindow::Triangle),
         "rectangle" => Ok(BandWindow::Rectangle),
         _ => Err(format!("expected \"triangle\" or \"rectangle\", got {s:?}")),
+    }
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ImpulseresponseArgs {
+    /// `-b`: analysis window start, in seconds.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: analysis window end, in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-N`: how the per-channel spectra are peak-normalized.
+    #[arg(long, value_parser = parse_normalization, default_value = "together")]
+    pub normalization: pvc_core::tools::impulseresponse::Normalization,
+
+    /// `-d`: normalization target level, in dB.
+    #[arg(
+        long = "normalization-db",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub normalization_db: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_normalization(s: &str) -> Result<pvc_core::tools::impulseresponse::Normalization, String> {
+    use pvc_core::tools::impulseresponse::Normalization;
+    match s {
+        "off" => Ok(Normalization::Off),
+        "independent" => Ok(Normalization::Independent),
+        "together" => Ok(Normalization::Together),
+        _ => Err(format!(
+            "expected \"off\", \"independent\", or \"together\", got {s:?}"
+        )),
     }
 }
 
