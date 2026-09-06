@@ -4,6 +4,7 @@ pub mod denoise;
 pub mod filter;
 pub mod freqresponse;
 pub mod gen;
+pub mod harmonize;
 pub mod info;
 pub mod legacy;
 pub mod plot;

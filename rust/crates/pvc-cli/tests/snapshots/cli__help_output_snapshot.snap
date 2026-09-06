@@ -22,6 +22,7 @@ Commands:
   denoise       Spectral noise gate: builds a noise-response profile by analyzing a `[--noise-begin, --noise-end)` window of the input itself (default: the whole file - point these at an actual noise-only stretch, e.g. leading silence), then expands any bin quieter than its noise-response threshold toward silence
   compand       Per-bin dynamics processor: compresses or expands each bin's amplitude relative to a static peaks/reference file (e.g. from `pvc freqresponse`), within an adjustable frequency band
   spectwarp     Per-bin dynamics processor: compresses or expands each bin's amplitude relative to its *own frame's* live spectral peak (a self-referential envelope-follower), within an adjustable frequency band
+  harmonize     Builds one or more "voices" from a data table of frequency bands, each a pitch/frequency-shifted copy of a triangular-windowed slice of the input spectrum, optionally summed with a delayed/ shifted copy of the source signal
   help          Print this message or the help of the given subcommand(s)
 
 Options:

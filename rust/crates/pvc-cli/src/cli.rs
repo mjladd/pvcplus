@@ -187,6 +187,18 @@ pub enum Command {
     /// for what's in and out of scope, including a real bound bug in the
     /// original tool's sliding-window mode, reproduced faithfully.
     Spectwarp(Box<SpectwarpArgs>),
+
+    /// Builds one or more "voices" from a data table of frequency bands,
+    /// each a pitch/frequency-shifted copy of a triangular-windowed
+    /// slice of the input spectrum, optionally summed with a delayed/
+    /// shifted copy of the source signal.
+    ///
+    /// Ports `harmonizer`'s audio-processing path (`legacy/pvc_src/
+    /// harmonizer.c`); see `pvc-core::tools::harmonizer`'s doc comment
+    /// for the data-table format and what's in and out of scope
+    /// (including a real crash bug it validates against instead of
+    /// reproducing, and a real cross-band bug it reproduces faithfully).
+    Harmonize(Box<HarmonizeArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -1428,6 +1440,182 @@ pub struct SpectwarpArgs {
 
     pub input: PathBuf,
     pub output: PathBuf,
+}
+
+/// `pvc harmonize`'s flag surface. Long names follow
+/// `docs/dev/parameter-inventory.md` §11's proposed mapping from
+/// `harmonizer`'s single-letter flags - see
+/// `pvc-core::tools::harmonizer`'s doc comment for the data-table
+/// design, the crash bug it guards against instead of reproducing, and
+/// the cross-band interpolation bug it reproduces faithfully.
+#[derive(clap::Args, Debug)]
+pub struct HarmonizeArgs {
+    /// FFT size (must be a power of two).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`);
+    /// the C's own hardcoded default is a literal `2048`, matching
+    /// `pv`'s `--window-size` gotcha.
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time-stretch factor (`1.0` = unchanged).
+    #[arg(long, default_value_t = 1.0)]
+    pub stretch: f32,
+
+    /// Path to the 8-column data table (whitespace-delimited ASCII
+    /// floats, one row per band: shift factor, low/high/center frequency
+    /// in Hz or octave.pitchclass, peak dB, stopband dB, Q-index, delay
+    /// in seconds - see `pvc-core::tools::harmonizer`'s doc comment).
+    #[arg(long)]
+    pub table: PathBuf,
+
+    /// How the table's shift-factor column is interpreted.
+    #[arg(long = "shift-format", value_parser = parse_shift_format, default_value = "multiplier")]
+    pub shift_format: pvc_core::tools::harmonizer::ShiftFormat,
+
+    /// Table frequency-column scaler (applied to low/high/center, after
+    /// octave.pitchclass conversion).
+    #[arg(long = "table-freq-scale", default_value_t = 1.0)]
+    pub table_freq_scale: f32,
+
+    /// Table frequency-column shifter, in Hz.
+    #[arg(
+        long = "table-freq-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub table_freq_shift: f32,
+
+    /// Table peak-dB-column scaler.
+    #[arg(long = "table-peak-scale", default_value_t = 1.0)]
+    pub table_peak_scale: f32,
+
+    /// Table stopband-dB-column scaler.
+    #[arg(long = "table-stopband-scale", default_value_t = 1.0)]
+    pub table_stopband_scale: f32,
+
+    /// Table stopband-dB-column shifter, in dB.
+    #[arg(
+        long = "table-stopband-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub table_stopband_shift: f32,
+
+    /// Table Q-index-column shifter.
+    #[arg(
+        long = "table-q-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub table_q_shift: f32,
+
+    /// Table delay-column scaler.
+    #[arg(long = "table-delay-scale", default_value_t = 1.0)]
+    pub table_delay_scale: f32,
+
+    /// Table delay-column shifter, in seconds.
+    #[arg(
+        long = "table-delay-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub table_delay_shift: f32,
+
+    /// Table shift-factor-column scaler.
+    #[arg(long = "table-shift-scale", default_value_t = 1.0)]
+    pub table_shift_scale: f32,
+
+    /// Table shift-factor-column shifter.
+    #[arg(
+        long = "table-shift-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub table_shift_shift: f32,
+
+    /// Master gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// Source frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "source-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_freq_shift: ControlFn,
+
+    /// Source pitch shift in semitones - a plain number, or `@path`.
+    /// Defaults to `1` semitone, matching the real tool's own default
+    /// (`docs/dev/parameter-inventory.md`'s table lists `0` here, but
+    /// the source's own initializer is `SOURCE_ptrans.A[0] = 1.` -
+    /// confirmed by reading `harmonizer.c`).
+    #[arg(long = "source-pitch", value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub source_pitch: ControlFn,
+
+    /// Source gain in dB - a plain number, or `@path`.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// Source delay in seconds - a plain number, or `@path`.
+    #[arg(long = "source-delay", value_parser = parse_control_fn, default_value = "0")]
+    pub source_delay: ControlFn,
+
+    /// Voice (harmony) frequency shift in Hz, added post-shift - a plain
+    /// number, or `@path`.
+    #[arg(long = "voice-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub voice_freq_shift: ControlFn,
+
+    /// Voice (harmony) pitch shift in semitones, applied post-shift - a
+    /// plain number, or `@path`. Defaults to `1` semitone - see
+    /// `--source-pitch`'s doc comment for why.
+    #[arg(long = "voice-pitch", value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub voice_pitch: ControlFn,
+
+    /// Voice (harmony) gain in dB, per band - a plain number, or `@path`.
+    #[arg(long = "voice-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub voice_gain: ControlFn,
+
+    /// Voice (harmony) spectrum warp index - a plain number, or `@path`.
+    #[arg(long = "voice-warp", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub voice_warp: ControlFn,
+
+    /// Frequency interpolation control, per band (`0` = unshifted, `1` =
+    /// fully shifted) - a plain number, or `@path`. See this struct's
+    /// doc comment for a real bug affecting this flag's per-band
+    /// granularity in `multiplier`/`semitones` shift-format modes.
+    #[arg(long = "freq-interp", value_parser = parse_control_fn, default_value = "1")]
+    pub freq_interp: ControlFn,
+
+    /// Time interpolation control, per band (`0` = no delay applied, `1`
+    /// = the table's full delay) - a plain number, or `@path`.
+    #[arg(long = "time-interp", value_parser = parse_control_fn, default_value = "1")]
+    pub time_interp: ControlFn,
+
+    /// Oscillator resynthesis threshold in dB (bins quieter than this,
+    /// relative to the frame's own peak, are skipped).
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_shift_format(s: &str) -> Result<pvc_core::tools::harmonizer::ShiftFormat, String> {
+    use pvc_core::tools::harmonizer::ShiftFormat;
+    match s {
+        "multiplier" => Ok(ShiftFormat::Multiplier),
+        "adder" => Ok(ShiftFormat::Adder),
+        "semitones" => Ok(ShiftFormat::Semitones),
+        _ => Err(format!(
+            "expected \"multiplier\", \"adder\", or \"semitones\", got {s:?}"
+        )),
+    }
 }
 
 fn parse_spectrum_type(s: &str) -> Result<pvc_core::tools::freqresponse::Method, String> {

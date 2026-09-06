@@ -129,6 +129,10 @@ jobs:
         run: cargo test --release -p pvc-cli --test golden_spectwarper -- --nocapture
         working-directory: rust
 
+      - name: Compare pvc harmonize output against the C oracle (Task 3.9)
+        run: cargo test --release -p pvc-cli --test golden_harmonizer -- --nocapture
+        working-directory: rust
+
   rust:
     name: rust (fmt, clippy, test)
     runs-on: ubuntu-latest
