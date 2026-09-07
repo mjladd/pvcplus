@@ -69,13 +69,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install build + fixture dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libsndfile1-dev sox libsox-fmt-all
+      - name: Build legacy-build image (pinned Debian toolchain)
+        run: docker build --target legacy-build -t pvcplus-legacy-build .
 
       - name: Run every golden case against the legacy tools
-        run: bash tests/golden/run_legacy.sh
+        run: |
+          docker run --rm -v "$PWD":/repo -w /repo pvcplus-legacy-build bash -c '
+            set -euo pipefail
+            apt-get update -qq
+            apt-get install -y --no-install-recommends python3 sox libsox-fmt-all
+            bash tests/golden/run_legacy.sh
+          '
 
       - name: Upload recorded expected/ (for inspection)
         if: always()
@@ -167,6 +171,10 @@ jobs:
 
       - name: Compare pvc ringfilter output against the C oracle (Phase 5)
         run: cargo test --release -p pvc-cli --test golden_ringfilter -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc irconvolvesequencer output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_irconvolvesequencer -- --nocapture
         working-directory: rust
 
   rust:

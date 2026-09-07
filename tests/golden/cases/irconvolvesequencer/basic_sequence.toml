@@ -1,0 +1,14 @@
+tool = "irconvolvesequencer"
+input = "sweep_3s_44k.wav"
+description = "irconvolvesequencer: crossfade-morph a sweep between two impulse responses across the whole file"
+legacy_steps = [
+    "cp {input} {output}",
+    "mkdir -p irdir",
+    "cp {fixtures}/sine440_2s_44k.wav irdir/ir1.wav",
+    "cp {fixtures}/noise_then_tone_44k.wav irdir/ir2.wav",
+    "printf '2\\nirdir/ir1.wav\\nirdir/ir2.wav\\n' > irdir/impulseFileNames",
+    "irconvolvesequencer -Iirdir -v2 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.002 }
+notes = "mixfiles requires a pre-existing, correctly-formatted output file (its own sf_open(ofile, SFM_READ, ...) call fails otherwise) - `cp {input} {output}` supplies that placeholder before irconvolvesequencer's own internal mixfiles call overwrites its contents. The two impulse fixtures are copied into the workdir (irdir/ir1.wav, irdir/ir2.wav) rather than listed by their {fixtures} path directly, because irconvolvesequencer's own internal impulseresponse call writes a `<name>.fft` sidecar right next to each listed impulse file - pointing it at the real fixtures directory would leave stray .fft files there on every real run. Uses the whole 2-second duration of each impulse fixture as its own impulse response (irconvolvesequencer's internal impulseresponse call is hardcoded to -b0 -e0, unlike pvc irconvolver's own golden case which trims to a 50ms slice at the CLI level) and the default -b0 -e0 (whole 3-second sweep) sequence window, so N=2 puts crossFadeDur at the full 3 seconds: envBegin fades sine440 out from full volume to silence across the whole file while envEnd fades noise_then_tone in from silence to full volume across it, a full-file linear-ish crossmorph. -v2 (normalize channels together) is deliberate, not arbitrary: with normalization off, the un-normalized sum of the two segments briefly exceeds full scale, and libsndfile's default (unclipped) float-to-PCM16 write wraps those samples into inverted-polarity garbage instead of clamping them - a real divergence from this port's saturating cast, documented on pvc-core::tools::irconvolvesequencer's doc comment and deliberately not exercised by this case. With -v2, the whole mix is guaranteed under 1.0 before it ever reaches the writer, so the only remaining residual error is the two segments' own convolution/FFT floating-point noise (pvc irconvolver's own case measured ~6e-5 relative from that alone) summed together - confirmed by an actual oracle run at ~0.00046 absolute (max abs sample error), comfortably inside this tolerance."

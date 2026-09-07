@@ -10,6 +10,7 @@ pub mod freqresponse;
 pub mod harmonizer;
 pub mod impulseresponse;
 pub mod irconvolver;
+pub mod irconvolvesequencer;
 pub mod noisefilter;
 pub mod pitchtracker;
 pub mod pv;
