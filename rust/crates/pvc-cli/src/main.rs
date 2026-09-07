@@ -72,5 +72,7 @@ fn main() -> anyhow::Result<()> {
         Command::Impulseresponse(args) => commands::impulseresponse::run(&args),
 
         Command::Irconvolver(args) => commands::irconvolver::run(&args),
+
+        Command::Ring(args) => commands::ring::run(&args),
     }
 }

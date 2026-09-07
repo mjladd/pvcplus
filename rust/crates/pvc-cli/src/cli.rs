@@ -277,6 +277,17 @@ pub enum Command {
     /// Ports `irconvolver`'s resynthesis path (`legacy/pvc_src/
     /// irconvolver.c`).
     Irconvolver(Box<IrconvolverArgs>),
+
+    /// Phase-vocoder feedback reverberator/resonator: a delay network
+    /// built out of spectral frames rather than time-domain samples,
+    /// combining an independently pitch/frequency-shiftable copy of the
+    /// dry source with a recirculating, EQ'd and envelope-gated feedback
+    /// path. See `pvc-core::tools::ring`'s doc comment for real dead
+    /// flags, a real swapped-default bug reproduced faithfully, and
+    /// what's out of scope (Phase 5's long tail).
+    ///
+    /// Ports `ring`'s audio-processing path (`legacy/pvc_src/ring.c`).
+    Ring(Box<RingArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -2073,6 +2084,188 @@ fn parse_shift_format(s: &str) -> Result<pvc_core::tools::harmonizer::ShiftForma
         _ => Err(format!(
             "expected \"multiplier\", \"adder\", or \"semitones\", got {s:?}"
         )),
+    }
+}
+
+#[derive(clap::Args, Debug)]
+pub struct RingArgs {
+    /// FFT size (must be a power of two).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`).
+    #[arg(long, default_value_t = 0)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time expansion/contraction factor (`1.0` = unchanged duration).
+    #[arg(long, default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-b`: begin time in seconds.
+    #[arg(long, default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long, default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-t`: oscillator-bank resynthesis threshold, in dB.
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub oscbank_threshold: f32,
+
+    /// `-A`: master (source + reverb) gain in dB - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub master_gain: ControlFn,
+
+    /// `-S`: source gain in dB - a plain number, or `@path`.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// `-f`: source frequency shift adder, in Hz - a plain number, or
+    /// `@path`.
+    #[arg(long = "source-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_freq_shift: ControlFn,
+
+    /// `-p`: source pitch transposition, in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "source-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_pitch: ControlFn,
+
+    /// `-F`: reverb (feedback) gain in dB - a plain number, or `@path`.
+    #[arg(long = "feedback-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub feedback_gain: ControlFn,
+
+    /// `-H`: reverb frequency shift adder, in Hz - a plain number, or
+    /// `@path`.
+    #[arg(long = "feedback-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub feedback_freq_shift: ControlFn,
+
+    /// `-P`: reverb pitch transposition, in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "feedback-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub feedback_pitch: ControlFn,
+
+    /// `-Z`: reverb (feedback delay line) decay time, in seconds - `0`
+    /// disables the loop entirely. A plain number, or `@path`.
+    #[arg(long = "feedback-decay", value_parser = parse_control_fn, default_value = "0")]
+    pub feedback_decay: ControlFn,
+
+    /// `-z`: reverb (input) envelope-follower gate threshold, in dB - a
+    /// plain number, or `@path`.
+    #[arg(long = "feedback-threshold", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub feedback_threshold: ControlFn,
+
+    /// `-V`: reverb threshold pass mode.
+    #[arg(long = "feedback-threshold-mode", value_parser = parse_threshold_mode, default_value = "above")]
+    pub feedback_threshold_mode: bool,
+
+    /// `-l`: reverb (input) envelope attack time, in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "attack", value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-L`: reverb (input) envelope release time, in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "release", value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// `-O`: reverb (input) EQ low shelf gain, in dB - a plain number, or
+    /// `@path`. Defaults to `200`, not `0` - see `pvc-core::tools::
+    /// ring`'s doc comment on the real swapped-default bug this
+    /// reproduces.
+    #[arg(long = "input-eq-low-gain", value_parser = parse_control_fn, default_value = "200", allow_hyphen_values = true)]
+    pub input_eq_low_gain: ControlFn,
+
+    /// `-Y`: reverb (input) EQ high shelf gain, in dB - a plain number,
+    /// or `@path`.
+    #[arg(long = "input-eq-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub input_eq_high_gain: ControlFn,
+
+    /// `-d`: reverb (input) EQ low shelf frequency, in Hz - a plain
+    /// number, or `@path`. Defaults to `0`, not `200` - see
+    /// `pvc-core::tools::ring`'s doc comment.
+    #[arg(long = "input-eq-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub input_eq_low_freq: ControlFn,
+
+    /// `-n`: reverb (input) EQ high shelf frequency, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "input-eq-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub input_eq_high_freq: ControlFn,
+
+    /// `-T`: reverb (in-loop feedback) EQ decay time, in seconds - a
+    /// plain number, or `@path`.
+    #[arg(long = "loop-eq-decay", value_parser = parse_control_fn, default_value = "1")]
+    pub loop_eq_decay: ControlFn,
+
+    /// `-E`: reverb (feedback) signal balance gain limiter level, `0` to
+    /// `96` dB (`0` disables balancing entirely).
+    #[arg(long = "loop-balance-limit", default_value_t = 0.0)]
+    pub loop_balance_limit: f32,
+
+    /// `-X`: reverb (in-loop feedback) EQ low shelf gain, in dB - a plain
+    /// number, or `@path`. Defaults to `200`, not `0` - see
+    /// `pvc-core::tools::ring`'s doc comment on the real swapped-default
+    /// bug this reproduces (the same one as `-O`/`-d`, independently
+    /// present here too).
+    #[arg(long = "loop-eq-low-gain", value_parser = parse_control_fn, default_value = "200", allow_hyphen_values = true)]
+    pub loop_eq_low_gain: ControlFn,
+
+    /// `-Q`: reverb (in-loop feedback) EQ high shelf gain, in dB - a
+    /// plain number, or `@path`.
+    #[arg(long = "loop-eq-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub loop_eq_high_gain: ControlFn,
+
+    /// `-U`: reverb (in-loop feedback) EQ low shelf frequency, in Hz - a
+    /// plain number, or `@path`. Defaults to `0`, not `200` - see
+    /// `pvc-core::tools::ring`'s doc comment.
+    #[arg(long = "loop-eq-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub loop_eq_low_freq: ControlFn,
+
+    /// `-m`: reverb (in-loop feedback) EQ high shelf frequency, in Hz - a
+    /// plain number, or `@path`.
+    #[arg(long = "loop-eq-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub loop_eq_high_freq: ControlFn,
+
+    /// `-k`: reverb (output) EQ low shelf gain, in dB - a plain number,
+    /// or `@path`. Defaults to `200`, not `0` - see `pvc-core::tools::
+    /// ring`'s doc comment on the real swapped-default bug this
+    /// reproduces (the same one as `-O`/`-d`, independently present here
+    /// too).
+    #[arg(long = "output-eq-low-gain", value_parser = parse_control_fn, default_value = "200", allow_hyphen_values = true)]
+    pub output_eq_low_gain: ControlFn,
+
+    /// `-c`: reverb (output) EQ high shelf gain, in dB - a plain number,
+    /// or `@path`.
+    #[arg(long = "output-eq-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub output_eq_high_gain: ControlFn,
+
+    /// `-s`: reverb (output) EQ low shelf frequency, in Hz - a plain
+    /// number, or `@path`. Defaults to `0`, not `200` - see
+    /// `pvc-core::tools::ring`'s doc comment.
+    #[arg(long = "output-eq-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub output_eq_low_freq: ControlFn,
+
+    /// `-G`: reverb (output) EQ high shelf frequency, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "output-eq-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub output_eq_high_freq: ControlFn,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_threshold_mode(s: &str) -> Result<bool, String> {
+    match s {
+        "above" => Ok(true),
+        "below" => Ok(false),
+        _ => Err(format!("expected \"above\", or \"below\", got {s:?}")),
     }
 }
 

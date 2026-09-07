@@ -1130,3 +1130,80 @@ observed numbers (a suspiciously round `frameBeginSampNow`/`sampsRead`
 trace via a temporary oracle rebuild, then noticing `132300 - 132096 =
 204 = 132300 mod 1024`) was still necessary before the connection to the
 earlier `twarp` finding became obvious.
+
+## Phase 5's `pvc ring`: a silent duration mismatch, and the same copy-paste bug three times over
+
+`ring.c` ("phase vocoder reverberator/resonator": a feedback delay
+network built from spectral frames, not time-domain samples) surfaced two
+real findings - one from a length mismatch before any sample comparison
+was even possible, one from a large, structural amplitude mismatch found
+only by isolating the tool's two independent signal paths one at a time.
+
+**Finding 1: a silent duration extension, found by a plain length
+mismatch.** The first candidate run against the real oracle failed before
+`compare.py` could even compute an error: `length differs: expected
+103620 samples, got 90420` - a 13200-sample (60-hop, at this case's
+220-sample hop size) gap, non-trivial and clearly not off-by-one. Tracing
+it back: `ring.c` computes `funcStats(&feedback_level, ...).hi` right
+after flag parsing into a variable named `ringTime`, which then appears
+to go nowhere - it's never read again anywhere in `ring.c` itself, not
+even in a comment. It turns out to be a genuine `extern float ringTime`
+(`legacy/pvc_lib/pv.h`), consumed by the *shared* `fileio.c`'s
+`bufferin()`: once the real input runs out, `bufferin` keeps supplying
+`ringTimeSamples = ringTime * isr` further samples of silence before
+finally reporting EOF - letting the feedback delay line's own reverb tail
+actually ring out past the input's end, rather than being cut off at it.
+Nothing in `ring.c`'s own source suggested this was happening; the only
+way to find it was noticing `13200 / 220 = 60` was suspiciously round and
+`13200 / 44100 ≈ 0.3` matched this case's own `-Z 0.3` almost exactly,
+then grepping the *shared library headers* (not just `ring.c`) for
+`ringTime` to find where it's actually consumed. Reproduced in
+`tools::ring::process_channel` by extending the input with
+`control_fn_max(&params.feedback_decay_secs).max(0.0) * sample_rate`
+silent samples before running the usual hop/EOF bookkeeping - `dur` (the
+control-function normalization window) is deliberately left computed
+from the *original*, unextended span, matching `ring.c`'s own `dur`
+calculation happening earlier, unaffected by `bufferin`'s later read-side
+extension.
+
+**Finding 2: the same swapped-default bug, independently, three times.**
+With the length mismatch fixed, sample values still diverged by a huge,
+structural margin - not the small residual noise a floating-point
+approximation difference produces. Isolating `ring`'s two independently-
+gain-controllable paths (`-F-999`/`-S-999` to silence one or the other)
+found the *source* path matching the oracle almost exactly (`15798` vs.
+`15797` peak in a stable region) while the *feedback* path was ~8x
+(~+18dB) too loud (`15608` vs. an oracle `1955`) - proof the port's core
+oscillator-bank/phase-vocoder machinery was already correct (confirmed
+independently once more by `pvc irconvolver`/`pvc harmonize`'s own
+reuse of it) and the bug was specific to something only the feedback
+path touches. Re-reading `ring.c`'s three shelf-EQ initializer blocks
+side by side (input, in-loop feedback, output) found the *identical*
+copy-paste mistake in all three: each stage's low-shelf gain is
+initialized to `200.` under a comment reading "... LOW SHELF: DB", and
+its low-shelf frequency to `0.` under "... LOW SHELF: FREQ" -
+`INPUT_dBlow`/`INPUT_freqlow`, `FEEDBACK_dBlow`/`FEEDBACK_freqlow`, and
+`OUTPUT_dBlow`/`OUTPUT_freqlow` all swapped the same way, all
+contradicting `usage()`'s own documented defaults (`-O`/`-X`/`-k`
+"\[0.\]", `-d`/`-U`/`-s` "\[200.\]"). Since `eq()`'s flat-gain fast path
+only triggers when the low and high shelf dB values are exactly equal,
+each of these three defaults takes the *shelf* branch on every frame with
+no flags passed at all - here, specifically the *output* EQ instance
+(applied unconditionally to the feedback path's every frame, unlike the
+in-loop one, which - see `pvc-core::tools::ring`'s doc comment on
+`y(n)` vs. `y(n-1)` - only shapes future frames' delay-line tail) was
+what the isolated feedback-only test was actually measuring. `pvc ring`'s
+CLI layer now defaults all three low-shelf gain/frequency pairs to
+`200.0`/`0.0`, matching the C's real (not documented) behavior.
+
+**Takeaway**: a length mismatch is worth root-causing structurally (a
+round hop-count gap, checked against every flag's own value) before
+assuming it's an off-by-one in the port's own bookkeeping - the actual
+cause here lived in a shared library header, not the tool's own source at
+all. And finding one instance of a copy-paste default-value bug is a
+reason to grep for the *pattern*, not just the one site: this tool
+declares the same broken initializer three separate times, and only one
+of the three had already been read closely enough to notice by the time
+the first (input EQ) instance was found from the source alone - the
+second and third were found only because the *oracle* still disagreed
+after the first fix, not because the source was re-read more carefully.

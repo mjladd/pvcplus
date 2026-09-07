@@ -1,0 +1,9 @@
+tool = "ring"
+input = "sine440_2s_44k.wav"
+description = "ring: a short feedback-delay reverb tail on a steady tone, with the input EQ's swapped-default low-shelf bug disabled via -O0"
+legacy_steps = [
+    "ring -O0 -Z0.3 -F-6 -z-40 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.002 }
+notes = "-O0 explicitly disables the input EQ's low shelf gain, which otherwise defaults to 200 (dB!) due to a real, confirmed swapped-default bug in ring.c's own initializers (INPUT_dBlow.A[0]=200., INPUT_freqlow.A[0]=0. - see pvc-core::tools::ring's doc comment) - left at its default, that bug's +200dB-tapering-to-0dB-by-2kHz boost would dominate this case. The *same* bug recurs independently in the in-loop feedback EQ (-X/-U) and the output EQ (-k/-s), left at their own buggy defaults here deliberately (not overridden) to exercise pvc irconvolvesequencer's port of them - `pvc ring`'s CLI layer defaults --loop-eq-low-gain/--output-eq-low-gain to 200 and --loop-eq-low-freq/--output-eq-low-freq to 0 to match. This case was in fact how the output-EQ instance of the bug was found: an early candidate run (both -O0 and the output EQ's own bug not yet reproduced) measured an 8x too-loud oscillator-bank peak against the real oracle in an isolated feedback-only variant of this case, traced to pvc ring defaulting the output EQ to a sane 0dB/2000Hz shelf instead of matching the C's actual 200dB/0Hz one. -Z0.3 (0.3s feedback decay), -F-6 (feedback gain -6dB) and -z-40 (envelope-follower threshold) are chosen to produce an audible, bounded decaying tail rather than either silence (decay off, the default) or an unbounded runaway loop."

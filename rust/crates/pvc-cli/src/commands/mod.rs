@@ -18,6 +18,7 @@ pub mod plot;
 pub mod preset;
 pub mod pv;
 pub mod response;
+pub mod ring;
 pub mod run;
 pub mod spectwarp;
 pub mod twarp;
