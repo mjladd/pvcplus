@@ -1,0 +1,10 @@
+tool = "tvfilter"
+input = "sine440_2s_44k.wav"
+description = "pvanalysis (of a sweep) -> tvfilter cross-synthesis: sine440 filtered through a sweep's own time-varying spectral envelope"
+legacy_steps = [
+    "pvanalysis -N1024 {fixtures}/sweep_3s_44k.wav analysis.pva",
+    "tvfilter -N1024 -Fanalysis.pva {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Default settings throughout (sampler-loop/wrap mode, no autostop, no loop-normalization, pass-through invert mode) - the 3-second sweep analysis wraps across the 2-second sine input, so this exercises the core time-navigation (shared with pvc twarp) plus the per-frame filter application (shared with pvc filter), not any of the less-common flags. Uses pvc analyze (PVA1 format) rather than the legacy pvanalysis binary to build analysis.pva for the Rust-side golden test (golden_tvfilter.rs) - pvc tvfilter accepts either PVA layout, matching pvc twarp's own precedent. Measured max abs sample error against the real oracle: ~3.05e-05 (essentially floating-point noise) - the tolerance still leaves over an order of magnitude of margin for CI toolchain variance, well under twarp/filter/ring's own precedent of 0.002."

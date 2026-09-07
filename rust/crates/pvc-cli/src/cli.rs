@@ -156,6 +156,17 @@ pub enum Command {
     /// for pitch/frequency-shifted output - isn't ported yet).
     Filter(Box<FilterArgs>),
 
+    /// Like `filter`, but the response is a time-varying sequence of
+    /// frames (a legacy `.pva` file) navigated over time the same way
+    /// `twarp` navigates its own resynthesis source, rather than one
+    /// static `.fr` file.
+    ///
+    /// Ports `tvfilter`'s audio-processing path (`legacy/pvc_src/
+    /// tvfilter.c`); see `pvc-core::tools::tvfilter`'s doc comment for
+    /// what's in and out of scope (oscillator-bank resynthesis, and a
+    /// dead `-u` flag).
+    Tvfilter(Box<TvfilterArgs>),
+
     /// Spectral noise gate: builds a noise-response profile by analyzing
     /// a `[--noise-begin, --noise-end)` window of the input itself
     /// (default: the whole file - point these at an actual noise-only
@@ -588,6 +599,221 @@ pub struct TwarpArgs {
     pub analysis: PathBuf,
 
     pub output: PathBuf,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct TvfilterArgs {
+    /// FFT size (must be a power of two) - independent of the filter
+    /// response file's own FFT size (see `pvc-core::tools::tvfilter`'s
+    /// doc comment on `N_ratio`).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`).
+    #[arg(long, default_value_t = 0)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time expansion/contraction factor (`1.0` = unchanged duration).
+    #[arg(long, default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-P`: pitch transposition, in semitones - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// `-a`: frequency shift adder, in Hz - a plain number, or `@path`.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// `-A`: gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// `-B`: whether the filter's own transpose/shift compensates for
+    /// `--pitch`/`--freq-shift`.
+    #[arg(long = "filter-pitch-mode", value_parser = parse_filter_pitch_mode, default_value = "source-only", num_args = 1)]
+    pub filter_pitch_mode: bool,
+
+    /// `-F`: path to the time-varying filter response file - a `.pva`
+    /// analysis file, either the legacy layout (a real `pvanalysis`
+    /// output) or `pvc analyze`'s own `PVA1` format. Required.
+    #[arg(long = "filter-response")]
+    pub filter_response: PathBuf,
+
+    /// `-K`: which filter-file channel to use (`0` = pair by channel
+    /// index with the input sound file).
+    #[arg(long = "analysis-channel", default_value_t = 0)]
+    pub analysis_channel: usize,
+
+    /// `-q`: filtering method.
+    #[arg(long = "invert-mode", value_parser = parse_invert_mode, default_value = "pass")]
+    pub invert_mode: pvc_core::tools::tvfilter::InvertMode,
+
+    /// `-Q`: filter time point origin, in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long = "time-origin", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub time_origin: ControlFn,
+
+    /// `-Y`: filter rate multiplier - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub rate: ControlFn,
+
+    /// `-g`: filter time window low boundary, in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "window-low", value_parser = parse_control_fn, default_value = "0")]
+    pub window_low: ControlFn,
+
+    /// `-G`: filter time window high boundary, in seconds (negative =
+    /// end of the filter file) - a plain number, or `@path`.
+    #[arg(long = "window-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub window_high: ControlFn,
+
+    /// `-o`: sampler-loop boundary behavior (only used outside autostop
+    /// mode).
+    #[arg(long = "loop-mode", value_parser = parse_loop_mode, default_value = "wrap")]
+    pub loop_mode: pvc_core::timenav::LoopMode,
+
+    /// `-r`: trigger the time window only once it's first entered.
+    #[arg(long = "onset-release")]
+    pub onset_release: bool,
+
+    /// `-d`: stop synthesis once the filter's time position exits its
+    /// window, instead of looping.
+    #[arg(long)]
+    pub autostop: bool,
+
+    /// `-j`: keep the filter's own amplitude roughly continuous across a
+    /// sampler loop's seam.
+    #[arg(long = "loop-normalization")]
+    pub loop_normalization: bool,
+
+    /// `-k`: peak loop-seam smoothing time, in seconds - a plain number,
+    /// or `@path`.
+    #[arg(long = "loop-smooth", value_parser = parse_control_fn, default_value = "0.2")]
+    pub loop_smooth: ControlFn,
+
+    /// `-E`: filter-spectrum compression threshold, in dB (`<= 0`) - a
+    /// plain number, or `@path`.
+    #[arg(long = "comp-threshold", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub comp_threshold: ControlFn,
+
+    /// `-c`: filter-spectrum decibels of compression (`<= 0`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "comp-db", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub comp_db: ControlFn,
+
+    /// `-T`: filter response transposition, in semitones - a plain
+    /// number, or `@path`.
+    #[arg(long = "filter-transpose", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_transpose: ControlFn,
+
+    /// `-V`: filter response shift, in Hz - a plain number, or `@path`.
+    #[arg(long = "filter-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_shift: ControlFn,
+
+    /// `-Z`: filter envelope release time, in seconds - a plain number,
+    /// or `@path`.
+    #[arg(long = "filter-release", value_parser = parse_control_fn, default_value = "0")]
+    pub filter_release: ControlFn,
+
+    /// `-z`: filter envelope attack time, in seconds - a plain number,
+    /// or `@path`.
+    #[arg(long = "filter-attack", value_parser = parse_control_fn, default_value = "0")]
+    pub filter_attack: ControlFn,
+
+    /// `-S`: blend between the filtered signal and the dry source, in
+    /// dB. `-96` (the default) is fully filtered, `0` bypasses the
+    /// filter entirely. A plain number, or `@path`.
+    #[arg(long = "filter-source-gain", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub filter_source_gain: ControlFn,
+
+    /// `-W`: filter response warp index - a plain number, or `@path`.
+    #[arg(long = "filter-warpshape", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_warpshape: ControlFn,
+
+    /// `-f`: filter response smoothing bandwidth, in octaves (negative)
+    /// or Hz (positive) - a plain number, or `@path`.
+    #[arg(long = "filter-smoothing", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_smoothing: ControlFn,
+
+    /// `-H`: filter response low shelf gain, in dB - a plain number, or
+    /// `@path`.
+    #[arg(long = "shelf-low-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_low_gain: ControlFn,
+
+    /// `-X`: filter response high shelf gain, in dB - a plain number, or
+    /// `@path`.
+    #[arg(long = "shelf-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_high_gain: ControlFn,
+
+    /// `-m`: filter response low shelf frequency, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "shelf-low-freq", value_parser = parse_control_fn, default_value = "200")]
+    pub shelf_low_freq: ControlFn,
+
+    /// `-R`: filter response high shelf frequency, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "shelf-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub shelf_high_freq: ControlFn,
+
+    /// `-n`: frame normalization decibel limit (`0` disables it) - a
+    /// plain number, or `@path`.
+    #[arg(long = "frame-norm-limit", default_value = "0", value_parser = parse_control_fn, allow_hyphen_values = true)]
+    pub frame_norm_limit: ControlFn,
+
+    /// `-v`: what frame normalization scales toward.
+    #[arg(long = "normalize-to", value_parser = parse_normalize_to, default_value = "input", num_args = 1)]
+    pub normalize_to_filter: bool,
+
+    /// `-l`: envelope attack time, in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-L`: envelope release time, in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_filter_pitch_mode(s: &str) -> Result<bool, String> {
+    match s {
+        "source-only" => Ok(false),
+        "source-and-filter" => Ok(true),
+        _ => Err(format!(
+            "expected \"source-only\" or \"source-and-filter\", got {s:?}"
+        )),
+    }
+}
+
+fn parse_invert_mode(s: &str) -> Result<pvc_core::tools::tvfilter::InvertMode, String> {
+    use pvc_core::tools::tvfilter::InvertMode;
+    match s {
+        "pass" => Ok(InvertMode::Pass),
+        "invert-fixed-peak" => Ok(InvertMode::InvertFixedPeak),
+        "invert-frame-peak" => Ok(InvertMode::InvertFramePeak),
+        _ => Err(format!(
+            "expected \"pass\", \"invert-fixed-peak\", or \"invert-frame-peak\", got {s:?}"
+        )),
+    }
+}
+
+fn parse_normalize_to(s: &str) -> Result<bool, String> {
+    match s {
+        "input" => Ok(false),
+        "filter" => Ok(true),
+        _ => Err(format!("expected \"input\" or \"filter\", got {s:?}")),
+    }
 }
 
 fn parse_window_mode(s: &str) -> Result<bool, String> {
@@ -2493,16 +2719,6 @@ fn parse_filter_placement(s: &str) -> Result<bool, String> {
         "postfilter" => Ok(true),
         _ => Err(format!(
             "expected \"prefilter\" or \"postfilter\", got {s:?}"
-        )),
-    }
-}
-
-fn parse_filter_pitch_mode(s: &str) -> Result<bool, String> {
-    match s {
-        "source-only" => Ok(false),
-        "source-and-filter" => Ok(true),
-        _ => Err(format!(
-            "expected \"source-only\" or \"source-and-filter\", got {s:?}"
         )),
     }
 }

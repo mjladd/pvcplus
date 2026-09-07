@@ -1258,3 +1258,58 @@ shipped and merged before this bug was ever noticed - grepping for the
 that happened to fail a test, is what surfaced the other four instances,
 one of them in already-released functionality with no connection to the
 feature actually being worked on.
+
+## Phase 5's `pvc tvfilter`: composing two already-verified tools instead of re-deriving either
+
+`tvfilter.c` ("time-varying cross-synthetic phase vocoder filter") turned
+out to be a genuine composition of two already-ported tools' own
+machinery, not a new algorithm needing its own oracle-finding process
+from scratch: its per-frame filter application is the same shape as
+`filter.c`'s (shelf EQ, warp, smoothing, bin-shift/transpose lookup,
+frame normalization - even the same `pmult=1`/`normflag=0` call
+conventions), and its filter-response *source* is time-navigated exactly
+the way `twarp.c` navigates its own resynthesis source (`findFilterTime
+AndConstrainByWindow`/`makeInterpolatedFilterFrame` are the *same*
+shared-library functions twarp already ported as `timenav::
+TimeNavigator`/`interpolate_frame`). Confirming this by reading both
+files side by side - rather than re-deriving the bin-shift formula or the
+time-window wrap/fold/clip logic from `tvfilter.c` alone - was what made
+this port tractable: `tools::tvfilter::process_channel` calls
+`timenav`'s functions directly and mirrors `tools::filter`'s own
+response-shaping order, with only the pieces that are genuinely new to
+this tool (`N_ratio` bin scaling for an independent audio/filter FFT
+size, `compress()`, `normalize()`, `normalizeLoopAmplitudes()`) written
+fresh.
+
+One real, load-bearing gap surfaced by this reuse: `tools::filter`'s own
+`invert_response` had only ever been exercised by `filter.c`'s single
+call site (`normflag=0`, a fixed peak of `1.0`), so its port took the
+narrower shape and documented that as intentional. `tvfilter.c`'s own
+`-q 2` mode calls the *same* shared `invertresponse()` with `normflag=1`
+(invert against each frame's own peak, not a fixed `1.0`) - a second real
+caller the original port's own justification hadn't accounted for.
+Extended `invert_response` to take an explicit `peak_relative: bool`
+rather than writing a second, near-duplicate function, since the two
+call sites use different values of the *same* parameter the C already
+exposes, not different algorithms.
+
+Also confirmed by reading rather than assumed: this tool has no time-
+position smoothing equivalent to `twarp`'s own `-time-response` (`make
+InterpolatedFilterFrame` is called with the navigator's raw, unsmoothed
+`filttnow`), and `-u` ("FILTER data access mode") is entirely dead -
+declared, parsed, and printed, but the time-navigation formula it would
+supposedly select between doesn't actually branch on it anywhere.
+
+Oracle-verified on the first real attempt (a sweep's own analysis, time-
+navigated in the default wrap-loop mode, used as a cross-synthesis filter
+on a steady tone) at ~3e-5 max absolute sample error - essentially
+floating-point noise, not a residual approximation needing its own
+tolerance headroom the way several earlier tools' rescale/snapshot-timing
+quirks did.
+
+**Takeaway**: when a new tool's own usage text and flag names closely
+echo an already-ported one's, checking whether they share actual
+*library* functions (not just a similar-sounding feature) before writing
+anything new can turn a large port into function composition - and can
+also surface a real gap in the earlier port's own scope, one that
+wouldn't have been found without a second real caller exercising it.

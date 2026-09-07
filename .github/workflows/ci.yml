@@ -117,6 +117,10 @@ jobs:
         run: cargo test --release -p pvc-cli --test golden_filter -- --nocapture
         working-directory: rust
 
+      - name: Compare pvc tvfilter output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_tvfilter -- --nocapture
+        working-directory: rust
+
       - name: Compare pvc denoise output against the C oracle (Task 3.6)
         run: cargo test --release -p pvc-cli --test golden_noisefilter -- --nocapture
         working-directory: rust

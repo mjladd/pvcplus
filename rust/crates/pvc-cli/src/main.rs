@@ -40,6 +40,8 @@ fn main() -> anyhow::Result<()> {
 
         Command::Analyze(args) => commands::analyze::run(&args),
 
+        Command::Tvfilter(args) => commands::tvfilter::run(&args),
+
         Command::Twarp(args) => commands::twarp::run(&args),
 
         Command::Freqresponse(args) => commands::freqresponse::run(&args),
