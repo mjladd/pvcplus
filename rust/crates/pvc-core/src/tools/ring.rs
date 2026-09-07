@@ -184,7 +184,7 @@ pub struct RingParams {
 /// rectangular-to-polar conversion (magnitude, *raw* phase in radians -
 /// no phase unwrapping, no frequency estimate, no memory across calls)
 /// unlike [`PhaseTracker::convert`]'s phase-vocoder frequency tracking.
-fn lean_convert(s: &[f32], n2: usize) -> Vec<(f32, f32)> {
+pub(crate) fn lean_convert(s: &[f32], n2: usize) -> Vec<(f32, f32)> {
     (0..=n2)
         .map(|i| {
             let real = i << 1;
@@ -199,7 +199,7 @@ fn lean_convert(s: &[f32], n2: usize) -> Vec<(f32, f32)> {
 /// Ports `leanunconvert()`/`leanunconvert2()`/`leanunconvert3()`: the
 /// stateless inverse of [`lean_convert`] - (magnitude, raw phase) pairs
 /// back to an rfft-format spectrum of length `n`.
-fn lean_unconvert(bins: &[(f32, f32)], n: usize) -> Vec<f32> {
+pub(crate) fn lean_unconvert(bins: &[(f32, f32)], n: usize) -> Vec<f32> {
     let n2 = bins.len() - 1;
     let mut s = vec![0.0f32; n];
     for (i, &(amp, phase)) in bins.iter().enumerate() {
@@ -221,7 +221,7 @@ fn lean_unconvert(bins: &[(f32, f32)], n: usize) -> Vec<f32> {
 /// ever touches even-indexed (amplitude) slots regardless of what the
 /// odd slots mean.
 #[allow(clippy::too_many_arguments)]
-fn apply_shelf_eq(
+pub(crate) fn apply_shelf_eq(
     bins: &mut [(f32, f32)],
     d_blow: f32,
     d_bhi: f32,
@@ -258,7 +258,7 @@ fn apply_shelf_eq(
 /// the feedback path) as well as its phase-vocoder conversion (for the
 /// oscillator-bank-ready source spectrum) - two independent uses of the
 /// same buffer that `Analyzer`'s all-in-one `push` can't serve.
-struct RawAnalyzer {
+pub(crate) struct RawAnalyzer {
     d: usize,
     analysis_window: Vec<f32>,
     input_ring: Vec<f32>,
@@ -268,7 +268,7 @@ struct RawAnalyzer {
 }
 
 impl RawAnalyzer {
-    fn new(n: usize, analysis_window: Vec<f32>, d: usize) -> Self {
+    pub(crate) fn new(n: usize, analysis_window: Vec<f32>, d: usize) -> Self {
         let nw = analysis_window.len();
         RawAnalyzer {
             d,
@@ -280,7 +280,7 @@ impl RawAnalyzer {
         }
     }
 
-    fn push(&mut self, hop: &[f32]) -> Vec<f32> {
+    pub(crate) fn push(&mut self, hop: &[f32]) -> Vec<f32> {
         let nw = self.input_ring.len();
         self.input_ring.copy_within(self.d..nw, 0);
         self.input_ring[nw - self.d..].copy_from_slice(hop);
@@ -296,7 +296,7 @@ impl RawAnalyzer {
     }
 }
 
-fn control_fn_max(cf: &ControlFn) -> f32 {
+pub(crate) fn control_fn_max(cf: &ControlFn) -> f32 {
     match cf {
         ControlFn::Const(v) => *v,
         ControlFn::Table(vals) => vals.iter().copied().fold(f32::MIN, f32::max),

@@ -74,5 +74,7 @@ fn main() -> anyhow::Result<()> {
         Command::Irconvolver(args) => commands::irconvolver::run(&args),
 
         Command::Ring(args) => commands::ring::run(&args),
+
+        Command::Ringfilter(args) => commands::ringfilter::run(&args),
     }
 }

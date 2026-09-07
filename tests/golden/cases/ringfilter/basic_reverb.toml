@@ -1,0 +1,10 @@
+tool = "ringfilter"
+input = "sweep_3s_44k.wav"
+description = "ringfilter: a feedback-delay reverb resonator shaped by a filtresponsemaker frequency-gradient response (prefilter placement, the default)"
+legacy_steps = [
+    "filtresponsemaker -N1024 -F{fixtures}/filter_breakpoints.txt -f{input} response.fr",
+    "ringfilter -N1024 -O0 -yresponse.fr -Z0.3 -F-6 -z-40 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.002 }
+notes = "Reuses tests/golden/cases/filter/*.toml's response-generation precedent (filtresponsemaker + the committed filter_breakpoints.txt fixture) to build the .fr file ringfilter's -y consumes. Input is a frequency sweep, not a fixed tone: filter_breakpoints.txt is flat (0dB) from 20Hz to 1000Hz and only starts attenuating above 4000Hz, so a fixed 440Hz test tone sits entirely in the flat region and never exercises the filter's own per-bin shaping at all - confirmed the hard way, by an early version of this case (sine440 input) producing byte-identical output to pvc ring's own basic_reverb case, sha256 and all, once the filter response's near-DC bin values happened to be the only ones a steady 440Hz tone ever touches. -O0 explicitly disables the input EQ's swapped-default low-shelf bug (see pvc-core::tools::ringfilter's doc comment, same one as pvc ring) - the in-loop feedback EQ (-X) and output EQ (-k) are deliberately left at their own buggy 200dB defaults, matching pvc ring's own basic_reverb case precedent, since pvc ringfilter's CLI defaults --loop-eq-low-gain/--output-eq-low-gain to 200 the same way. -Z0.3/-F-6/-z-40 match pvc ring's own case for the same reason (an audible, bounded decaying tail). The filter placement (-o, default 0 = prefilter) and pitch mode (-B, default 0 = source-only/compensated) are left at their defaults."

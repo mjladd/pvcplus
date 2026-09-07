@@ -1207,3 +1207,54 @@ of the three had already been read closely enough to notice by the time
 the first (input EQ) instance was found from the source alone - the
 second and third were found only because the *oracle* still disagreed
 after the first fix, not because the source was re-read more carefully.
+
+## Phase 5's `pvc ringfilter`: reused `ring` machinery, and a real clap bug found along the way
+
+`ringfilter.c` ports cleanly as `ring.c` plus one added feature (a
+switchable fixed-spectrum filter, placed either on the feedback path's
+input or inside the loop) - `tools::ringfilter` reuses `tools::ring`'s
+shared helpers directly (`RawAnalyzer`, `lean_convert`/`lean_unconvert`,
+`apply_shelf_eq`, `control_fn_max`, all promoted to `pub(crate)` for this)
+rather than re-deriving them, and inherits the same swapped-shelf-EQ-
+default bug and `ringTime` duration-extension mechanism `tools::ring`'s
+own section above already documents. One genuine algorithmic difference
+was found by reading the two files side by side: `ringfilter.c` guards
+the in-loop feedback EQ's decay-time division (`if (FEEDBACK_decay_time
+.A[0] < IR) ... else ...`) where `ring.c` divides unconditionally - a
+real safety fix the twin tool has and the other doesn't.
+
+**A real, pre-existing bug in this project's own `clap` CLI layer, found
+while testing a brand-new flag - and confirmed to already affect shipped,
+merged code.** `pvc ringfilter` needed three new `bool`-typed flags backed
+by a custom string `value_parser` (`--filter-placement prefilter|
+postfilter`, `--filter-pitch-mode source-only|source-and-filter`, plus a
+second copy of `pvc ring`'s own `--feedback-threshold-mode above|below`).
+Testing `--filter-placement postfilter` for the first time (to spot-check
+the postfilter code path against the oracle) failed immediately: `error:
+invalid value 'true' for '--filter-placement': expected "prefilter" or
+"postfilter", got "true"`. `clap`'s derive macro infers `ArgAction::
+SetTrue` for any plain `bool`-typed field *by default*, silently
+overriding an explicit `value_parser` unless the field's `#[arg(...)]`
+also says `num_args = 1` - so every such flag in this project was
+actually a valueless toggle that always resolved to `true` regardless of
+what a caller wrote after it, with its "true" branch simply unreachable
+any other way. Grepping the whole file for the same shape (`value_parser`
+immediately followed by a `pub _: bool,` field with no `num_args`) found
+four more instances, all with the identical bug: `pvc ring`'s own
+`--feedback-threshold-mode`, and - already merged and shipped on
+`main`, nothing to do with this tool or `ring` at all - `pvc twarp`'s
+`--window-mode loop|autostop`. Confirmed directly: `pvc twarp
+--window-mode autostop` failed with the exact same "got \"true\"" error
+before the fix, and `pvc twarp --help` showed the flag with no `<...>`
+value placeholder at all, exactly matching what `ArgAction::SetTrue`
+flags look like. All five fixed with `num_args = 1`, verified after by
+running the previously-failing invocation of each.
+
+**Takeaway**: a single well-understood library-level pitfall (clap's
+type-directed action inference silently overriding an explicit parser)
+recurs anywhere the same shape is copy-pasted, including into code that
+shipped and merged before this bug was ever noticed - grepping for the
+*shape* of the bug across the whole file, not just fixing the one flag
+that happened to fail a test, is what surfaced the other four instances,
+one of them in already-released functionality with no connection to the
+feature actually being worked on.
