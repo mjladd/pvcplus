@@ -1472,3 +1472,108 @@ when I tested it" is only as strong as the environment it was tested
 in - undefined behavior in the reference implementation is exactly the
 kind of divergence that a fixed, shared Docker image is supposed to
 rule out, and CI had quietly stopped using that image for this one job.
+
+## Phase 5's `pvc ringtvfilter`: composing `ring` and `tvfilter`'s own machinery a second time, with a smaller pipeline than either
+
+`ringtvfilter.c` turned out to be exactly what its name suggests once read
+end to end: `ring.c`'s full feedback delay network (`tools::ring`'s
+`RawAnalyzer`, `lean_convert`/`lean_unconvert`, `apply_shelf_eq`,
+threshold envelope, input/loop/output EQ, balance limiter, all reused
+directly), with `ringfilter.c`'s fixed `.fr` response replaced by
+`tvfilter.c`'s own time-navigated `.pva` response (`tools::tvfilter`'s
+`TimeNavigator`/`interpolate_frame`/`make_loop_smooth_time`/
+`filter_lookup`/`LoopNormalizer`/`compress_response`/`normalize_response`,
+also reused directly). Composing two already-verified tools' shared
+building blocks made this the third-largest tool ported so far
+tractable without re-deriving any of its individual pieces from scratch -
+the actual new work was reading `ringtvfilter.c` closely enough to see
+which pieces of each sibling it borrows, and which it does not.
+
+**The filter-response pipeline is a real, smaller subset of `tvfilter.c`'s
+own, not a shortcut taken by this port.** Reading `ringtvfilter.c`'s
+"MAKE THE FILTER FRAME" section end to end finds `makeInterpolatedFilterFrame`
+-> optional `normalizeLoopAmplitudes` -> one *symmetric* `smooth()` call
+(a single `loopSmoothTime`-derived coefficient pair for both attack and
+release) -> `normalize()` -> optional `compress()` -> `spectmagwarp()` -
+no shelf EQ, no bandwidth smoothing, and no invert-response step anywhere
+in that chain, all three of which are real `tvfilter.c` features this
+tool's own C source simply never calls. `crate::smooth::Smoother` (built
+for `tvfilter`'s asymmetric attack/release case) still applies unchanged
+here: passing the same coefficient pair as both its attack and release
+arguments reproduces `smooth()`'s own symmetric call exactly, with no new
+code needed.
+
+**A second, real difference from `tvfilter.c`: `-W`/`-v` (filter-spectrum
+compression) are plain floats here, not `(func)`s.** `tvfilter.c`'s own
+`-E`/`-c` are `struct func`, re-evaluated every frame; `ringtvfilter.c`'s
+declarations (`float filtcompthresh_in_dB=0`, `float filtcompdecibels=0`)
+and its own `usage()` text (the only two filter-shaping flags without a
+`(func)` annotation) both confirm these are resolved once, outside the
+frame loop - reproduced that way here rather than as `ControlFn`s.
+
+**A real dead control, found by grepping every reference this time
+instead of cross-referencing `crack()` against `switch`:** `master_dBgain`
+(`struct func`, declared and initialized exactly like every other control
+in this file) is never assigned by any flag and never read by `fval()`
+anywhere in the frame loop - only its `fclose()` cleanup check at exit
+mentions it at all. Unlike `tools::ring`'s own `-A` (a working master
+gain), this file's `-A` is wired to `LoopNormalizationFlag` instead, so
+there is no flag that could ever reach `master_dBgain` even by
+coincidence. Not exposed here - confirmed dead by grepping the whole
+file for the variable name, not just reading the flag list, since this
+kind of "declared, initialized, cleaned up at exit, never actually
+wired up" control produces no symptom in `crack()`/`switch` cross-
+referencing at all.
+
+**The same prefilter/postfilter asymmetry `tools::ringfilter` already
+documents, reproduced faithfully, plus one more real difference between
+the two placements.** Both placements share one pitch/frequency-
+compensated pair (`fm`, and - prefilter only - `fs`) computed from `-u`/
+`-V`, optionally divided/subtracted by the feedback path's own `-P`/`-H`
+unless `-B` is set - exactly `tools::ringfilter`'s own mechanism. The
+postfilter placement's own lookup uses `-V`'s raw value directly, not the
+compensated `fs`, matching `tools::ringfilter` again. What is new here:
+the *prefilter* placement scales its bin index by `N_ratio` and reads the
+filter file's own fundamental (exactly `tools::tvfilter`'s own
+`filter_lookup` formula, unmodified), while the *postfilter* placement
+does neither - it indexes the *audio*'s own bin/fundamental directly into
+the same interpolated array, with `N_ratio` implicitly `1.0`. Algebraic
+reduction of the C's two near-identical index formulas confirms both
+reduce to one function, `tools::tvfilter::filter_lookup`, called with
+different `n_ratio`/`analysis_fundamental` arguments - not two lookups
+that happen to look alike.
+
+**The in-loop feedback EQ's decay-time division is guarded here, matching
+`tools::ringfilter` and not `tools::ring`'s own unconditional division** -
+see `tools::ringfilter`'s doc comment for the mechanism; `ringtvfilter.c`
+uses the identical `if (FEEDBACK_decay_time.A[0] < IR)` guard, with the
+same `FEEDBACK_dBlowtemp`-never-reassigned-on-that-branch quirk
+simplified the same way (a fresh `0.0` instead of a stale prior-frame
+value).
+
+**One flag that exists in `tools::ring` has no equivalent here**: the
+feedback envelope-follower's threshold gate has no pass-mode flag in
+`ringtvfilter.c` (unlike `ring.c`'s own `-V`) - grepping the whole flag
+list for a second threshold-direction control found none. The gate is
+unconditionally "below threshold releases, at-or-above attacks/holds",
+hardcoded rather than exposed as a field.
+
+Oracle-verified on the first real attempt (the `-O0`/feedback-decay/
+feedback-gain/feedback-threshold combination `tools::ring`'s own golden
+case already established, filtered through a sweep's own `pvanalysis` at
+the default prefilter placement) at a `~0.00079` max absolute sample
+error, comfortably inside the `0.002` tolerance carried over from `ring`/
+`ringfilter`'s own precedent. The postfilter placement (`-o1`) was spot-
+checked the same way (not committed as a second golden case, since the
+underlying `filter_lookup` formula and decay-exponent logic are already
+covered by `ringfilter`'s own postfilter tests) and measured `~0.00058`
+against a manually-built oracle run.
+
+**Takeaway**: when a new tool's own name and usage text openly declare it
+as a hybrid of two already-ported siblings, verifying that claim by
+reading the hybrid's source against both of them - not just skimming for
+familiar-looking flag names - turns most of the port into composition,
+and still surfaces real, tool-specific differences (a narrower filter
+pipeline, plain-float compression controls, a missing threshold-mode
+flag, one dead control) that a pure copy-paste of either sibling would
+have missed or wrongly carried over.

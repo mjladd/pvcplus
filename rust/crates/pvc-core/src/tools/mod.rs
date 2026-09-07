@@ -16,6 +16,7 @@ pub mod pitchtracker;
 pub mod pv;
 pub mod ring;
 pub mod ringfilter;
+pub mod ringtvfilter;
 pub mod spectwarper;
 pub mod tvfilter;
 pub mod twarp;

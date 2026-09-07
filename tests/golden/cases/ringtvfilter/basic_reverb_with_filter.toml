@@ -1,0 +1,10 @@
+tool = "ringtvfilter"
+input = "sine440_2s_44k.wav"
+description = "ringtvfilter: a short feedback-delay reverb tail on a steady tone, filtered through a sweep's own time-varying spectral envelope (prefilter placement, the default)"
+legacy_steps = [
+    "pvanalysis -N1024 {fixtures}/sweep_3s_44k.wav analysis.pva",
+    "ringtvfilter -O0 -Z0.3 -F-6 -z-40 -yanalysis.pva {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.002 }
+notes = "-O0 disables the input EQ's low shelf gain, which otherwise defaults to 200 (dB!) due to the same real, confirmed swapped-default bug ring.c/ringfilter.c already have - see pvc-core::tools::ring's doc comment, reproduced independently in ringtvfilter.c's own three EQ initializers and left at their own buggy defaults for the loop/output EQ here (not overridden), matching pvc ring's own basic_reverb.toml precedent. -Z0.3/-F-6/-z-40 produce an audible, bounded decaying tail the same way pvc ring's own case does. The filter response is a pvanalysis of the sweep fixture, at the default prefilter placement (-o0, x(n)) with every other filter flag left at default - the 3-second sweep wraps across the 2-second sine input's own reverb tail, exercising the time-navigation machinery shared with pvc tvfilter alongside ring's own feedback network in one case."

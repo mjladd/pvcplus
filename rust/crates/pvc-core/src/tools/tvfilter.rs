@@ -152,7 +152,7 @@ pub struct TvfilterParams {
 /// comment on `N_ratio`). `this_f` is `analysis_n / 2 + 1` amplitudes
 /// (already shaped for this frame); `bin` is the *audio*'s own bin index
 /// (`0..=n2`).
-fn filter_lookup(
+pub(crate) fn filter_lookup(
     this_f: &[f32],
     bin: usize,
     n_ratio: f32,
@@ -180,7 +180,12 @@ fn filter_lookup(
 /// Ports `compress()`: single-sided upward compression - bins above
 /// `threshold_amp` have the amount they exceed it scaled by `comp_amp`,
 /// then every bin (compressed or not) is rescaled by `norm_amp`.
-fn compress_response(amps: &mut [f32], threshold_amp: f32, comp_amp: f32, norm_amp: f32) {
+pub(crate) fn compress_response(
+    amps: &mut [f32],
+    threshold_amp: f32,
+    comp_amp: f32,
+    norm_amp: f32,
+) {
     for a in amps.iter_mut() {
         *a = if *a > threshold_amp {
             norm_amp * (threshold_amp + comp_amp * (*a - threshold_amp))
@@ -193,7 +198,7 @@ fn compress_response(amps: &mut [f32], threshold_amp: f32, comp_amp: f32, norm_a
 /// Ports `normalize()`: gain-scales every bin by `1 / peak_amp`, then
 /// hard-limits anything still over `1.0` (not a real peak-normalize if
 /// `peak_amp` is wrong for the data - just what the C does).
-fn normalize_response(amps: &mut [f32], peak_amp: f32) {
+pub(crate) fn normalize_response(amps: &mut [f32], peak_amp: f32) {
     for a in amps.iter_mut() {
         *a /= peak_amp;
         if *a > 1.0 {
@@ -214,7 +219,7 @@ fn normalize_response(amps: &mut [f32], peak_amp: f32) {
 /// reproduce exactly here since it's a real cross-frame cache, not an
 /// artifact of one call site's incomplete state like `tools::ring`'s
 /// `prebalancesum`.
-struct LoopNormalizer {
+pub(crate) struct LoopNormalizer {
     low_sum: f32,
     high_sum: f32,
     peak_sum: f32,
@@ -224,7 +229,7 @@ struct LoopNormalizer {
 }
 
 impl LoopNormalizer {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         LoopNormalizer {
             low_sum: 0.0,
             high_sum: 0.0,
@@ -236,7 +241,7 @@ impl LoopNormalizer {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn apply(
+    pub(crate) fn apply(
         &mut self,
         channel: &mut [f32],
         filter_frames: &[Vec<f32>],
