@@ -1,5 +1,6 @@
 ---
 source: crates/pvc-cli/tests/cli.rs
+assertion_line: 12
 expression: help
 ---
 A modern CLI for the PVCplus phase-vocoder toolkit.
@@ -30,6 +31,7 @@ Commands:
   convert-units    Convert between amplitude/decibel and Hz/octave.pitchclass units
   impulseresponse  Impulse-response analysis: zero-pads and FFTs a `[--begin, --end)` window of each input channel into a peak-normalized `.ir` file (Phase 5's FFT-convolution family - see `pvc-core::tools:: impulseresponse`'s doc comment for what's out of scope)
   irconvolver      Fast FFT convolution (or deconvolution) of each input channel against a `.ir` file's spectrum (Phase 5's FFT-convolution family). See `pvc-core::tools::irconvolver`'s doc comment for what's out of scope, and a real usage-text bug in the C corrected here
+  ring             Phase-vocoder feedback reverberator/resonator: a delay network built out of spectral frames rather than time-domain samples, combining an independently pitch/frequency-shiftable copy of the dry source with a recirculating, EQ'd and envelope-gated feedback path. See `pvc-core::tools::ring`'s doc comment for real dead flags, a real swapped-default bug reproduced faithfully, and what's out of scope (Phase 5's long tail)
   help             Print this message or the help of the given subcommand(s)
 
 Options:

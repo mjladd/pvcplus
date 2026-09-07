@@ -56,7 +56,14 @@ impl Frame {
 /// `nw`), then folds the result into `out` (length `n`) starting at
 /// rotation point `n0` (modulo `n`). `out` must already be `n` long; it's
 /// zeroed here first, matching the C.
-fn fold(input: &[f32], window: &[f32], out: &mut [f32], n0: i64) {
+///
+/// `pub(crate)`, not private: `tools::ring` needs the raw post-FFT
+/// spectrum `Analyzer::push` would otherwise keep to itself (it feeds a
+/// second, independent "feedback" path as well as the normal analysis
+/// one - see that module's doc comment), so it hand-rolls its own
+/// shiftin+fold+rfft front end out of this and [`PhaseTracker`] rather
+/// than going through `Analyzer`.
+pub(crate) fn fold(input: &[f32], window: &[f32], out: &mut [f32], n0: i64) {
     let n = out.len() as i64;
     out.fill(0.0);
     let mut pos = n0.rem_euclid(n);
@@ -87,14 +94,21 @@ fn overlap_add(folded_spectrum: &[f32], synthesis_window: &[f32], out: &mut [f32
 
 /// Ports `convert.c`. `n2` is `N/2` (half the FFT size); `d` is the
 /// analysis hop (decimation) size; `sample_rate` is `R`.
-struct PhaseTracker {
+///
+/// `pub(crate)`: normally reached only through [`Analyzer`]/[`Synthesizer`],
+/// but `tools::ring` needs two independent instances of this driven
+/// directly off already-computed FFT buffers (its "source" and "feedback"
+/// paths each need their own phase memory, matching the C's hand-
+/// duplicated `convert`/`convert1` functions) rather than through the
+/// higher-level shiftin+fold+rfft+convert bundle `Analyzer::push` offers.
+pub(crate) struct PhaseTracker {
     lastphase: Vec<f32>,
     fundamental: f32,
     factor: f32,
 }
 
 impl PhaseTracker {
-    fn new_analysis(n2: usize, d: usize, sample_rate: u32) -> Self {
+    pub(crate) fn new_analysis(n2: usize, d: usize, sample_rate: u32) -> Self {
         let twopi: f32 = (8.0f64 * 1.0f64.atan()) as f32;
         PhaseTracker {
             lastphase: vec![0.0; n2 + 1],
@@ -114,7 +128,7 @@ impl PhaseTracker {
 
     /// `convert()`: rfft-format spectrum `s` (length `2*n2`) -> a `Frame`
     /// of `n2+1` (mag, freq-in-Hz) pairs.
-    fn convert(&mut self, s: &[f32]) -> Frame {
+    pub(crate) fn convert(&mut self, s: &[f32]) -> Frame {
         let pi: f32 = (4.0f64 * 1.0f64.atan()) as f32;
         let twopi: f32 = 2.0 * pi;
         let n2 = self.lastphase.len() - 1;
