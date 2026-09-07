@@ -21,6 +21,7 @@ pub mod pv;
 pub mod response;
 pub mod ring;
 pub mod ringfilter;
+pub mod ringtvfilter;
 pub mod run;
 pub mod spectwarp;
 pub mod tvfilter;
