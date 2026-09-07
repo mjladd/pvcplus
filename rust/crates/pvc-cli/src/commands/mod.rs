@@ -23,6 +23,7 @@ pub mod ring;
 pub mod ringfilter;
 pub mod ringtvfilter;
 pub mod run;
+pub mod spectralextractor;
 pub mod spectwarp;
 pub mod tvfilter;
 pub mod twarp;
