@@ -288,6 +288,16 @@ pub enum Command {
     ///
     /// Ports `ring`'s audio-processing path (`legacy/pvc_src/ring.c`).
     Ring(Box<RingArgs>),
+
+    /// `pvc ring` plus a switchable fixed-spectrum filter (a `.fr`
+    /// response file, the same format `pvc filter` reads), placed either
+    /// on the feedback path's input ("prefilter") or inside the loop
+    /// ("postfilter"). See `pvc-core::tools::ringfilter`'s doc comment
+    /// for what's shared with `pvc ring` and what's different.
+    ///
+    /// Ports `ringfilter`'s audio-processing path (`legacy/pvc_src/
+    /// ringfilter.c`).
+    Ringfilter(Box<RingfilterArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -508,7 +518,7 @@ pub struct TwarpArgs {
 
     /// Time-window behavior: stop once time exits the window
     /// (`autostop`), or wrap/fold/clip at its edges forever (`loop`).
-    #[arg(long = "window-mode", value_parser = parse_window_mode, default_value = "loop")]
+    #[arg(long = "window-mode", value_parser = parse_window_mode, default_value = "loop", num_args = 1)]
     pub window_mode: bool,
 
     /// Sampler-loop boundary behavior (only used in `loop` window mode).
@@ -2259,6 +2269,242 @@ pub struct RingArgs {
 
     pub input: PathBuf,
     pub output: PathBuf,
+}
+
+#[derive(clap::Args, Debug)]
+pub struct RingfilterArgs {
+    /// FFT size (must be a power of two) - must match the filter response
+    /// file's own size (`fillfunc`'s "FILTER FILE SIZE DOES NOT MATCH
+    /// FFT" exit).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// Analysis/resynthesis window length. `0` means auto (`2 * fft`).
+    #[arg(long, default_value_t = 0)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Time expansion/contraction factor (`1.0` = unchanged duration).
+    #[arg(long, default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-b`: begin time in seconds.
+    #[arg(long, default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long, default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-t`: oscillator-bank resynthesis threshold, in dB.
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub oscbank_threshold: f32,
+
+    /// `-A`: master (source + reverb) gain in dB - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub master_gain: ControlFn,
+
+    /// `-S`: source gain in dB - a plain number, or `@path`.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// `-f`: source frequency shift adder, in Hz - a plain number, or
+    /// `@path`.
+    #[arg(long = "source-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_freq_shift: ControlFn,
+
+    /// `-p`: source pitch transposition, in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "source-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_pitch: ControlFn,
+
+    /// `-F`: reverb (feedback) gain in dB - a plain number, or `@path`.
+    #[arg(long = "feedback-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub feedback_gain: ControlFn,
+
+    /// `-H`: reverb frequency shift adder, in Hz - a plain number, or
+    /// `@path`.
+    #[arg(long = "feedback-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub feedback_freq_shift: ControlFn,
+
+    /// `-P`: reverb pitch transposition, in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "feedback-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub feedback_pitch: ControlFn,
+
+    /// `-Z`: reverb (feedback delay line) decay time, in seconds - `0`
+    /// disables the loop entirely. A plain number, or `@path`.
+    #[arg(long = "feedback-decay", value_parser = parse_control_fn, default_value = "0")]
+    pub feedback_decay: ControlFn,
+
+    /// `-z`: reverb (input) envelope-follower gate threshold, in dB - a
+    /// plain number, or `@path`.
+    #[arg(long = "feedback-threshold", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub feedback_threshold: ControlFn,
+
+    /// `-g`: reverb threshold pass mode.
+    #[arg(long = "feedback-threshold-mode", value_parser = parse_threshold_mode, default_value = "above", num_args = 1)]
+    pub feedback_threshold_mode: bool,
+
+    /// `-l`: reverb (input) envelope attack time, in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "attack", value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-L`: reverb (input) envelope release time, in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "release", value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// `-O`: reverb (input) EQ low shelf gain, in dB - a plain number, or
+    /// `@path`. Defaults to `200`, not `0` - see `pvc-core::tools::
+    /// ringfilter`'s doc comment on the real swapped-default bug this
+    /// reproduces.
+    #[arg(long = "input-eq-low-gain", value_parser = parse_control_fn, default_value = "200", allow_hyphen_values = true)]
+    pub input_eq_low_gain: ControlFn,
+
+    /// `-Y`: reverb (input) EQ high shelf gain, in dB - a plain number,
+    /// or `@path`.
+    #[arg(long = "input-eq-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub input_eq_high_gain: ControlFn,
+
+    /// `-d`: reverb (input) EQ low shelf frequency, in Hz - a plain
+    /// number, or `@path`. Defaults to `0`, not `200` - see
+    /// `pvc-core::tools::ringfilter`'s doc comment.
+    #[arg(long = "input-eq-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub input_eq_low_freq: ControlFn,
+
+    /// `-n`: reverb (input) EQ high shelf frequency, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "input-eq-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub input_eq_high_freq: ControlFn,
+
+    /// `-T`: reverb (in-loop feedback) EQ decay time, in seconds - a
+    /// plain number, or `@path`.
+    #[arg(long = "loop-eq-decay", value_parser = parse_control_fn, default_value = "1")]
+    pub loop_eq_decay: ControlFn,
+
+    /// `-E`: reverb (feedback) signal balance gain limiter level, `0` to
+    /// `96` dB (`0` disables balancing entirely).
+    #[arg(long = "loop-balance-limit", default_value_t = 0.0)]
+    pub loop_balance_limit: f32,
+
+    /// `-X`: reverb (in-loop feedback) EQ low shelf gain, in dB - a plain
+    /// number, or `@path`. Defaults to `200`, not `0` - see
+    /// `pvc-core::tools::ringfilter`'s doc comment on the real
+    /// swapped-default bug this reproduces (the same one as `-O`/`-d`,
+    /// independently present here too).
+    #[arg(long = "loop-eq-low-gain", value_parser = parse_control_fn, default_value = "200", allow_hyphen_values = true)]
+    pub loop_eq_low_gain: ControlFn,
+
+    /// `-Q`: reverb (in-loop feedback) EQ high shelf gain, in dB - a
+    /// plain number, or `@path`.
+    #[arg(long = "loop-eq-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub loop_eq_high_gain: ControlFn,
+
+    /// `-U`: reverb (in-loop feedback) EQ low shelf frequency, in Hz - a
+    /// plain number, or `@path`. Defaults to `0`, not `200` - see
+    /// `pvc-core::tools::ringfilter`'s doc comment.
+    #[arg(long = "loop-eq-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub loop_eq_low_freq: ControlFn,
+
+    /// `-m`: reverb (in-loop feedback) EQ high shelf frequency, in Hz - a
+    /// plain number, or `@path`.
+    #[arg(long = "loop-eq-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub loop_eq_high_freq: ControlFn,
+
+    /// `-k`: reverb (output) EQ low shelf gain, in dB - a plain number,
+    /// or `@path`. Defaults to `200`, not `0` - see `pvc-core::tools::
+    /// ringfilter`'s doc comment on the real swapped-default bug this
+    /// reproduces (the same one as `-O`/`-d`, independently present here
+    /// too).
+    #[arg(long = "output-eq-low-gain", value_parser = parse_control_fn, default_value = "200", allow_hyphen_values = true)]
+    pub output_eq_low_gain: ControlFn,
+
+    /// `-c`: reverb (output) EQ high shelf gain, in dB - a plain number,
+    /// or `@path`.
+    #[arg(long = "output-eq-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub output_eq_high_gain: ControlFn,
+
+    /// `-s`: reverb (output) EQ low shelf frequency, in Hz - a plain
+    /// number, or `@path`. Defaults to `0`, not `200` - see
+    /// `pvc-core::tools::ringfilter`'s doc comment.
+    #[arg(long = "output-eq-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub output_eq_low_freq: ControlFn,
+
+    /// `-G`: reverb (output) EQ high shelf frequency, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "output-eq-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub output_eq_high_freq: ControlFn,
+
+    /// `-y`: path to a `.fr` frequency response file (the same format
+    /// `pvc filter` reads) - required.
+    #[arg(long = "filter-response")]
+    pub filter_response: PathBuf,
+
+    /// `-q`: reshapes the filter response curve. A plain number, or
+    /// `@path`.
+    #[arg(long = "filter-warpshape", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_warpshape: ControlFn,
+
+    /// `-u`: filter response transposition, in semitones - a plain
+    /// number, or `@path`.
+    #[arg(long = "filter-transpose", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_transpose: ControlFn,
+
+    /// `-V`: filter response shift, in Hz (applied before
+    /// `-filter-transpose`) - a plain number, or `@path`.
+    #[arg(long = "filter-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_shift: ControlFn,
+
+    /// `-x`: blend between the filtered signal and the dry source, in dB.
+    /// `-96` (the default) is fully filtered, `0` bypasses the filter
+    /// entirely. A plain number, or `@path`.
+    #[arg(long = "filter-source-gain", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub filter_source_gain: ControlFn,
+
+    /// `-r`: filter decay time, in seconds - only used by
+    /// `--filter-placement postfilter`. A plain number, or `@path`.
+    #[arg(long = "filter-decay", value_parser = parse_control_fn, default_value = "1")]
+    pub filter_decay: ControlFn,
+
+    /// `-o`: where the filter is applied.
+    #[arg(long = "filter-placement", value_parser = parse_filter_placement, default_value = "prefilter", num_args = 1)]
+    pub filter_placement: bool,
+
+    /// `-B`: whether the filter's own transpose/shift compensates for
+    /// the reverb's own `-feedback-pitch`/`-feedback-freq-shift`.
+    #[arg(long = "filter-pitch-mode", value_parser = parse_filter_pitch_mode, default_value = "source-only", num_args = 1)]
+    pub filter_pitch_mode: bool,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_filter_placement(s: &str) -> Result<bool, String> {
+    match s {
+        "prefilter" => Ok(false),
+        "postfilter" => Ok(true),
+        _ => Err(format!(
+            "expected \"prefilter\" or \"postfilter\", got {s:?}"
+        )),
+    }
+}
+
+fn parse_filter_pitch_mode(s: &str) -> Result<bool, String> {
+    match s {
+        "source-only" => Ok(false),
+        "source-and-filter" => Ok(true),
+        _ => Err(format!(
+            "expected \"source-only\" or \"source-and-filter\", got {s:?}"
+        )),
+    }
 }
 
 fn parse_threshold_mode(s: &str) -> Result<bool, String> {

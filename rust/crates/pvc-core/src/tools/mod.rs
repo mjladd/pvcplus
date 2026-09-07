@@ -14,5 +14,6 @@ pub mod noisefilter;
 pub mod pitchtracker;
 pub mod pv;
 pub mod ring;
+pub mod ringfilter;
 pub mod spectwarper;
 pub mod twarp;
