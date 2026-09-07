@@ -1387,3 +1387,88 @@ category of C/Rust divergence distinct from every lookup-table or
 snapshot-timing approximation found in this project so far: not a
 numerical approximation at all, just two languages disagreeing on what
 an out-of-range cast should do.
+
+## `irconvolvesequencer.c`'s self-referential `sprintf`: undefined behavior that only misbehaved on one platform
+
+CI's golden-harness job builds the legacy toolkit directly on the
+`ubuntu-latest` runner, separately from the `debian:bookworm-slim`-based
+`legacy-build` Docker image used for every other oracle verification in
+this project. `irconvolvesequencer`'s golden case passed against a
+locally-built Debian oracle (the `~0.00046` absolute error reported in
+the previous section) but failed in CI with `length differs: expected
+110250 samples, got 132096` - `110250` is exactly
+`noise_then_tone_44k.wav`'s own sample count, and CI's recorded oracle
+turned out to be byte-identical to that fixture. `irconvolvesequencer`
+never actually convolved anything in CI; it silently fell back to a raw
+copy of the un-processed impulse file.
+
+The cause was three call sites in `irconvolvesequencer.c`, all shaped
+like `sprintf( command, "%s ...", command, ... )`: `command` is passed
+as both the destination being written and a `%s` source argument being
+read, in the same call. Passing overlapping objects to `sprintf` is
+undefined behavior in C, not merely "implementation-defined" - nothing
+requires it to fail loudly, or the same way twice. Reproducing the exact
+failure took building the legacy toolkit inside an `ubuntu:24.04`
+container (matching the runner's OS family) rather than
+`debian:bookworm-slim`: only there did the tool's own diagnostic print
+show the corruption directly - `command:  -x0 -P0.000000 ...` with the
+entire `irconvolver -E...fft -a...` prefix missing, which the shell then
+read as a request to run a program literally named `-x0`
+(`sh: 1: -x0: not found`). `system()`'s return value is never checked
+anywhere in this file, so the failure produced no error output of its
+own; only the fallback-to-raw-copy that happens earlier in the same
+function loop revealed anything had gone wrong.
+
+A third site had the same shape but a subtler effect: `mixfilesInputFiles`
+(the accumulated list of per-segment output files eventually handed to
+`mixfiles`) was itself built via `sprintf( mixfilesInputFiles, "%s%s ",
+mixfilesInputFiles, outputSoundFile )` inside the per-impulse loop - an
+aliased append, not a chained build. Fixing only the first two sites
+still left `mixfiles` invoked with a single filename instead of both:
+the platform's `sprintf` had silently dropped every earlier iteration's
+contribution to the accumulator on read, so the resulting mix was one
+segment's convolution alone, at a fraction of the intended length.
+
+All three sites needed the same category of fix: never pass a buffer as
+its own source and destination in one call. The two `command`-chain
+sites now build into an added `command2` scratch buffer and ping-pong
+between the two (`sprintf(command2, "%s ...", command, ...)`, then
+`sprintf(command, "%s ...", command2, ...)`), preserving the exact
+concatenated string each call was always meant to build. The
+accumulator site switched to two non-aliased `strcat` calls instead,
+since its two operands (`mixfilesInputFiles`, `outputSoundFile`) were
+never the same buffer to begin with - only the redundant self-reference
+was the problem. This lands in the `fix(legacy): ...` line of prior
+warning-driven correctness fixes to this codebase (see `git log --
+legacy/pvc_src`), not a project convention of leaving real bugs in
+place: unlike the swapped-default or lookup-table-vs-formula findings
+elsewhere in this project, there is no second, deliberate reading of
+"pass the same buffer as both sides of a format string" to preserve -
+it is simply broken, and the fix does not change the *intended* output
+of any call, only whether that output is reliably produced.
+
+Even after all three fixes, one gap remained: the same fixed source,
+rebuilt fresh in both `debian:bookworm-slim` and `ubuntu:24.04`,
+produced the same sample *count* (`132096`, matching the Rust port) but
+different sample *content* (`sha256` and `rms` both differed) - some
+other environment-sensitive factor, likely a `libsndfile`/`sox` version
+skew between the two base images feeding into one of the four other
+tools this one orchestrates, was still in play. Rather than chase that
+down tool-by-tool, CI's `golden` job was changed to build and run the
+legacy toolkit inside the same `legacy-build` Docker image
+(`debian:bookworm-slim`, pinned dependency versions) used for every
+manual oracle verification in this project, instead of building bare-
+metal on whatever Ubuntu version the runner happens to carry. This is
+the more defensible fix regardless of the `sprintf` bug: the Rust port
+has only ever been checked against the Debian-built oracle, so that is
+the oracle CI should reproduce.
+
+**Takeaway**: an oracle-generation bug does not always announce itself
+as a crash or an obviously-wrong number - here it announced itself as a
+too-short, suspiciously-familiar-looking WAV file, because the tool's
+own fallback path (a raw `cp` staged earlier in the same loop, meant
+only as a placeholder) papered over the real failure. And "it passed
+when I tested it" is only as strong as the environment it was tested
+in - undefined behavior in the reference implementation is exactly the
+kind of divergence that a fixed, shared Docker image is supposed to
+rule out, and CI had quietly stopped using that image for this one job.

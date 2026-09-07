@@ -20,7 +20,7 @@ int channelout=0;
 
 FILE *fopen();
 FILE	*impulseFilesFilePointer ;
-char	impulseFilesName[ STRING_SIZE ]="", command[ 40000 ], 
+char	impulseFilesName[ STRING_SIZE ]="", command[ 40000 ], command2[ 40000 ],
 	fileName[ STRING_SIZE ]="", thisEnv[ STRING_SIZE ]="",
  	outputSoundFile[ STRING_SIZE ]="", mixfilesInputFiles[ 40000 ],
      mixfilesCommand[ 40000 ], crossfadeStartTimesCommand[ 40000 ]  ;
@@ -312,16 +312,16 @@ sprintf( command,
 		dB_to_amp( -96 )
 ); 
 
-sprintf( command, 
-	"%s gen4 -L1000 0 %f 0   0.5 1.0 0    1.0 %f | reshape -t0 > /tmp/env ; ", 
+sprintf( command2,
+	"%s gen4 -L1000 0 %f 0   0.5 1.0 0    1.0 %f | reshape -t0 > /tmp/env ; ",
 		command , dB_to_amp( -96 ), dB_to_amp( -96 )
-); 
-sprintf( command, 
-	"%s gen4 -L1000 0 %f 0   0.5 1.0 0    1.0 1.0 | reshape -t0 > /tmp/envEnd ; ", 
-		command, dB_to_amp( -96 )
-); 
+);
+sprintf( command,
+	"%s gen4 -L1000 0 %f 0   0.5 1.0 0    1.0 1.0 | reshape -t0 > /tmp/envEnd ; ",
+		command2, dB_to_amp( -96 )
+);
 
-system( command ) ; 
+system( command ) ;
 
 sprintf( crossfadeStartTimesCommand, "echo " ) ; 
 
@@ -413,7 +413,8 @@ for( i = 0 ; i < number_of_movement_function_points ; i++ )
    sprintf( command, "cp %s %s", fileName, outputSoundFile ) ; 
 	
 
-   sprintf( mixfilesInputFiles, "%s%s ", mixfilesInputFiles, outputSoundFile ) ; 
+   strcat( mixfilesInputFiles, outputSoundFile ) ;
+   strcat( mixfilesInputFiles, " " ) ;
    system( command ) ; 
    
    sprintf( command, 
@@ -425,23 +426,23 @@ for( i = 0 ; i < number_of_movement_function_points ; i++ )
       SourceInputBPF_lowFilterRolloffInDecibelsPerOctave.A[ 0 ], 
       SourceInputBPF_highFilterRolloffInDecibelsPerOctave.A[ 0 ]   
  ) ; 
-   sprintf( command, 
+   sprintf( command2,
       "%s -x%d -P%f -B%f -F%f -Z%f -z%f -C%d -M%d -b%f -e%f -d%d -_%d -=%f -p%d -i%f %s %s ",
-      command, 
+      command,
       impulseShapingFlag_Off_0__On_1, peak_shaping_amplitude_in_dB.A[ 0 ],
       shaping_breakpoint_in_dB.A[ 0 ], base_shaping_amplitude_in_dB.A[ 0 ],
       upper_shaping_curve_index.A[ 0 ], lower_shaping_curve_index.A[ 0 ],
       channelout, multichannel_output_mode__standard_0__alternate_1,
-      thisBeginT, thisEndT, 
+      thisBeginT, thisEndT,
       add_ring_time__off_0__on_1, autoplayreps, rescalev, quiet, ampstatinc,
-      ifile, outputSoundFile 
+      ifile, outputSoundFile
    ) ;
 
 
 
-   prs( command, "command" ) ; 
+   prs( command2, "command" ) ;
 
-   system( command ) ; 
+   system( command2 ) ;
 
 
 
