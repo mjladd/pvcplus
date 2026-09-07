@@ -330,6 +330,17 @@ pub enum Command {
     /// Ports `irconvolvesequencer` (`legacy/pvc_src/
     /// irconvolvesequencer.c`).
     Irconvolvesequencer(Box<IrconvolvesequencerArgs>),
+
+    /// Periodic/noise spectrum separator: tracks each bin's frame-to-
+    /// frame frequency deviation and gates it on or off depending on
+    /// whether that deviation stays under a threshold, extracting either
+    /// the tonal part of a sound or its noise residue.
+    ///
+    /// Ports `spectralextractor`'s audio-processing path (`legacy/
+    /// pvc_src/spectralextractor.c`); see `pvc-core::tools::
+    /// spectralextractor`'s doc comment for a real dead pitch/frequency-
+    /// shift computation reproduced faithfully, and what's out of scope.
+    Spectralextractor(Box<SpectralExtractorArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -3385,6 +3396,125 @@ fn parse_convert_unit(s: &str) -> Result<ConvertUnit, String> {
         _ => Err(format!(
             "expected \"amp\", \"db\", \"hz\", or \"oppc\", got {s:?}"
         )),
+    }
+}
+
+/// `pvc spectralextractor`'s flag surface. Long names follow the same
+/// convention as [`TvfilterArgs`]/[`crate::cli::IrconvolvesequencerArgs`].
+#[derive(clap::Args, Debug)]
+pub struct SpectralExtractorArgs {
+    /// `-N`: FFT size (must be a power of two).
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    /// `-M`: analysis/resynthesis window length. `0` means auto (`2 *
+    /// fft`, or larger still if needed to fit the resynthesis hop).
+    #[arg(long, default_value_t = 0)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// `-D`: analysis frames per second (sets the hop size).
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// `-I`: time expansion/contraction factor (`1.0` = unchanged
+    /// duration).
+    #[arg(long, default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-P`: pitch transposition in semitones - a plain number, or
+    /// `@path`. Real, narrow effect only (see `pvc-core::tools::
+    /// spectralextractor`'s doc comment): selects oscillator-bank
+    /// resynthesis and shifts the shelf-EQ banding frequency, but never
+    /// the output's actual pitch.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// `-a`: frequency shift adder in Hz - a plain number, or `@path`.
+    /// Same narrow real effect as `--pitch` - see that flag's doc comment.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// `-A`: gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// `-b`: begin time in seconds.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-q`: which part of the spectrum to keep.
+    #[arg(long = "spectral-type", value_parser = parse_spectral_type, default_value = "periodic")]
+    pub spectral_type: pvc_core::tools::spectralextractor::SpectralType,
+
+    /// `-Q`: max (periodic mode) / min (noise mode) frequency change
+    /// allowed every 5 milliseconds, in Hz - a plain number, or `@path`.
+    #[arg(long = "freq-change-threshold", value_parser = parse_control_fn, default_value = "0")]
+    pub freq_change_threshold: ControlFn,
+
+    /// `-g`: response time of the frequency-change threshold accumulator,
+    /// in seconds - a plain number, or `@path`.
+    #[arg(long = "freq-change-response", value_parser = parse_control_fn, default_value = "0")]
+    pub freq_change_response: ControlFn,
+
+    /// `-L`: amplitude-gate release time in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// `-c`: complement amplitude spectrum proportion (0-1) - a plain
+    /// number, or `@path`.
+    #[arg(long = "complement", value_parser = parse_control_fn, default_value = "0")]
+    pub complement: ControlFn,
+
+    /// `-E`: frame normalization decibel limit (`0` disables
+    /// normalization) - a plain number, or `@path`.
+    #[arg(long = "frame-norm-limit", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub frame_norm_limit: ControlFn,
+
+    /// `-W`: spectrum magnitude warp index - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    /// `-H`: low shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-low-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_low_gain: ControlFn,
+
+    /// `-X`: high shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_high_gain: ControlFn,
+
+    /// `-m`: low shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-low-freq", value_parser = parse_control_fn, default_value = "200")]
+    pub shelf_low_freq: ControlFn,
+
+    /// `-R`: high shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub shelf_high_freq: ControlFn,
+
+    /// `-t`: oscillator-bank resynthesis threshold in dB (only consumed
+    /// when `--pitch`/`--freq-shift` select that resynthesis path).
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_spectral_type(
+    s: &str,
+) -> Result<pvc_core::tools::spectralextractor::SpectralType, String> {
+    use pvc_core::tools::spectralextractor::SpectralType;
+    match s {
+        "periodic" => Ok(SpectralType::Periodic),
+        "noise" => Ok(SpectralType::Noise),
+        _ => Err(format!("expected \"periodic\" or \"noise\", got {s:?}")),
     }
 }
 

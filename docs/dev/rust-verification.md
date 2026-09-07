@@ -1640,3 +1640,93 @@ the port itself - `gdb`'s own backtrace here pointed straight at a
 NULL-pointer `fread()`, which pointed straight at a `crack()` argument-
 parsing branch this project's own command-line convention (concatenated
 flag+value, not space-separated) sidesteps entirely once known.
+
+## `pvc spectralextractor`: a genuinely dead pitch/frequency-shift computation, and a correction to an earlier "`-b`/`-e` don't trim" assumption
+
+`spectralextractor.c` separates a sound's periodic (tonal) content from
+its noise residue: each bin's frame-to-frame frequency deviation is
+exponentially smoothed, then compared against a threshold to gate that
+bin on or off, depending on `-q` (periodic mode keeps low-deviation
+bins, noise mode keeps high-deviation ones).
+
+**`-P` (pitch transpose) and `-a` (frequency shift) have no effect on
+the resynthesized signal's actual pitch or frequency - confirmed by
+reading the whole per-bin loop that would apply them.** The C computes
+`temp = pm * (harmadd.A[0] + channel[i])` and then never uses `temp` -
+no assignment back into `channel[i]`/`channel[i-1]`, no bounds gating,
+despite a `// NEUTOR OUT OF BOUNDS FREQ BINS` comment implying the
+intent to do both (the same shape as `plainpv.c`'s/`twarp.c`'s own bin
+loops, which *do* write back - this one just never got the assignment
+added). The two flags still have real, narrower effects, both
+reproduced here: they select oscillator-bank resynthesis over overlap-
+add whenever either is nonzero (checked once at the top of the channel
+loop, matching `tvfilter.c`'s/`twarp.c`'s own startup-time, not
+per-frame, `obank` decision), and their accumulated values feed
+`channel_freqdev`, which `eq2()` uses to compute each bin's *effective*
+frequency for shelf-EQ banding only - never the bin's real output
+frequency. `pvc spectralextractor`'s own `--pitch`/`--freq-shift` are
+exposed for parity with the real tool's flag surface and to reach the
+oscillator-bank path in testing, not because they transpose anything.
+
+Two more dead computations, confirmed by the same read-the-whole-file
+method and simply not implemented (no observable effect either way): a
+first `channelAmpSum` accumulator (during the per-bin gate loop) sums
+*frequency* values under an amplitude-sounding name and is fully
+overwritten by a second, correctly-computed `channelAmpSum` before ever
+being read; and the `binfreq`/`wouldbephasepoint` arrays are filled once
+at startup and never read again.
+
+**A correction to an assumption `pvc pv`'s and `pvc filter`'s own doc
+comments make about `-b`/`-e`.** Both claim begin/end time only affects
+`dur` (the control-function normalization duration), not the actual
+samples processed - true for `plainpv.c`/`pvanalysis.c` specifically
+(see this doc's own Task 3.6 note). `spectralextractor.c` calls the same
+`setupfiles()`/`openfiles()` pair `filter.c`/`noisefilter.c` use, and
+reading `getInputFileDataToSetOutputChannels()`
+(`legacy/pvc_lib/fileio.c`) confirms real, sample-accurate trimming
+there too: it seeks to `begint*R` and buffers only `(endt-begint)*R`
+frames into a per-channel scratch file before the frame loop ever
+starts. Confirmed empirically against the real binary, not just by
+reading: `spectralextractor -b0.5 -e1.0` on a 2.5-second fixture prints
+`OUTPUT FILE: DURATION: 0.500000`, and `pvc spectralextractor --begin
+0.5 --end 1.0` on the same fixture produces a matching-length output.
+`commands::spectralextractor::run` trims each channel to
+`[begin_sample, end_sample)` before calling `process_channel`, unlike
+`pv`'s/`filter`'s CLI layers (which don't expose `-b`/`-e` at all). This
+doesn't revisit whether `plainpv`/`filter`'s own ports are correct for
+their own tools - only that the same assumption doesn't transfer to
+`spectralextractor` by similarity, worth a second look for any future
+port that also calls `setupfiles()`/`openfiles()`.
+
+A genuine off-by-one in the C's own `previous_gain_mult` allocation,
+almost certainly harmless in practice: `fvec(previous_gain_mult, N2)`
+allocates `N2` floats, but the per-bin gate loop both initializes and
+indexes it up to `previous_gain_mult[N2]` inclusive (`N2+1` elements,
+one per bin from DC through Nyquist) - a one-`float` write/read past the
+buffer's declared bounds. Not reproduced: `pvc spectralextractor` simply
+sizes the equivalent `Vec` to `n2 + 1`, the size the access pattern
+actually needs, rather than replicating undefined behavior Rust has no
+safe way to express. Not chased further empirically (unlike the
+`irconvolvesequencer.c` self-referential-`sprintf` UB, which really did
+vary output across glibc versions) since the golden harness shows no
+divergence from it - most likely explained by every frame's own
+init-then-read of that same slot happening back-to-back with nothing
+else touching it in between, landing safely in ordinary malloc slack.
+
+Oracle-verified within the same `spectral` (dB-based magnitude)
+tolerance `spectwarper` established for its own bin-magnitude-only
+transform, using the `noise_then_tone_44k` fixture specifically because
+it's the one fixture in this repo whose whole point is a real,
+audible periodic-vs-noise boundary for this tool's gate to find - one
+case per `-q` mode.
+
+**Takeaway:** the same "read the whole per-bin loop, don't trust a
+variable's own name or a nearby comment's stated intent" method that
+found `groupdelaymaker`'s formula mismatch found something more extreme
+here - two flags (`-P`/`-a`) that the tool's own `usage()` text presents
+as ordinary pitch/frequency controls but that never touch the output
+signal's frequency content at all, only a resynthesis-method selector
+and an EQ-banding side channel. Worth remembering for the next
+`crack()`-parsed tool with a `temp = ...` line that's never assigned
+back anywhere: it may be exactly this pattern, not a transcription
+mistake to "fix" by adding the missing assignment.

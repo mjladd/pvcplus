@@ -1,0 +1,8 @@
+tool = "spectralextractor"
+input = "noise_then_tone_44k.wav"
+description = "spectralextractor: noise mode (-q1) keeps bins whose deviation stays above the threshold, extracting the fixture's noisy lead-in and suppressing its steady tone"
+legacy_steps = [
+    "spectralextractor -q1 -Q30 -g0.05 -L0.05 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "spectral", max_db_error = 0.5 }

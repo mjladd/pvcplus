@@ -82,5 +82,7 @@ fn main() -> anyhow::Result<()> {
         Command::Ringtvfilter(args) => commands::ringtvfilter::run(&args),
 
         Command::Irconvolvesequencer(args) => commands::irconvolvesequencer::run(&args),
+
+        Command::Spectralextractor(args) => commands::spectralextractor::run(&args),
     }
 }
