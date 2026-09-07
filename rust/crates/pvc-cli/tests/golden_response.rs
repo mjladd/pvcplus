@@ -93,6 +93,17 @@ fn filtresponsemaker_frequency_gradient() {
 #[test]
 fn groupdelaymaker_basic_pair() {
     let root = repo_root();
+    let expected_dir = root
+        .join("tests/golden/expected/groupdelaymaker")
+        .join("basic_pair");
+    if !expected_dir.is_dir() {
+        eprintln!(
+            "SKIP golden_response::groupdelaymaker/basic_pair: {} not found - run `bash tests/golden/run_legacy.sh` first",
+            expected_dir.display()
+        );
+        return;
+    }
+
     let partials = root.join("tests/golden/fixtures/groupdelay_table.txt");
     let input = root.join("tests/golden/fixtures/sine440_2s_44k.wav");
     let analysis_path = std::env::temp_dir().join("pvc_golden_groupdelaymaker_basic_pair.pva");
