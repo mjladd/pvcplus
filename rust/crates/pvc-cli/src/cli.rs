@@ -497,7 +497,7 @@ pub struct TwarpArgs {
 
     /// Time-window behavior: stop once time exits the window
     /// (`autostop`), or wrap/fold/clip at its edges forever (`loop`).
-    #[arg(long = "window-mode", value_parser = parse_window_mode, default_value = "loop")]
+    #[arg(long = "window-mode", value_parser = parse_window_mode, default_value = "loop", num_args = 1)]
     pub window_mode: bool,
 
     /// Sampler-loop boundary behavior (only used in `loop` window mode).
