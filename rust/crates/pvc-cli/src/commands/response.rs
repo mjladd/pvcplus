@@ -4,6 +4,7 @@
 use anyhow::{bail, Context, Result};
 use pvc_core::tools::chordresponsemaker::{self, ChordTone};
 use pvc_core::tools::filtresponsemaker::{self, Breakpoint};
+use pvc_core::tools::groupdelaymaker::{self, GroupDelayTone};
 use pvc_core::Frame;
 
 use crate::cli::ResponseCommand;
@@ -102,6 +103,52 @@ pub fn run(cmd: &ResponseCommand) -> Result<()> {
                 *mode,
             );
             write_frame(output, &frame)
+        }
+
+        ResponseCommand::Groupdelaymaker {
+            analysis,
+            partials,
+            edge_db,
+            default_db,
+            default_delay,
+            method,
+            output,
+        } => {
+            let pva = pvc_io::read_pva(analysis)
+                .or_else(|_| pvc_io::read_legacy_pva(analysis))
+                .with_context(|| format!("reading {}", analysis.display()))?;
+
+            let values = read_floats(partials)?;
+            if values.len() % 7 != 0 {
+                bail!(
+                    "{}: {} values isn't a multiple of 7 - expected (pitch, num_partials, \
+                     bandwidth, db, spacing, rolloff, delay_secs) septuples",
+                    partials.display(),
+                    values.len()
+                );
+            }
+            let tones: Vec<GroupDelayTone> = values
+                .chunks_exact(7)
+                .map(|c| GroupDelayTone {
+                    pitch_or_hz: c[0],
+                    num_partials: c[1] as i32,
+                    bandwidth: c[2],
+                    db: c[3],
+                    partial_spacing: c[4],
+                    db_rolloff_total: c[5],
+                    delay_secs: c[6],
+                })
+                .collect();
+            let bins = groupdelaymaker::synthesize(
+                &tones,
+                pva.header.n as usize,
+                pva.header.sample_rate,
+                *edge_db,
+                *default_db,
+                *default_delay,
+                *method,
+            );
+            write_frame(output, &Frame { bins })
         }
     }
 }

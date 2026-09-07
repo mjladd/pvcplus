@@ -7,6 +7,7 @@ pub mod filter;
 pub mod filtresponsemaker;
 pub mod fluxoid;
 pub mod freqresponse;
+pub mod groupdelaymaker;
 pub mod harmonizer;
 pub mod impulseresponse;
 pub mod irconvolver;

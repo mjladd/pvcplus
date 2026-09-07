@@ -91,6 +91,44 @@ fn filtresponsemaker_frequency_gradient() {
 }
 
 #[test]
+fn groupdelaymaker_basic_pair() {
+    let root = repo_root();
+    let partials = root.join("tests/golden/fixtures/groupdelay_table.txt");
+    let input = root.join("tests/golden/fixtures/sine440_2s_44k.wav");
+    let analysis_path = std::env::temp_dir().join("pvc_golden_groupdelaymaker_basic_pair.pva");
+
+    let status = Command::new(env!("CARGO_BIN_EXE_pvc"))
+        .arg("analyze")
+        .arg("--fft")
+        .arg("1024")
+        .arg(&input)
+        .arg(&analysis_path)
+        .status()
+        .expect("failed to run pvc analyze");
+    assert!(status.success(), "`pvc analyze` failed");
+
+    run_case(
+        "groupdelaymaker",
+        "basic_pair",
+        &[
+            "groupdelaymaker",
+            "--analysis",
+            analysis_path.to_str().unwrap(),
+            "--partials",
+            partials.to_str().unwrap(),
+            "--edge-db",
+            "-6",
+            "--default-db",
+            "-96",
+            "--default-delay",
+            "0",
+            "--method",
+            "average",
+        ],
+    );
+}
+
+#[test]
 fn chordresponsemaker_harmonic_tone() {
     let root = repo_root();
     let partials = root.join("tests/golden/fixtures/chord_table.txt");

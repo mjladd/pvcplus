@@ -1149,6 +1149,49 @@ pub enum ResponseCommand {
 
         output: PathBuf,
     },
+
+    /// Ports `groupdelaymaker` (`legacy/pvc_src/groupdelaymaker.c`): like
+    /// `chordresponsemaker`, but each bin's response is an `(amp,
+    /// delay-time)` pair instead of `(amp, frequency)`, from unordered
+    /// septuples `(pitch-or-Hz, num_partials, bandwidth, decibels,
+    /// partial_spacing, db_rolloff_total, delay_secs)`. See `pvc-core::
+    /// tools::groupdelaymaker`'s doc comment for the real differences
+    /// from `chordresponsemaker`'s own dB-rolloff/edge-falloff formulas.
+    Groupdelaymaker {
+        /// `-f`: a `.pva` analysis file (legacy or `pvc analyze`'s own
+        /// `PVA1` format), used only to adopt its FFT size and sample
+        /// rate - required.
+        #[arg(long = "analysis")]
+        analysis: PathBuf,
+
+        /// `-F`: ASCII data file of unordered septuples: `pitch-or-Hz,
+        /// num_partials, bandwidth, decibels, partial_spacing,
+        /// db_rolloff_total, delay_secs` (whitespace-separated).
+        #[arg(long)]
+        partials: PathBuf,
+
+        /// `-D`: dB offset (relative to each partial's own level) at the
+        /// outer edge of its band. `0` (the default) is a flat,
+        /// effectively rectangular band - not silence at the edges.
+        #[arg(long = "edge-db", default_value_t = 0.0, allow_hyphen_values = true)]
+        edge_db: f32,
+
+        /// `-i`: default decibel level for bins no tone ever touches.
+        #[arg(long = "default-db", default_value_t = 0.0, allow_hyphen_values = true)]
+        default_db: f32,
+
+        /// `-I`: default delay time, in seconds, for bins no tone ever
+        /// touches.
+        #[arg(long = "default-delay", default_value_t = 0.0)]
+        default_delay: f32,
+
+        /// `-s`: how overlapping partials resolve their `(amp, delay)`
+        /// pair at a shared bin.
+        #[arg(long, value_parser = parse_overlap_method, default_value = "average")]
+        method: pvc_core::tools::groupdelaymaker::OverlapMethod,
+
+        output: PathBuf,
+    },
 }
 
 /// `pvc freqresponse`'s flag surface. Long names follow
@@ -3056,6 +3099,25 @@ fn parse_band_window(s: &str) -> Result<pvc_core::tools::chordresponsemaker::Ban
         "triangle" => Ok(BandWindow::Triangle),
         "rectangle" => Ok(BandWindow::Rectangle),
         _ => Err(format!("expected \"triangle\" or \"rectangle\", got {s:?}")),
+    }
+}
+
+fn parse_overlap_method(
+    s: &str,
+) -> Result<pvc_core::tools::groupdelaymaker::OverlapMethod, String> {
+    use pvc_core::tools::groupdelaymaker::OverlapMethod;
+    match s {
+        "shortest-delay" => Ok(OverlapMethod::ShortestDelay),
+        "longest-delay" => Ok(OverlapMethod::LongestDelay),
+        "average" => Ok(OverlapMethod::Average),
+        "loudest" => Ok(OverlapMethod::Loudest),
+        "softest" => Ok(OverlapMethod::Softest),
+        "loudest-if-shortest" => Ok(OverlapMethod::LoudestIfShortest),
+        "loudest-if-longest" => Ok(OverlapMethod::LoudestIfLongest),
+        _ => Err(format!(
+            "expected one of \"shortest-delay\", \"longest-delay\", \"average\", \"loudest\", \
+             \"softest\", \"loudest-if-shortest\", \"loudest-if-longest\", got {s:?}"
+        )),
     }
 }
 
