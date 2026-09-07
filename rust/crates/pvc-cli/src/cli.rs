@@ -2163,7 +2163,7 @@ pub struct RingArgs {
     pub feedback_threshold: ControlFn,
 
     /// `-V`: reverb threshold pass mode.
-    #[arg(long = "feedback-threshold-mode", value_parser = parse_threshold_mode, default_value = "above")]
+    #[arg(long = "feedback-threshold-mode", value_parser = parse_threshold_mode, default_value = "above", num_args = 1)]
     pub feedback_threshold_mode: bool,
 
     /// `-l`: reverb (input) envelope attack time, in seconds - a plain
