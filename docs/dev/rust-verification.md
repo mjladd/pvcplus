@@ -1313,3 +1313,77 @@ echo an already-ported one's, checking whether they share actual
 anything new can turn a large port into function composition - and can
 also surface a real gap in the earlier port's own scope, one that
 wouldn't have been found without a second real caller exercising it.
+
+## Phase 5's `pvc irconvolvesequencer`: a shell-script orchestrator, and an unclipped write
+
+`irconvolvesequencer.c` (the third tool in the FFT-convolution family:
+crossfades a signal through a sequence of impulse responses, morphing
+from one to the next across `[begin, end]`) is not really a DSP tool of
+its own in the C - it is a shell-script orchestrator around four other
+tools (`impulseresponse`, `irconvolver`, `gen4`/`reshape` for the
+crossfade envelope shapes, `mixfiles` for the final sum), built entirely
+out of `sprintf`+`system()` calls. This port calls the equivalent Rust
+functions directly instead (`tools::impulseresponse::process`,
+`tools::irconvolver::process`, `gen4`, `amp_to_db`), with a small
+`mix_segments` function standing in for the specific "sum N delayed
+buffers, then normalize" slice of `mixfiles.c` this tool actually uses -
+not a general port of that still-unported tool.
+
+**A dead flag, found by reading the `crack()` list against the
+`switch`**: `-a` appears in the flag list `crack()` is given, but there
+is no `case 'a':` at all in the `switch` beneath it - unlike every other
+flag in that list, which is handled. The local
+`deconvolution_0__convolution_1` variable a working `-a` would have set
+therefore never leaves its hardcoded initializer (`1`, convolution), no
+matter what a caller passes. This is a different class of doc/behavior
+mismatch than `irconvolver`'s own `-a` (a real, working flag whose
+*usage text* just mislabels it) - here the flag does nothing at all, in
+both the code and the usage text (which doesn't mention `-a` either).
+Caught by systematically cross-referencing `crack()`'s flag string
+against every `case` in the `switch`, not by observing a symptom -
+worth doing for every tool with this `crack()`/`switch` shape, since a
+silently-dead flag produces no symptom to notice in the first place.
+
+**A second finding, this time from an actual oracle run**: the first
+attempt at this tool's golden case left `-v` (mixfiles' normalization
+code) at its default, `0` (off). The candidate output diverged from the
+oracle by a huge margin (`max abs sample error 1.99872`, essentially
+uncorrelated) despite every other sample matching to five decimal
+places - one Python script later, the mismatch was a single sample:
+expected `32750`, candidate `-32744`, with both sides' immediate
+neighbors sitting smoothly around `-32700` to `-33000`. `mixfiles.c`
+writes its summed output straight through `sf_write_float` with no
+`SFC_SET_CLIPPING` call - libsndfile's default behavior for a float
+sample outside `[-1.0, 1.0]` feeding a 16-bit PCM writer is to
+wrap/truncate the out-of-range integer, not clamp it, so a summed
+sample at `1.99999...` (unsurprising with normalization off: two
+full-scale-ish impulse responses, summed) came out as an
+inverted-polarity `32750` instead of a clipped `32767`. Every other
+resynthesis tool ported here reaches its output through `bufferout()`'s
+shared rescale path first (`rescaleThisBuffer`, see `irconvolver`'s own
+section above), which already keeps values in range before they reach
+`sf_write_float` - `mixfiles.c` is the first tool in this project that
+skips that path entirely, so this divergence had no earlier precedent
+to check against. `pvc_io::write_wav`'s `f32 -> i16` conversion is a
+plain Rust `as` cast, which saturates rather than wraps (a real,
+deliberate language-level difference from C here, not a porting choice),
+so this port clamps where the C wraps. Not chased into a bit-for-bit
+wrap reproduction - the golden case switches to `-v2` (`together`
+normalization, which unconditionally rescales under `1.0`) instead,
+sidestepping the divergence rather than replicating it, since it only
+manifests when the *un-normalized* mix genuinely clips and no other
+ported tool has needed wraparound-accurate integer conversion. With that
+one flag changed, the real residual error (the two segments' own
+convolution/FFT floating-point noise, summed) measured `~0.00046`
+absolute - comfortably inside the `0.002` `sample`-tolerance precedent
+carried over from `irconvolver`'s own golden case.
+
+**Takeaway**: a wildly large, near-uncorrelated error across an
+otherwise-matching buffer is itself a signal to look for a single
+outlier sample rather than a systemic scale/sign error - one Python
+`zip`-and-diff loop over both buffers found the exact index immediately.
+And "no clipping guard on the raw write path" is a real, if narrow,
+category of C/Rust divergence distinct from every lookup-table or
+snapshot-timing approximation found in this project so far: not a
+numerical approximation at all, just two languages disagreeing on what
+an out-of-range cast should do.

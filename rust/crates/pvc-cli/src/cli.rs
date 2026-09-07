@@ -309,6 +309,15 @@ pub enum Command {
     /// Ports `ringfilter`'s audio-processing path (`legacy/pvc_src/
     /// ringfilter.c`).
     Ringfilter(Box<RingfilterArgs>),
+
+    /// Crossfades a signal through a sequence of impulse responses,
+    /// morphing from one to the next (Phase 5's FFT-convolution family).
+    /// See `pvc-core::tools::irconvolvesequencer`'s doc comment for the
+    /// C's dead `-a` flag and what's out of scope.
+    ///
+    /// Ports `irconvolvesequencer` (`legacy/pvc_src/
+    /// irconvolvesequencer.c`).
+    Irconvolvesequencer(Box<IrconvolvesequencerArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -2910,6 +2919,103 @@ fn parse_irconvolver_mode(s: &str) -> Result<pvc_core::tools::irconvolver::Mode,
         "deconvolve" => Ok(Mode::Deconvolution),
         _ => Err(format!(
             "expected \"convolve\" or \"deconvolve\", got {s:?}"
+        )),
+    }
+}
+
+#[derive(clap::Args, Debug)]
+pub struct IrconvolvesequencerArgs {
+    /// `-I`: directory containing an `impulseFileNames` list file - its
+    /// first whitespace-separated token is the impulse count, followed by
+    /// that many impulse-response sound file paths, one sequence point
+    /// each, in order.
+    #[arg(long = "impulse-list-dir")]
+    pub impulse_list_dir: PathBuf,
+
+    /// `-b`: sequence window start, in seconds.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: sequence window end, in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-d`: extend every segment's processed window by one impulse-length
+    /// of trailing silence.
+    #[arg(long = "ring-tail")]
+    pub ring_tail: bool,
+
+    /// `-J`: which impulse channel to use (`0` = auto round-robin).
+    #[arg(long = "impulse-channel", default_value_t = 0)]
+    pub impulse_channel: usize,
+
+    /// `-v`: how the final mixed output is peak-normalized.
+    #[arg(long, value_parser = parse_mix_normalization, default_value = "off")]
+    pub normalization: pvc_core::tools::irconvolvesequencer::MixNormalization,
+
+    /// `-s`: impulse response bandpass low rolloff point, Hz - a plain
+    /// number, or `@path`, evaluated once per impulse at its sequence
+    /// position.
+    #[arg(long = "ir-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub ir_low_freq: ControlFn,
+
+    /// `-t`: impulse response bandpass high rolloff point, Hz (`0` =
+    /// Nyquist) - a plain number, or `@path`.
+    #[arg(long = "ir-high-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub ir_high_freq: ControlFn,
+
+    /// `-g` - a plain number, or `@path`.
+    #[arg(long = "ir-low-rolloff", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub ir_low_rolloff: ControlFn,
+
+    /// `-G` - a plain number, or `@path`.
+    #[arg(long = "ir-high-rolloff", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub ir_high_rolloff: ControlFn,
+
+    /// `-D`: input sound bandpass low rolloff point, Hz - a plain number,
+    /// or `@path`.
+    #[arg(long = "source-low-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub source_low_freq: ControlFn,
+
+    /// `-f`: input sound bandpass high rolloff point, Hz (`0` = Nyquist) -
+    /// a plain number, or `@path`.
+    #[arg(long = "source-high-freq", value_parser = parse_control_fn, default_value = "0")]
+    pub source_high_freq: ControlFn,
+
+    /// `-h` - a plain number, or `@path`.
+    #[arg(long = "source-low-rolloff", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_low_rolloff: ControlFn,
+
+    /// `-H` - a plain number, or `@path`.
+    #[arg(long = "source-high-rolloff", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_high_rolloff: ControlFn,
+
+    /// `-A`: dry-signal gain mixed back in after convolution, in dB,
+    /// evaluated once per impulse at its sequence position - a plain
+    /// number, or `@path`.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// `-r`: gain applied to each segment's convolution output, in dB -
+    /// a plain number, or `@path`.
+    #[arg(long = "output-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub output_gain: ControlFn,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_mix_normalization(
+    s: &str,
+) -> Result<pvc_core::tools::irconvolvesequencer::MixNormalization, String> {
+    use pvc_core::tools::irconvolvesequencer::MixNormalization;
+    match s {
+        "off" => Ok(MixNormalization::Off),
+        "independent" => Ok(MixNormalization::Independent),
+        "together" => Ok(MixNormalization::Together),
+        "if-clipping" => Ok(MixNormalization::IfClipping),
+        _ => Err(format!(
+            "expected \"off\", \"independent\", \"together\", or \"if-clipping\", got {s:?}"
         )),
     }
 }

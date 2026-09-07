@@ -12,6 +12,7 @@ pub mod harmonize;
 pub mod impulseresponse;
 pub mod info;
 pub mod irconvolver;
+pub mod irconvolvesequencer;
 pub mod legacy;
 pub mod pitchtrack;
 pub mod plot;
