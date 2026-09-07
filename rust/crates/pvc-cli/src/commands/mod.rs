@@ -22,4 +22,5 @@ pub mod ring;
 pub mod ringfilter;
 pub mod run;
 pub mod spectwarp;
+pub mod tvfilter;
 pub mod twarp;

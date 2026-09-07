@@ -52,17 +52,38 @@ pub fn compand(
     }
 }
 
-/// Ports `invertresponse(SP, N, normflag)`. `filter.c` always calls this
-/// with `normflag=0`, so only that path is exposed here: inverts each
-/// amplitude in the dB domain against a fixed peak of `1.0` (`-96dB`
-/// floor for anything already at or below that, matching the C's
-/// `athresh = dB_to_amp(-96.)` guard).
-pub fn invert_response(amps: &mut [f32], db_to_amp: &DbToAmp) {
+/// Ports `invertresponse(SP, N, normflag)`: inverts each amplitude in the
+/// dB domain (`-96dB` floor for anything already at or below that,
+/// matching the C's `athresh = dB_to_amp(-96.)` guard), against either a
+/// fixed peak of `1.0` (`peak_relative = false` - `filter.c`'s only call
+/// site, confirmed by reading the whole file) or that frame's own actual
+/// peak amplitude (`peak_relative = true` - `tvfilter.c`'s `-q 2` mode,
+/// its other call site; `-q 1` passes `false` here). A non-positive peak
+/// under `peak_relative` is a silent no-op, matching the C's own early
+/// `return(0)` there (unlike `compand`'s peak checks elsewhere in this
+/// module, this one isn't a caller error worth panicking over - a
+/// response frame can be legitimately silent for a stretch of a
+/// time-varying file).
+pub fn invert_response(amps: &mut [f32], peak_relative: bool, db_to_amp: &DbToAmp) {
     let athresh = db_to_amp.convert(-96.0);
+    let (peakamp, normamp) = if peak_relative {
+        let peak = amps.iter().copied().fold(f32::MIN, f32::max);
+        if peak <= 0.0 {
+            return;
+        }
+        (peak, 1.0 / peak)
+    } else {
+        (1.0, 1.0)
+    };
     for a in amps.iter_mut() {
-        let db = if *a <= athresh { -96.0 } else { amp_to_db(*a) };
+        let scaled = *a * normamp;
+        let db = if scaled <= athresh {
+            -96.0
+        } else {
+            amp_to_db(scaled)
+        };
         let inverted_db = -96.0 - db;
-        *a = db_to_amp.convert(inverted_db);
+        *a = db_to_amp.convert(inverted_db) * peakamp;
     }
 }
 
@@ -158,8 +179,33 @@ mod tests {
     fn invert_response_matches_c_oracle() {
         let db_to_amp = DbToAmp::new();
         let mut amps = [1.0, 0.1];
-        invert_response(&mut amps, &db_to_amp);
+        invert_response(&mut amps, false, &db_to_amp);
         assert_eq!(amps, [1.58489311e-05, 0.000158416646]);
+    }
+
+    #[test]
+    fn invert_response_peak_relative_leaves_the_peak_bin_at_the_peak() {
+        // At the frame's own peak, `scaled == 1.0` exactly, so the
+        // inverted dB is `-96 - 0 = -96`, converted back through
+        // `db_to_amp` and rescaled by `peakamp` - i.e. the peak bin maps
+        // to `db_to_amp(-96) * peakamp`, not back to `peakamp` itself
+        // (this is a real inversion, not a round trip).
+        let db_to_amp = DbToAmp::new();
+        let mut amps = [2.0, 0.2];
+        invert_response(&mut amps, true, &db_to_amp);
+        let expected_peak = db_to_amp.convert(-96.0) * 2.0;
+        assert!((amps[0] - expected_peak).abs() < 1e-6, "{amps:?}");
+        // A quieter bin (10% of peak, so -20dB down) inverts to a louder
+        // one, still scaled back up by peakamp.
+        assert!(amps[1] > amps[0], "{amps:?}");
+    }
+
+    #[test]
+    fn invert_response_peak_relative_is_a_noop_when_peak_is_zero() {
+        let db_to_amp = DbToAmp::new();
+        let mut amps = [0.0, 0.0];
+        invert_response(&mut amps, true, &db_to_amp);
+        assert_eq!(amps, [0.0, 0.0]);
     }
 
     #[test]

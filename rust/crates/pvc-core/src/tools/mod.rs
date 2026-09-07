@@ -16,4 +16,5 @@ pub mod pv;
 pub mod ring;
 pub mod ringfilter;
 pub mod spectwarper;
+pub mod tvfilter;
 pub mod twarp;

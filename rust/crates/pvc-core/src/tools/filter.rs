@@ -320,7 +320,7 @@ pub fn process_channel(
             sample_rate,
         );
         if params.band_reject {
-            invert_response(&mut ff, &db_to_amp);
+            invert_response(&mut ff, false, &db_to_amp);
         }
 
         let channel_amp_sum: f32 = channel_filter.bins.iter().map(|&(a, _)| a).sum();
