@@ -1577,3 +1577,66 @@ and still surfaces real, tool-specific differences (a narrower filter
 pipeline, plain-float compression controls, a missing threshold-mode
 flag, one dead control) that a pure copy-paste of either sibling would
 have missed or wrongly carried over.
+
+## Phase 5's `pvc fn response groupdelaymaker`: a real command-line argument-convention pitfall, not a legacy bug
+
+`groupdelaymaker.c`'s own `usage()` text describes it as
+`chordresponsemaker` plus a time-delay column - true of the output shape
+(`(amp, delay-seconds)` pairs instead of `(amp, frequency)`), but false
+of the actual synthesis formulas once both files are read side by side.
+`chordresponsemaker.c` computes each partial's dB rolloff fresh from its
+own frequency ratio to the fundamental (`log2(partial_freq /
+fundamental_freq)`); `groupdelaymaker.c` instead computes one rolloff-
+per-partial-index constant per tone (`db_rolloff_total / (num_partials -
+1)`), applied as a straight-line ramp across partial *count*, with no
+dependence on frequency at all. The two tools' edge-taper flags differ
+just as much: `chordresponsemaker.c`'s taper interpolates down to a
+fixed `-96dB` floor at each band's outer edge; `groupdelaymaker.c`'s
+`-D` is a *relative* dB offset from the partial's own level, split
+evenly per bin - `0` (the default) is a flat, rectangular band, not
+silence at the edges. Reusing `tools::chordresponsemaker::synthesize`
+directly would have silently reproduced the wrong tool's math for both
+of these; this port writes its own synthesis loop instead, confirmed
+against the real oracle rather than assumed from the usage text's own
+description.
+
+**A real crash while developing this port's golden case, traced to this
+project's own `crack()` argument convention - not a bug in the legacy
+source or the Rust port.** `groupdelaymaker -f analysis.pva out.fr`
+(flag and value space-separated, the getopt convention) segfaults
+inside the shared `readffthead()`'s first `fread()` call, on a NULL
+`FILE*`. `gdb` traced it to `crackstring_bin_only()` (the function `-f`
+calls to open the file): its own branch test is `!isalpha(s[0]) &&
+(s[0] != '/')` - true only when the string is *not* a real filename, in
+which case it treats `s` as a bare numeric constant instead
+(`sscanf(s, "%f", &p->A[0])`, `p->n = 1.`, `p->fp` left `NULL`). A
+space-separated `-f analysis.pva` leaves `crack()`'s own `arg_option`
+holding something other than the filename by the time this check runs,
+so it takes the "constant" branch - `p->n = 1.` passes `readffthead`'s
+own `p->n == 0.` guard, so the very next line's `fread(&temp, ...,
+p->fp)` runs against a null pointer. The fix was in the invocation, not
+the source: this project's own `crack()`-based tools (`-N1024`,
+`-fanalysis.pva`, `-D-6`) require the flag character and its value in
+one concatenated token, confirmed once the same command with no space
+(`-fanalysis.pva`) ran cleanly end to end. Documented here because it is
+exactly the kind of crash that looks like a memory-safety bug worth
+chasing in the C, when it is really this project's own command-line
+convention being violated by force of getopt habit.
+
+Oracle-verified byte-identical (`max abs err 0.0`, the same `exact`
+tolerance `chordresponsemaker`/`filtresponsemaker` already established
+for this headerless raw-float format) on the first successful
+invocation, using a two-tone data file whose partials overlap exactly at
+440Hz and 880Hz to exercise the `-s` overlap-resolution method at a real
+shared bin, not just an isolated one.
+
+**Takeaway**: a tool's own `usage()` text describing itself as "like
+this other tool, plus X" is a starting point for comparison, not a
+license to reuse that other tool's code - reading both synthesis loops
+side by side here found two independent formula differences a same-
+shape reuse would have carried over silently. And a crash during golden-
+case development is worth root-causing with the same rigor as a crash in
+the port itself - `gdb`'s own backtrace here pointed straight at a
+NULL-pointer `fread()`, which pointed straight at a `crack()` argument-
+parsing branch this project's own command-line convention (concatenated
+flag+value, not space-separated) sidesteps entirely once known.

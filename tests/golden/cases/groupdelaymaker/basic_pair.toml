@@ -1,0 +1,10 @@
+tool = "groupdelaymaker"
+input = "sine440_2s_44k.wav"
+description = "group-delay response from two harmonically-overlapping tones (average overlap method, a nonzero relative edge-dB taper)"
+legacy_steps = [
+    "pvanalysis -N1024 {input} analysis.pva",
+    "groupdelaymaker -fanalysis.pva -F{fixtures}/groupdelay_table.txt -D-6 -i-96 -I0 -s2 {output}",
+]
+output_ext = "fr"
+tolerance = { kind = "exact" }
+notes = "Same headerless raw-float .fr-shaped format as chordresponsemaker/filtresponsemaker, but the odd-indexed slot holds delay time in seconds instead of frequency - see pvc-core::tools::groupdelaymaker's doc comment. groupdelay_table.txt has two tones (440Hz and 220Hz, both 4 harmonic partials) that overlap exactly at 440Hz and 880Hz, exercising the -s2 (average) overlap-resolution method at those shared bins; -D-6 exercises the real, relative-dB edge taper (distinct from chordresponsemaker's own fixed -96dB-floor edge taper); -i-96/-I0 are the defaults for untouched bins. Requires -fanalysis.pva/-F<path> with no space between the flag and its value - this project's crack() argument convention, unlike getopt's - a space produces a NULL FILE* and a segfault inside the shared readffthead(), confirmed while developing this case (not a bug in the port or a real crash worth reproducing, just this tool's own command-line convention). Verified byte-identical (max abs err 0.0) against a real oracle build during development."
