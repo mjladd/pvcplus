@@ -13,6 +13,7 @@ pub mod freqresponse;
 pub mod groupdelaymaker;
 pub mod harmonizer;
 pub mod impulseresponse;
+pub mod inharmonator;
 pub mod irconvolver;
 pub mod irconvolvesequencer;
 pub mod noisefilter;

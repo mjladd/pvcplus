@@ -430,6 +430,21 @@ pub enum Command {
     /// C's own default sinc-table lookup (confirmed under ASan - safely
     /// clamped here instead of reproduced).
     Ratechanger(Box<RatechangerArgs>),
+
+    /// Inharmonic partials remapper: builds a per-bin filter from a data
+    /// table of discrete target partials (windowed bands around each
+    /// partial's own bin), resynthesizes the residual spectrum separately,
+    /// and feeds both through a spectral feedback delay line, optionally
+    /// mixed with a delayed copy of the source.
+    ///
+    /// Ports `inharmonator` (`legacy/pvc_src/inharmonator.c`); see
+    /// `pvc-core::tools::inharmonator`'s doc comment for what's in and out
+    /// of scope, including a real, severe bug where seven data-modifier
+    /// scalers are used uninitialized in the C unless their own flag is
+    /// passed (this port uses `usage()`'s own documented defaults
+    /// instead), and a real finding that "master gain" only ever affects
+    /// the source signal, never the resynthesized partials.
+    Inharmonator(Box<InharmonatorArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -4705,6 +4720,252 @@ fn parse_normalize_mode(s: &str) -> Result<pvc_core::tools::ratechanger::Normali
         "if-clipping" => Ok(NormalizeMode::IfClipping),
         _ => Err(format!(
             "expected \"none\", \"input\", \"independent\", \"together\", or \"if-clipping\", got {s:?}"
+        )),
+    }
+}
+
+/// `pvc inharmonator`'s flag surface. Long names follow the same
+/// letter-in-doc-comment convention as [`FiltdeviatorArgs`]. Flags
+/// deliberately not exposed: the randomization pair `-H`/`-K` and their
+/// own dead smoothing controls `-c`/`-n` (not ported - see
+/// `pvc-core::tools::inharmonator`'s doc comment), the entirely-dead
+/// `-Y`, the diagnostics/print/play flags this project's CLI layer never
+/// exposes (`-_`/`-=`/`-p`/`-i`), and the dead `crack()` letters
+/// lowercase `d`/`s`.
+#[derive(clap::Args, Debug)]
+pub struct InharmonatorArgs {
+    /// `-F`: path to the partials data table (5 whitespace-separated
+    /// columns per row: partial number, shift target, decibels, delay
+    /// time, feedback decay time). Required.
+    #[arg(long)]
+    pub partials: PathBuf,
+
+    /// `-N`: FFT size.
+    #[arg(long = "fft", default_value_t = 1024)]
+    pub fft: usize,
+
+    /// `-M`: analysis/resynthesis window length. `0` means auto (`2 * fft`).
+    #[arg(long = "window-size", default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// `-D`: analysis frames per second (sets the hop size). Values
+    /// under `32` reset to `200`.
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// `-I`: time expansion/contraction factor. Values `<= 0` reset to `1.0`.
+    #[arg(long = "time-factor", default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-b`: begin time in seconds - real sample-accurate trimming.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-C`: which input channel to resynthesize (`0` = all channels,
+    /// each processed independently; `1..` = only that one, 1-based).
+    #[arg(long = "channel", default_value_t = 0)]
+    pub channel: usize,
+
+    /// `-Z`: how each partial's own shift column is interpreted.
+    #[arg(long, value_parser = parse_shift_method, default_value = "multiplier")]
+    pub method: pvc_core::tools::inharmonator::ShiftMethod,
+
+    /// `-B`: how the bins between a partial's own bin and its band
+    /// edges taper.
+    #[arg(long = "partial-window", value_parser = parse_partial_band_window, default_value = "welch")]
+    pub partial_window: pvc_core::tools::inharmonator::PartialBandWindow,
+
+    /// `-x`: each target partial's own bandwidth, in partial-number
+    /// units - a plain number, or `@path`.
+    #[arg(long = "partial-bandwidth", value_parser = parse_control_fn, default_value = "1")]
+    pub partial_bandwidth: ControlFn,
+
+    /// `-f`: fundamental frequency, in Hz (`> 12`) or `octave.pitchclass`
+    /// (`<= 12`) - a plain number, or `@path`.
+    #[arg(long = "fundamental", value_parser = parse_control_fn, default_value = "60", allow_hyphen_values = true)]
+    pub fundamental: ControlFn,
+
+    /// `-A`: master gain in decibels - a plain number, or `@path`. Real
+    /// finding: only affects the source signal, never the resynthesized
+    /// partials/non-targets (see `pvc-core::tools::inharmonator`'s doc
+    /// comment).
+    #[arg(long = "master-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub master_gain: ControlFn,
+
+    /// `-v`: envelope attack time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-V`: envelope release time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// `-W`: target spectrum warpshape index - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warpshape: ControlFn,
+
+    /// `-q`: target frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "target-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub target_freq_shift: ControlFn,
+
+    /// `-X`: target pitch transposition in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "target-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub target_pitch: ControlFn,
+
+    /// `-m`: target gain in decibels - a plain number, or `@path`.
+    #[arg(long = "target-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub target_gain: ControlFn,
+
+    /// `-U`: target amplitude interpolation control (`0`-`1`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "target-amp-interp", value_parser = parse_control_fn, default_value = "1")]
+    pub target_amp_interp: ControlFn,
+
+    /// `-S`: target frequency interpolation control (`0`-`1`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "target-freq-interp", value_parser = parse_control_fn, default_value = "1")]
+    pub target_freq_interp: ControlFn,
+
+    /// `-T`: target time-delay interpolation control (`0`-`1`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "target-time-interp", value_parser = parse_control_fn, default_value = "1")]
+    pub target_time_interp: ControlFn,
+
+    /// `-a`: non-target (residual spectrum) frequency shift in Hz - a
+    /// plain number, or `@path`.
+    #[arg(long = "non-target-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub non_target_freq_shift: ControlFn,
+
+    /// `-P`: non-target pitch transposition in semitones - a plain
+    /// number, or `@path`.
+    #[arg(long = "non-target-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub non_target_pitch: ControlFn,
+
+    /// `-G`: non-target gain in decibels - a plain number, or `@path`.
+    #[arg(long = "non-target-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub non_target_gain: ControlFn,
+
+    /// `-j`: non-target delay time in seconds - a plain number, or `@path`.
+    #[arg(long = "non-target-delay", value_parser = parse_control_fn, default_value = "0")]
+    pub non_target_delay: ControlFn,
+
+    /// `-E`: non-target feedback decay time in seconds - a plain number,
+    /// or `@path`.
+    #[arg(long = "non-target-decay", value_parser = parse_control_fn, default_value = "0")]
+    pub non_target_decay: ControlFn,
+
+    /// `-Q`: source frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "source-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_freq_shift: ControlFn,
+
+    /// `-u`: source pitch transposition in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "source-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_pitch: ControlFn,
+
+    /// `-r`: source gain in decibels - a plain number, or `@path`.
+    /// Values `> --threshold` (or a time-varying function) enable
+    /// mixing the source signal in at all.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// `-l`: source envelope attack time in seconds - a plain number, or `@path`.
+    #[arg(long = "source-attack", value_parser = parse_control_fn, default_value = "0")]
+    pub source_attack: ControlFn,
+
+    /// `-L`: source envelope release time in seconds - a plain number, or `@path`.
+    #[arg(long = "source-release", value_parser = parse_control_fn, default_value = "0")]
+    pub source_release: ControlFn,
+
+    /// `-J`: source delay time in seconds - a plain number, or `@path`.
+    #[arg(long = "source-delay", value_parser = parse_control_fn, default_value = "0")]
+    pub source_delay: ControlFn,
+
+    /// `-z`: partial-number scaler applied to the data table's own
+    /// partial-number column, scaled relative to `1`. Real bug in the C:
+    /// uninitialized unless passed - see `pvc-core::tools::inharmonator`'s
+    /// doc comment; this default (`1`) is `usage()`'s own documented one.
+    #[arg(long = "partial-number-scale", default_value_t = 1.0)]
+    pub partial_number_scale: f32,
+
+    /// `-R`: partial-number shifter, added after scaling.
+    #[arg(
+        long = "partial-number-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub partial_number_shift: f32,
+
+    /// `-y`: decibel scaler applied to the data table's own decibels column.
+    #[arg(long = "partial-db-scale", default_value_t = 1.0)]
+    pub partial_db_scale: f32,
+
+    /// `-o`: scaler applied to the data table's own delay-time column.
+    #[arg(long = "partial-delay-scale", default_value_t = 1.0)]
+    pub partial_delay_scale: f32,
+
+    /// `-O`: shifter added to the data table's own delay-time column
+    /// after scaling.
+    #[arg(
+        long = "partial-delay-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub partial_delay_shift: f32,
+
+    /// `-g`: scaler applied to the data table's own feedback-decay-time column.
+    #[arg(long = "partial-decay-scale", default_value_t = 0.0)]
+    pub partial_decay_scale: f32,
+
+    /// `-k`: shifter added to the data table's own feedback-decay-time
+    /// column after scaling.
+    #[arg(
+        long = "partial-decay-shift",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub partial_decay_shift: f32,
+
+    /// `-t`: oscillator resynthesis threshold in dB. Also gates whether
+    /// the source signal is mixed in at all (see `--source-gain`).
+    #[arg(long, default_value_t = -60.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_shift_method(s: &str) -> Result<pvc_core::tools::inharmonator::ShiftMethod, String> {
+    use pvc_core::tools::inharmonator::ShiftMethod;
+    match s {
+        "multiplier" => Ok(ShiftMethod::Multiplier),
+        "freq-point" => Ok(ShiftMethod::FreqPoint),
+        "octave-pitchclass" => Ok(ShiftMethod::OctavePitchClass),
+        "partial-shift-point" => Ok(ShiftMethod::PartialShiftPoint),
+        _ => Err(format!(
+            "expected \"multiplier\", \"freq-point\", \"octave-pitchclass\", or \"partial-shift-point\", got {s:?}"
+        )),
+    }
+}
+
+fn parse_partial_band_window(
+    s: &str,
+) -> Result<pvc_core::tools::inharmonator::PartialBandWindow, String> {
+    use pvc_core::tools::inharmonator::PartialBandWindow;
+    match s {
+        "rectangle" => Ok(PartialBandWindow::Rectangle),
+        "hann" => Ok(PartialBandWindow::Hann),
+        "welch" => Ok(PartialBandWindow::Welch),
+        _ => Err(format!(
+            "expected \"rectangle\", \"hann\", or \"welch\", got {s:?}"
         )),
     }
 }

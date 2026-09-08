@@ -98,5 +98,7 @@ fn main() -> anyhow::Result<()> {
         Command::Tvfiltdeviator(args) => commands::tvfiltdeviator::run(&args),
 
         Command::Ratechanger(args) => commands::ratechanger::run(&args),
+
+        Command::Inharmonator(args) => commands::inharmonator::run(&args),
     }
 }

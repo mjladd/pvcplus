@@ -14,6 +14,7 @@ pub mod gen;
 pub mod harmonize;
 pub mod impulseresponse;
 pub mod info;
+pub mod inharmonator;
 pub mod irconvolver;
 pub mod irconvolvesequencer;
 pub mod legacy;

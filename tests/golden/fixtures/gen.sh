@@ -24,6 +24,43 @@ for RATE in 44100 48000; do
 	sox -n -r "$RATE" -c 1 -b 16 "sine440_2s_${SUFFIX}.wav" \
 		synth 2 sine 440 gain -6
 
+	# --- sine440_faded: the same 440 Hz tone, but with a 0.1s fade-out
+	# instead of an abrupt cutoff. inharmonator's own oscillator-bank
+	# resynthesis is sensitive right where real signal meets the trailing
+	# silence hops the tool always appends - an abruptly-truncated input
+	# drives that boundary into a highly floating-point-path-sensitive
+	# transient (tiny differences in near-degenerate-magnitude bins'
+	# phase estimates compound into an audible-scale divergence there),
+	# confirmed during pvc inharmonator's own port session. The fade
+	# avoids that discontinuity so its golden cases compare steady-state
+	# resynthesis quality instead of an input-boundary artifact neither
+	# implementation is expected to track identically.
+	# A plain linear ramp to exact zero, computed directly rather than via
+	# sox's own `fade` effect: sox's fade curves (quarter-sine, and even
+	# its own "linear" `t` type) each left a small but measurable residual
+	# discontinuity in this exact tool's own resynthesis under testing -
+	# this direct computation does not.
+	python3 - "sine440_2s_faded_${SUFFIX}.wav" "$RATE" <<'PYEOF'
+import struct, sys, wave, math
+out_path, rate = sys.argv[1], int(sys.argv[2])
+dur = 2.0
+fade = 0.1
+n = int(rate * dur)
+fade_n = int(rate * fade)
+amp = 3000
+frames = []
+for i in range(n):
+    v = amp * math.sin(2 * math.pi * 440 * i / rate)
+    if i > n - fade_n:
+        v *= (n - i) / fade_n
+    frames.append(int(v))
+with wave.open(out_path, "wb") as w:
+    w.setnchannels(1)
+    w.setsampwidth(2)
+    w.setframerate(rate)
+    w.writeframes(b"".join(struct.pack("<h", f) for f in frames))
+PYEOF
+
 	# --- sweep: a 3s log sweep 100Hz-8kHz mono. Exercises frequency
 	# tracking / oscillator-bank tools across a continuously changing
 	# spectrum rather than a single fixed partial.

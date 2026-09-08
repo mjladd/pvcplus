@@ -1,0 +1,10 @@
+tool = "inharmonator"
+input = "sine440_2s_faded_44k.wav"
+description = "inharmonator: same three partials, with per-partial time delay/feedback decay (spectral feedback delay line) and a non-target delay/decay too"
+legacy_steps = [
+    "cp {input} {output}",
+    "inharmonator -F{fixtures}/inharmonator_partials.txt -f220 -z1 -y1 -o1 -j0.03 -E0.08 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.01 }
+notes = "The data file's own delay/decay columns are 0 for all three partials, so this case exercises the non-target (residual spectrum) delay (-j, 0.03s) and feedback decay (-E, 0.08s) path through the same spectral feedback delay line (unconvert2+unconvert3+convert3) - see pvc-core::tools::inharmonator's doc comment. Uses the faded fixture and the same, wider tolerance as three_partials.toml, for the same reason - see that case's own notes on the abrupt-truncation resynthesis sensitivity this sidesteps."

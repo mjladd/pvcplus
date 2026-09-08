@@ -1,0 +1,10 @@
+tool = "inharmonator"
+input = "sine440_2s_faded_44k.wav"
+description = "inharmonator: source gain below the oscillator threshold excludes the source signal entirely"
+legacy_steps = [
+    "cp {input} {output}",
+    "inharmonator -F{fixtures}/inharmonator_partials.txt -f220 -z1 -y1 -o1 -r-120 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.01 }
+notes = "-r-120 (source gain) is below the default -96dB oscillator threshold, so source_enabled resolves false and only the target/non-target (harmony) path resynthesizes - see pvc-core::tools::inharmonator's own source_enabled doc comment on why this reads the same --threshold flag rather than a fixed -96dB like pvc filtdeviator's own source_enabled. Uses the faded fixture and the same, wider tolerance as three_partials.toml, for the same reason - see that case's own notes on the abrupt-truncation resynthesis sensitivity this sidesteps."

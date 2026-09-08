@@ -2394,3 +2394,139 @@ index arithmetic that includes an explicit rounding pad is worth checking
 against its own worst case, not just its typical case, and when the
 arithmetic alone doesn't settle it, an ASan build of the real binary
 settles it in minutes.
+
+## `pvc inharmonator`: an assignment mistaken for a multiply, and a test fixture that manufactured its own "bug"
+
+`inharmonator.c` is an inharmonic-partials remapper: a data table of
+discrete target partials (number, pitch-shift target, decibels, time
+delay, feedback-decay time) drives a per-bin filter built from windowed
+bands around each partial's own bin, the residual ("non-target") spectrum
+gets a separate uniform treatment, and both paths feed a genuine spectral
+feedback delay line before resynthesis - always via the oscillator bank
+(`P` is a fixed `1.0` never touched by any flag, the same "always obank"
+shape already documented for `tools::ring`/`tools::harmonizer`). It has
+its own time-management-adjacent machinery but no relation to
+`pvc_core::timenav` at all - no `.pva` file, no shared navigator, a
+freshly-read tool from the ground up.
+
+**The core bug, found only by comparing real internal state, not by
+re-reading the source harder.** A first port read `F[i-1] =
+halfWelchWindow(...)` as shorthand for "scale the partial's own
+`dB_to_amp(decibels)` by this window value" and wrote it as a multiply.
+Sample-level comparison against the real oracle showed the right
+frequencies (confirming the shift math) but wrong amplitudes at every bin
+except each partial's own exact center - and by a suspiciously consistent
+ratio between bins at the same relative window position. Only dumping the
+real binary's own `F[]` array directly (a small `fprintf` patch,
+rebuilt via this project's pinned Docker image, reverted immediately
+after) settled it: `F[i-1] = halfWelchWindow(...)` is a plain assignment,
+not `*=` - the window value *replaces* `dB_to_amp(decibels)` outright for
+every bin in a partial's band except the center bin (which never goes
+through the windowing code path at all). Under Hann/Welch banding (Welch
+is the tool's own default), a partial's own decibel level is therefore
+audible only at its single center bin; every other bin in its band is
+shaped purely by window's own 0-1 curve, with the partial's `decibels`
+column silently discarded. Reproduced exactly as read once found - not
+"fixed" to the more intuitive multiply a first read suggested.
+
+**A second real finding, the same shape as `tools::filtdeviator`'s own**:
+`ringTime` (here `max(HARMONY_maxDelayT, SOURCE_maxDelayT)`) is a global
+set in `main()` and read back by `fileio.c`'s own `shiftin`-adjacent code
+to keep feeding silent hops past the trimmed input's own end, long enough
+for a bin's own delay/decay to ring out into real samples - invisible
+from `main()` alone, confirmed by grepping every `ringTime` reference the
+same way `filtdeviator`'s own session already established. Modeled the
+same way: pad the trimmed input with that many zero samples rather than
+reproducing the global/side-channel mechanism.
+
+**Real, severe bug: seven data-modifier scalers are used uninitialized
+unless their own flag is passed.** `data_partial_number_scaler`/
+`_shifter`, `data_decibel_scaler`, `data_time_delay_scaler`/`_shifter`,
+`data_time_decay_scaler`/`_shifter` are declared with no initializer at
+all in `main()` - confirmed by reading the declaration line directly.
+Every prior "`usage()` and the initializer disagree" finding in this
+project (`delayfilter`'s `-T`, `filtdeviator`'s `-q`/`-B`,
+`tvfiltdeviator`'s `-O`, `ratechanger`'s `-O`) at least had a *real*
+initializer to reproduce; these seven have nothing deterministic to
+match - whichever of `-z`/`-R`/`-y`/`-o`/`-O`/`-g`/`-k` isn't passed
+leaves its variable holding stack garbage, silently corrupting every
+partial's own number/decibels/delay/decay by an unpredictable amount
+(confirmed empirically: one real run printed all seven as exactly `0`,
+which alone collapses every partial to nominal partial `1` and mutes
+every partial's own decibel level to unity gain - clearly not anyone's
+intent). Since there's no real value here to reproduce, this port uses
+`usage()`'s own documented defaults (`z:[1] R:[0] y:[1] o:[1] O:[0]
+g:[0] k:[0]`) instead - the tool's own stated intent, not its accidental
+behavior on any given run.
+
+**A real finding that reads almost like a bug but is exactly as
+documented once read carefully**: "master gain" (`-A`) only ever affects
+the *source* signal, never the resynthesized partials/non-targets -
+`gain = dB_to_amp(dBgain.A[0])` is computed every frame but consumed at
+exactly one call site, `source_channel_out[i] *= gain`, confirmed by
+grepping every reference to `gain` in the file. `usage()` calls it
+"master gain in decibels" with no qualification; the actual, compiled
+behavior is source-only. Reproduced as read.
+
+**`source_enabled` reads the tool's own `-t` oscillator threshold, not a
+fixed `-96dB`** - confirmed by reading the exact condition
+(`SOURCE_dB.A[0] > threshfacdB`), a real, narrow divergence from
+`tools::filtdeviator`'s own identically-named helper (hardcoded `-96.0`)
+that only reading both files' own exact conditions would catch, not
+assuming a shared name implies shared behavior.
+
+**Dead `crack()` flags**: lowercase `d` and lowercase `s` are both
+accepted by the parser but have no `case` in the switch (`D`/`S` are
+real, distinct flags of their own) - confirmed by diffing the accept
+string against every case label, the same cross-reference this project
+now runs on every tool.
+
+**Randomized delay times (`-H`/`-K`) are not ported**, matching
+`tools::ring`'s established `randf()` precedent - the deterministic,
+off-by-default path is the only one exposed. Their own smoothing control
+functions (`-c`/`-n`) have no other consumer in the C once randomization
+is excluded, so they're dead in this port too. `-Y` (`INHARM_freqsmooth`)
+is dead in the C itself, independent of any port decision: the line that
+would apply its computed coefficients to `harmony`'s frequency slots is
+commented out in the source, not merely unreachable - confirmed by
+reading the literal comment.
+
+**The test fixture manufactured its own apparent bug, twice.** Golden
+comparison against the plain `sine440_2s_44k.wav` fixture (an abruptly-
+truncated sine, no fade) measured up to 0.28 max absolute sample error,
+concentrated entirely in the last 1-2% of *any* requested duration
+(confirmed at 2.0s, 0.5s, and 0.3s alike, and independent of window
+size) - despite per-bin/per-frame values matching the real oracle
+*exactly* at steady state and mid-file sample ratios sitting at
+0.997-1.0006. The abrupt input discontinuity drives the real oracle's own
+phase-vocoder + oscillator-bank resynthesis into a highly floating-point-
+path-sensitive transient right where real signal meets the tool's own
+trailing silence hops - tiny differences in near-degenerate-magnitude
+bins' phase estimates compound into an audible-scale divergence there,
+in *both* implementations independently, not because either is wrong.
+Switching to a fixture with a linear fade-out dropped the same
+comparison's max error to ~0.008 (still elevated at the analysis window's
+own startup transient, a smaller and already-precedented class of noise
+in this project). The fade-out was tried twice more before landing: `sox
+fade` in its default quarter-sine shape measured worse (~0.05) than the
+abrupt cutoff's own steady-state noise floor, and `sox fade t` (its own
+"linear" mode) measured better but still ~0.023 - only a fade computed
+directly, sample by sample, to an exact zero (now `gen.sh`'s own
+`sine440_2s_faded_44k.wav`/`_48k.wav`) reproduced the ~0.004-0.008 figures
+a first hand-rolled prototype found. Golden tolerance for this tool's
+three cases is `0.01` accordingly - four times this project's usual
+`0.0005`, but justified by a specific, measured, understood cause rather
+than picked to make a failure go away.
+
+**Takeaway:** two independent lessons from one tool. First, a plain-
+looking C assignment (`F[i-1] = someFunction(...)`) is not always the
+multiply a first read's intuition suggests - when a computed value
+"replaces" rather than "scales" something, only direct comparison against
+the real binary's own internal state (not cleverer re-reading) reliably
+catches the difference, especially when the resulting bug still produces
+plausible-looking, bounded, non-crashing output. Second, a golden test's
+own input fixture is part of what's under test: an oscillator-bank tool's
+resynthesis can be legitimately, symmetrically sensitive to an input
+discontinuity neither implementation is expected to track bit-for-bit,
+and the fix is a better-designed fixture, not a wider tolerance chosen to
+paper over an apparent divergence before its cause is actually understood.
