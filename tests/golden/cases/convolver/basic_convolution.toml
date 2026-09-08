@@ -1,0 +1,10 @@
+tool = "convolver"
+input = "sine440_2s_44k.wav"
+description = "convolver: sine440 (Sound A) spectrally multiplied against a pvanalysis of the sweep fixture (Sound B), default pan (convolution only)"
+legacy_steps = [
+    "pvanalysis -N1024 {fixtures}/sweep_3s_44k.wav analysis.pva",
+    "convolver -Fanalysis.pva {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Exercises convolver's naive-multiply spectral convolution (see pvc-core::tools::convolver's doc comment - the real tool's own complex-multiply code is commented out, and its filter-frame fetch has a real, separately-documented stride bug this port reproduces exactly) at default pan (0, pure convolution of A and B) with the sweep's own filter-time navigation wrapping across the shorter sine input, the same time-navigation machinery pvc tvfilter/pvc twarp already exercise. Uses `sample` (absolute) tolerance rather than `spectral` (relative dB): this signal's naive (non-complex) multiply concentrates most of its energy in a handful of blocks and leaves long near-silent stretches elsewhere (confirmed physically sensible - see the doc comment - not an artifact), where a relative-dB comparison blows up from ordinary 16-bit quantization alone even when the absolute difference is a single LSB. Verified directly: max absolute per-sample difference against a freshly-recorded oracle is exactly 1/32768 (one quantization step) end to end."

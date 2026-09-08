@@ -331,6 +331,21 @@ pub enum Command {
     /// irconvolvesequencer.c`).
     Irconvolvesequencer(Box<IrconvolvesequencerArgs>),
 
+    /// Short-term FFT spectral multiplier: convolves a live input
+    /// ("Sound A") against a pre-analyzed `.pva` filter file ("Sound
+    /// B"), navigated over time the same way `pvc tvfilter`/`pvc twarp`
+    /// navigate their own filter/resynthesis sources, then pans between
+    /// the dry sounds and their convolution.
+    ///
+    /// Ports `convolver`'s audio-processing path (`legacy/pvc_src/
+    /// convolver.c`); see `pvc-core::tools::convolver`'s doc comment for
+    /// a real "spectral multiplication" bug (the tool's own complex-
+    /// multiply code is commented out; the active code does a naive
+    /// per-index multiply instead, reproduced faithfully) and a real
+    /// uninitialized-memory bug in its `-l`/`-L` smoothing path, not
+    /// exposed here.
+    Convolver(Box<ConvolverArgs>),
+
     /// Peak formant tracker: a time-series of the loudest bin's
     /// frequency over a detection band, never audio.
     ///
@@ -835,6 +850,166 @@ pub struct TvfilterArgs {
     /// `@path`.
     #[arg(long, value_parser = parse_control_fn, default_value = "0")]
     pub release: ControlFn,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc convolver`'s flag surface. See `pvc-core::tools::convolver`'s
+/// doc comment for what's out of scope (`-N` is dead in the real tool;
+/// `-l`/`-L`/`-k` rely on uninitialized C memory and aren't exposed).
+#[derive(clap::Args, Debug)]
+pub struct ConvolverArgs {
+    /// `-M`: analysis/resynthesis window length. `0` means auto
+    /// (`2 * fft`, where `fft` is Sound B's own analysis file's FFT
+    /// size - there is no independent `-N`).
+    #[arg(long, default_value_t = 0)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// `-I`: time expansion/contraction factor (`1.0` = unchanged
+    /// duration).
+    #[arg(long, default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-b`: begin time in seconds - real sample-accurate trimming, not
+    /// `dur`-only bookkeeping (see `pvc-core::tools::convolver`'s doc
+    /// comment).
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-P`: pitch transposition of the output spectrum, in semitones -
+    /// a plain number, or `@path`. Selects oscillator-bank resynthesis
+    /// whenever nonzero (with `--freq-shift`), and, unlike `pvc
+    /// spectralextractor`'s otherwise similar-looking flag, genuinely
+    /// does transpose the output.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// `-a`: frequency shift of the output spectrum, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// `-A`: output gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// `-F`: path to Sound B's analysis file (the filter to convolve
+    /// against) - a `.pva` file, either the legacy layout or `pvc
+    /// analyze`'s own `PVA1` format. Required.
+    #[arg(long = "filter-response")]
+    pub filter_response: PathBuf,
+
+    /// `-K`: which filter-file channel to use (`0` = pair by channel
+    /// index with the input sound file).
+    #[arg(long = "analysis-channel", default_value_t = 0)]
+    pub analysis_channel: usize,
+
+    /// `-Q`: Sound B time point origin, in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long = "filter-time-origin", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_time_origin: ControlFn,
+
+    /// `-Y`: Sound B rate multiplier - a plain number, or `@path`.
+    #[arg(long = "filter-rate", value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub filter_rate: ControlFn,
+
+    /// `-g`: Sound B time window lower boundary, in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "filter-window-low", value_parser = parse_control_fn, default_value = "0")]
+    pub filter_window_low: ControlFn,
+
+    /// `-G`: Sound B time window upper boundary, in seconds (negative =
+    /// end of the filter file) - a plain number, or `@path`.
+    #[arg(long = "filter-window-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub filter_window_high: ControlFn,
+
+    /// `-o`: Sound B time window out-of-bounds behavior (only used
+    /// outside autostop mode).
+    #[arg(long = "loop-mode", value_parser = parse_loop_mode, default_value = "wrap")]
+    pub loop_mode: pvc_core::timenav::LoopMode,
+
+    /// `-r`: trigger the time window only once it's first entered.
+    #[arg(long = "onset-release")]
+    pub onset_release: bool,
+
+    /// `-y`: stop synthesis once Sound B's time position exits its
+    /// window, instead of looping.
+    #[arg(long)]
+    pub autostop: bool,
+
+    /// `-q`: Sound A's own gain, in dB - a plain number, or `@path`
+    /// (confirmed by reading `convolver.c`'s own `crack()` switch - an
+    /// unusual letter for this purpose, not a typo).
+    #[arg(long = "sound-a-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub sound_a_gain: ControlFn,
+
+    /// `-B`: Sound B's own gain, in dB - a plain number, or `@path`.
+    #[arg(long = "sound-b-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub sound_b_gain: ControlFn,
+
+    /// `-Z`: convolution gain, in dB - a plain number, or `@path`.
+    #[arg(long = "convolve-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub convolve_gain: ControlFn,
+
+    /// `-S`: pan position between Sound A, Sound B, and their
+    /// convolution (`-1` = Sound A, `1` = Sound B, `0` = convolution) -
+    /// a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pan: ControlFn,
+
+    /// `-j`: pan-position domain warp on the Sound A side (`pan < 0`).
+    #[arg(long = "panwarp-a", default_value_t = 0.0, allow_hyphen_values = true)]
+    pub panwarp_a: f32,
+
+    /// `-J`: pan-position domain warp on the Sound B side (`pan >= 0`).
+    #[arg(long = "panwarp-b", default_value_t = 0.0, allow_hyphen_values = true)]
+    pub panwarp_b: f32,
+
+    /// `-H`: convolution output low shelf gain, in dB. Fixed for the
+    /// whole run, not a control function (matches the real tool).
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    /// `-X`: convolution output high shelf gain, in dB.
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    /// `-m`: convolution output low shelf frequency, in Hz.
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    /// `-R`: convolution output high shelf frequency, in Hz.
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// `-n`: frame normalization decibel limit (`0` disables
+    /// normalization) - a plain number, or `@path`.
+    #[arg(long = "frame-norm-limit", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub frame_norm_limit: ControlFn,
+
+    /// `-v`: what frame normalization scales toward.
+    #[arg(long = "normalize-to", value_parser = parse_normalize_to, default_value = "input", num_args = 1)]
+    pub normalize_to_filter: bool,
+
+    /// `-t`: oscillator-bank resynthesis threshold in dB.
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
 
     pub input: PathBuf,
     pub output: PathBuf,

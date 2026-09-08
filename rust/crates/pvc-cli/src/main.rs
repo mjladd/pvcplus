@@ -88,5 +88,7 @@ fn main() -> anyhow::Result<()> {
         Command::Peakformant(args) => commands::peakformant::run(&args),
 
         Command::Specflattracker(args) => commands::specflattracker::run(&args),
+
+        Command::Convolver(args) => commands::convolver::run(&args),
     }
 }
