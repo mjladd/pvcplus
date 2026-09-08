@@ -2087,3 +2087,100 @@ per-bin lookup formulas (`tvfilter::filter_lookup` and this tool's
 `pvcplus-port-methodology` habit of writing both source files side by
 side before reusing anything, rather than trusting how alike they read,
 paid for itself again here.
+
+## `pvc filtdeviator`: a global that quietly extends the output, a missing write-gate found only by comparing lengths, and a documented default that's wrong twice in the same tool
+
+`filtdeviator.c` is `filter.c`'s own fixed-spectrum, additive
+source+filter mixing plus three subsystems `filter.c` doesn't have: a
+per-bin response-shaped time delay into the filter's own delay line, a
+self-referential decay/feedback accumulator on that delay line, and a
+per-bin frequency deviation (the tool's own headline "response-correlated
+frequency deviation"). All three formulas turned out to be tractable to
+port directly - the two real difficulties in this tool were both about
+*duration*, not about any of the new DSP itself.
+
+**A `main()`-local read doesn't tell the whole story about output
+length.** `filtdeviator.c` computes `ringTime` (the largest delay plus
+decay time any bin could reach, further raised for the source's own max
+delay) but never adds it to `dur` anywhere in `main()` - a reading of
+just that file suggests the tool's output simply ends the moment the
+(`-b`/`-e`-trimmed) input does, leaving no room for a long decay to
+actually ring out into real samples. `ringTime` is a *global*, though
+(`legacy/pvc_src/globals.h`), and `legacy/pvc_lib/fileio.c`'s own
+`shiftin`-adjacent code reads it back to keep feeding silent hops into
+the analysis loop for that many extra seconds before actually declaring
+EOF. First-draft testing without this padding produced a candidate a
+full 12,000+ samples shorter than the real oracle for a case exercising
+nonzero delay and decay together - confirmed as exactly this mechanism
+by isolating `-j`/`-J` alone (oracle exactly `3528` samples longer than
+its own un-delayed baseline, `0.08s * 44100Hz` to the sample) and
+`-:`/`-/` alone (oracle exactly `8800` samples longer, `0.2s * 44100Hz`),
+each matching `ringTime`'s own two components independently before
+either was tried together.
+
+**A missing write-gate, found by comparing raw sample counts, not by
+listening.** `tools::twarp`/`tools::delayfilter`'s own oscillator-bank
+paths already establish the pattern (`on += i_factor; only write once
+on + nw - i_factor >= 0`) that skips a startup warm-up window's worth of
+frames before the ring buffer has enough real content to emit - this
+port's first draft of `filtdeviator`'s own oscillator-bank branch wrote
+every frame unconditionally instead, with no equivalent gate. The result
+still *sounded* plausible in isolation, and every per-block RMS
+comparison passed except the very last block - what gave it away was a
+consistent, exact one-hop (`220`-sample) length shortfall against the
+oracle in every case that selected the oscillator bank (triggered here
+by nonzero frequency deviation), confirmed by testing that flag
+combination alone before it was ever combined with delay/decay. Fixed by
+porting the same `on`/`OSCILBANKGAIN` gating `twarp.rs`/`delayfilter.rs`
+already use, verbatim.
+
+**`-q` and `-B` are wrong in the same direction as `pvc delayfilter`'s
+own `-T`, and by the same amount.** Both flags' own `usage()` text claims
+a default of `[0.]` ("master time delay/decay time control"), but both
+initializers actually set `1.0`. Unlike `-T`'s own finding, this one
+*would* have gone unnoticed by every test in this port, since the
+combination of `-j`/`-J`/`-:`/`-/` (whose own defaults are genuinely
+`0.`) already makes the two control values multiply against a `0` range
+regardless of what `-q`/`-B` are set to - the mismatch is invisible until
+a caller sets a nonzero delay/decay *without* also setting the control
+flag they'd reasonably assume defaults to "off" per the tool's own
+`usage()` text. Caught only by reading the initializer block directly
+against the `usage()` string it prints, the same technique that found
+`delayfilter`'s own `-T` mismatch - worth treating as a standing
+per-tool check now, not a one-off.
+
+**A dead computation matching this project's own recurring pattern for
+it**: `interpDecayTFilterAmp`, interpolated fresh every bin from a
+fourth independently-`spectmagwarp`ed response copy (`FdecayTimeWarp`,
+shaped by `-~`'s own warp index), is never read again - the decay-time
+formula that reads as though it should use it instead reuses
+`interpTdelayFilterAmp` (the *time delay* response's own interpolated
+value) a few lines above. `-~` and `FdecayTimeWarp` are consequently not
+ported at all; the decay-time formula here matches what the C's compiled
+behavior actually computes, not what its own variable naming implies.
+
+**Golden case design note**: an early version of the
+`time_delay_and_deviation` case used a deliberately dramatic decay time
+(`0.05`-`0.2` seconds) to stress-test the feedback accumulator, and it
+promptly "failed" by 73dB. Isolating the failure (as with `convolver`'s
+own investigation above) to a single 1024-sample block found the file's
+own tail had decayed into genuine digital silence in both the oracle and
+this port - a `-106.8dB` residual against a literal `0`, the exact
+scenario `compare.py`'s own doc comment already warns is meaningless for
+oscillator-bank-affected output (nonzero frequency deviation here selects
+that path). Rather than widening the tolerance to paper over a
+noise-floor artifact, the case was redesigned with a shorter decay
+(`0.02`-`0.05`s) that never drives the file into that regime at all,
+restoring the same tight `0.5dB` tolerance every other case uses -
+verified by computing the oracle-vs-candidate per-block dB difference
+across the whole file before deciding which fix was the right one.
+
+**Takeaway:** two of this tool's three real bugs (the missing
+oscillator-bank write-gate, the under-padded output length) were found
+by comparing plain sample counts before ever comparing audio content -
+worth checking length agreement as its own first-class signal, not just
+a precondition for a spectral/sample diff. And a golden case that fails
+by tens of dB is not automatically evidence of a wrong algorithm - when
+every block *except* one deep in a decayed silence tail agrees to a
+tenth of a decibel, the fix is very often the test's own choice of
+parameters, not the port.

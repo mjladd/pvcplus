@@ -6,6 +6,7 @@ pub mod convolver;
 pub mod delayfilter;
 pub mod denoise;
 pub mod envelope;
+pub mod filtdeviator;
 pub mod filter;
 pub mod flux;
 pub mod freqresponse;

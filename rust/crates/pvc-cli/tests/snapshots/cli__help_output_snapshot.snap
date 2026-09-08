@@ -41,6 +41,7 @@ Commands:
   specflattracker      Spectral flatness tracker: a time-series of the geometric-to- arithmetic mean ratio of each frame's bins over a detection band (near `1.0` for noise-like spectra, near `0.0` for tonal ones), never audio
   spectralextractor    Periodic/noise spectrum separator: tracks each bin's frame-to- frame frequency deviation and gates it on or off depending on whether that deviation stays under a threshold, extracting either the tonal part of a sound or its noise residue
   delayfilter          Per-bin time-delay resynthesis: reads a source `.pva` file and, for each frequency bin, fetches its source frame from a bin-specific point earlier in the source's own timeline - the per-bin delay times (and amp multipliers) come from a `groupdelaymaker`-produced response file
+  filtdeviator         Fixed-spectrum, additive source+filter phase-vocoder filter (like `pvc filter`) plus a per-bin, response-shaped time delay into the filter's own delay line, a self-referential decay/feedback accumulator on that same delay line, and a per-bin frequency deviation shaped by the response (the tool's own headline "response-correlated frequency deviation")
   help                 Print this message or the help of the given subcommand(s)
 
 Options:

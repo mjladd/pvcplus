@@ -390,6 +390,21 @@ pub enum Command {
     /// for what's in and out of scope, including a real `-C` flag whose
     /// own numeric value is never actually used by the original tool.
     Delayfilter(Box<DelayfilterArgs>),
+
+    /// Fixed-spectrum, additive source+filter phase-vocoder filter (like
+    /// `pvc filter`) plus a per-bin, response-shaped time delay into the
+    /// filter's own delay line, a self-referential decay/feedback
+    /// accumulator on that same delay line, and a per-bin frequency
+    /// deviation shaped by the response (the tool's own headline
+    /// "response-correlated frequency deviation").
+    ///
+    /// Ports `filtdeviator`'s audio-processing path (`legacy/pvc_src/
+    /// filtdeviator.c`); see `pvc-core::tools::filtdeviator`'s doc
+    /// comment for what's in and out of scope, including a real dead
+    /// computation (`-~`'s own decay-time response warp) and every
+    /// `randf()`-based mode this project defers by established
+    /// precedent.
+    Filtdeviator(Box<FiltdeviatorArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -4041,6 +4056,233 @@ pub struct DelayfilterArgs {
     /// from.
     pub analysis: PathBuf,
 
+    pub output: PathBuf,
+}
+
+/// `pvc filtdeviator`'s flag surface. Long names follow the same
+/// letter-in-doc-comment convention as [`DelayfilterArgs`]; see
+/// `pvc-core::tools::filtdeviator`'s doc comment for the flags
+/// deliberately not exposed here (`-Y`/`-c`/`-d`/`-f`/`-Q`/`-z`, every
+/// `randf()`-based mode; `-~`, a dead flag; `-Z`/`-p`/`-i`/`-g`/`-_`/`-=`,
+/// diagnostics/print/play flags this project's CLI layer never exposes).
+#[derive(clap::Args, Debug)]
+pub struct FiltdeviatorArgs {
+    /// `-F`: path to the `.fr` response file (its own size determines
+    /// the FFT size, matching `pvc filter`'s own convention). Required.
+    #[arg(long)]
+    pub response: PathBuf,
+
+    /// `-M`: analysis/resynthesis window length. `0` means auto (`2 *
+    /// fft`, `fft` being the response file's own FFT size).
+    #[arg(long, default_value_t = 0)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// `-D`: analysis frames per second (sets the hop size). Values
+    /// under `32` reset to `200`.
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// `-I`: time expansion/contraction factor (`1.0` = unchanged
+    /// duration). Values `<= 0` reset to `1.0`.
+    #[arg(long = "time-factor", default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-b`: begin time in seconds - real sample-accurate trimming.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-C`: which input channel to resynthesize (`0` = all channels,
+    /// each processed independently; `1..` = only that one, 1-based,
+    /// producing mono output). Unlike `pvc delayfilter`'s own `-C`, this
+    /// tool's does use the number given, confirmed by reading the C.
+    #[arg(long = "channel", default_value_t = 0)]
+    pub channel: usize,
+
+    /// `-h`: source gain in dB - a plain number, or `@path`. `> -96`
+    /// (or time-varying) enables source mixing entirely, matching `pvc
+    /// filter`'s own default-on convention.
+    #[arg(long = "source-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_gain: ControlFn,
+
+    /// `-r`: source frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "source-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_freq_shift: ControlFn,
+
+    /// `-s`: source delay time in seconds - a plain number, or `@path`.
+    #[arg(long = "source-delay", value_parser = parse_control_fn, default_value = "0")]
+    pub source_delay: ControlFn,
+
+    /// `-y`: source pitch transposition in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "source-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub source_pitch: ControlFn,
+
+    /// `-A`: filter output gain in dB - a plain number, or `@path`.
+    #[arg(long = "filter-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_gain: ControlFn,
+
+    /// `-P`: filter output pitch transposition in semitones - a plain
+    /// number, or `@path`.
+    #[arg(long = "filter-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_pitch: ControlFn,
+
+    /// `-a`: filter output frequency shift in Hz - a plain number, or
+    /// `@path`.
+    #[arg(long = "filter-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub filter_freq_shift: ControlFn,
+
+    /// `-T`: response pitch transposition in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "response-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub response_pitch: ControlFn,
+
+    /// `-V`: response frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "response-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub response_freq_shift: ControlFn,
+
+    /// `-S`: source signal floor in dB - a plain number, or `@path`.
+    #[arg(long = "source-floor", value_parser = parse_control_fn, default_value = "-96", allow_hyphen_values = true)]
+    pub source_floor: ControlFn,
+
+    /// `-l`: amplitude attack time in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-L`: amplitude release time in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// `-W`: amplitude response warp index - a plain number, or `@path`.
+    #[arg(long = "amp-warp", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub amp_warp: ControlFn,
+
+    /// `-v`: frequency response warp index - a plain number, or `@path`.
+    #[arg(long = "freq-warp", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_warp: ControlFn,
+
+    /// `-o`: time delay response warp index - a plain number, or
+    /// `@path`.
+    #[arg(long = "delay-warp", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub delay_warp: ControlFn,
+
+    /// `-G`: invert the response (band-reject instead of band-pass).
+    #[arg(long = "band-reject")]
+    pub band_reject: bool,
+
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// `-j`: time delay base in seconds - a plain number, or `@path`.
+    #[arg(long = "time-delay-base", value_parser = parse_control_fn, default_value = "0")]
+    pub time_delay_base: ControlFn,
+
+    /// `-J`: time delay peak in seconds - a plain number, or `@path`.
+    #[arg(long = "time-delay-peak", value_parser = parse_control_fn, default_value = "0")]
+    pub time_delay_peak: ControlFn,
+
+    /// `-q`: time delay master control (0-1) - a plain number, or
+    /// `@path`. Real default is `1` (fully engaged) - the original
+    /// tool's own `usage()` text claims `[0.]`, but its actual
+    /// initializer sets `1.`; has no observable effect at `-j`/`-J`'s
+    /// own `0` defaults either way, but matters the moment either of
+    /// those is set without also setting this. Reproduced here rather
+    /// than "corrected" to `0` (see `pvc-core::tools::filtdeviator`'s
+    /// doc comment, and `pvc delayfilter`'s own `-T` for the same kind
+    /// of doc-vs-code mismatch).
+    #[arg(long = "time-delay-control", value_parser = parse_control_fn, default_value = "1")]
+    pub time_delay_control: ControlFn,
+
+    /// `-@`: scales the effective delay used when resolving time-varying
+    /// parameters against a delayed bin - a plain number, or `@path`.
+    #[arg(long = "delay-time-scaler", value_parser = parse_control_fn, default_value = "1")]
+    pub delay_time_scaler: ControlFn,
+
+    /// `-/`: peak decay time in seconds - a plain number, or `@path`.
+    #[arg(long = "decay-time-peak", value_parser = parse_control_fn, default_value = "0")]
+    pub decay_time_peak: ControlFn,
+
+    /// `-:`: base decay time in seconds - a plain number, or `@path`.
+    #[arg(long = "decay-time-base", value_parser = parse_control_fn, default_value = "0")]
+    pub decay_time_base: ControlFn,
+
+    /// `-B`: decay time master control (0-1) - a plain number, or
+    /// `@path`. Real default is `1` (fully engaged), same doc-vs-code
+    /// mismatch as `-q` above - see that flag's doc comment.
+    #[arg(long = "decay-time-control", value_parser = parse_control_fn, default_value = "1")]
+    pub decay_time_control: ControlFn,
+
+    /// `-k`: base frequency deviation in semitones - a plain number, or
+    /// `@path`.
+    #[arg(long = "freq-dev-base", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_dev_base: ControlFn,
+
+    /// `-K`: peak frequency deviation in semitones - a plain number, or
+    /// `@path`.
+    #[arg(long = "freq-dev-peak", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_dev_peak: ControlFn,
+
+    /// `-u`: base frequency deviation shift in Hz - a plain number, or
+    /// `@path`.
+    #[arg(long = "freq-shift-dev-base", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift_dev_base: ControlFn,
+
+    /// `-U`: peak frequency deviation shift in Hz - a plain number, or
+    /// `@path`.
+    #[arg(long = "freq-shift-dev-peak", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift_dev_peak: ControlFn,
+
+    /// `-O`: frequency deviation master control (0-1) - a plain number,
+    /// or `@path`.
+    #[arg(long = "freq-dev-control", value_parser = parse_control_fn, default_value = "1")]
+    pub freq_dev_control: ControlFn,
+
+    /// `-E`: frequency deviation mode - `0` (response-driven, the
+    /// default) or `@path` to a table (file mode). Random mode (`1`) is
+    /// not supported - see `pvc-core::tools::filtdeviator`'s doc comment.
+    #[arg(long = "freq-dev-mode", value_parser = parse_control_fn, default_value = "0")]
+    pub freq_dev_mode: ControlFn,
+
+    /// `-n`: per-frame amplitude normalization limit in dB - a plain
+    /// number, or `@path`.
+    #[arg(long = "normalization-limit", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub normalization_limit: ControlFn,
+
+    /// `-x`: normalize each frame to match the filter response's own
+    /// loudness instead of the (delayed) input sound's.
+    #[arg(long = "normalize-to-response")]
+    pub normalize_to_response: bool,
+
+    /// `-t`: oscillator resynthesis threshold in dB.
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    pub input: PathBuf,
     pub output: PathBuf,
 }
 
