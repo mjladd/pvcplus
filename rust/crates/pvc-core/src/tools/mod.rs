@@ -25,5 +25,6 @@ pub mod ringtvfilter;
 pub mod specflattracker;
 pub mod spectralextractor;
 pub mod spectwarper;
+pub mod tvfiltdeviator;
 pub mod tvfilter;
 pub mod twarp;
