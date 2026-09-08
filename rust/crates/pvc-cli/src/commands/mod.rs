@@ -30,5 +30,6 @@ pub mod run;
 pub mod specflattracker;
 pub mod spectralextractor;
 pub mod spectwarp;
+pub mod tvfiltdeviator;
 pub mod tvfilter;
 pub mod twarp;

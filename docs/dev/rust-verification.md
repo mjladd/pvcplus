@@ -2184,3 +2184,88 @@ by tens of dB is not automatically evidence of a wrong algorithm - when
 every block *except* one deep in a decayed silence tail agrees to a
 tenth of a decibel, the fix is very often the test's own choice of
 parameters, not the port.
+
+## `pvc tvfiltdeviator`: the same stride bug found in `convolver`, seen a second time, plus a third doc-vs-code default mismatch
+
+`tvfiltdeviator.c` is `tvfilter.c`'s own time-varying cross-synthetic
+filter (a live-analyzed raw-audio source, filtered by a time-varying
+`.pva` response navigated with the same wrap/fold/clip sampler-loop
+machinery already ported for `tvfilter`/`twarp`) plus two subsystems
+borrowed almost formula-for-formula from `filtdeviator`: a per-bin
+response-shaped time delay into the source's own delay line, and the
+same "response-correlated frequency deviation." Between the three
+already-ported siblings this tool composes, nearly every formula here had
+a direct, already-verified precedent to check against - reading each one
+side by side against the corresponding sibling turned up one real
+inherited bug and two independent, tool-specific ones.
+
+**The same `analysis_N`-vs-`analysis_Nplus2` stride bug already found in
+`convolver.c`, confirmed a second time in a completely different tool.**
+`tvfiltdeviator.c` calls `makeInterpolatedFilterFrame(..., analysis_N,
+...)` for its own main filter fetch - the same shared library function
+`twarp.c`/`tvfilter.c`/`ringtvfilter.c` call correctly (with `analysis_N +
+2`) and `convolver.c` calls with the same wrong argument. Confirmed by
+reading `legacy/pvc_lib/makeInterpolatedFilterFrame.c` directly rather
+than assumed from the earlier finding - a second, independent
+confirmation that this particular bug is a real hazard specific to this
+one (evidently copy-pasted) call site, not something particular to
+`convolver.c`. Reproduced with a small local `buggy_filter_frame`,
+adapted from `convolver.rs`'s own (a private helper there, not worth
+promoting to a shared one across two otherwise-unrelated tools for a
+dozen lines of index arithmetic). The same function's `filtfprop` being
+declared `int` (so it never actually interpolates, exactly like
+`crate::timenav::interpolate_frame`'s own already-documented finding for
+`twarp.c`) applies here too, for the same underlying reason - one shared
+buggy function, three independent call sites across this project's port
+so far, two of which trigger the stride bug and all three of which
+trigger the no-interpolation one.
+
+**A second, narrower stride bug specific to this tool**: the frequency-
+deviation and time-delay response copies (`Ffreq`/`FtimeDelay`, each
+independently `spectmagwarp`-shaped) are warped with `spectmagwarp(Ffreq,
+N, ...)` - the *source audio*'s own FFT size, not `analysis_N + 2`
+(`spectmagwarp`'s own second parameter, confirmed by reading
+`legacy/pvc_lib/spectmagwarp.c`, is a literal array length). Whenever `N`
+differs from `analysis_N + 2` - this tool's own `N_ratio` exists
+specifically because that's an expected, supported configuration - only
+the first `N` floats of each copy actually get warped, the rest silently
+keeping the plain unwarped value copied from `F`. Reproduced by slicing
+to the shorter length before warping, for those two copies only - `F`'s
+own warp call passes the correct length and is unaffected.
+
+**A third instance (after `pvc delayfilter`'s `-T` and `pvc
+filtdeviator`'s `-q`/`-B`) of "the `usage()` text and the initializer
+disagree on the default"**: `-O`'s ("frequency deviation master control")
+own `usage()` text claims `[1.]`, but the real initializer sets `0.` -
+confirmed by reading the initializer block directly, not by assuming the
+sibling tool's own (genuinely correct) `-O` default of `1.` carried over
+here too. Since this is the *master* control for the whole frequency-
+deviation formula, getting it backwards would have silently disabled the
+entire subsystem in every golden case that didn't explicitly pass `-O1` -
+worth calling out as a reminder that a formula ported correctly from a
+sibling can still be gated by a default that wasn't.
+
+**Confirmed identical to `filtdeviator.c`'s own formula, side by side, not
+assumed**: the per-bin response-mode frequency-deviation formula itself
+(`fdevminus`/`fdevcontrol`/`fdmdiff`/`fsdiff`) is character-for-character
+the same as `tools::filtdeviator`'s own. File mode is *not* identical,
+though - it smooths `freqdevmode`'s own value through the same one-pole
+filter random mode uses before treating it as a blend weight; the sibling
+tool's own file mode uses that value raw. Reproduced as read in both
+cases, not assumed to match just because the surrounding formula does.
+
+Both golden cases (`baseline`, `time_delay_and_deviation`) matched the
+real oracle to a single 16-bit quantization step on the first attempt
+after the analysis above - the closest an already-verified sibling's
+machinery can be reused, the fewer places a new bug has room to hide.
+
+**Takeaway:** a tool assembled mostly from already-ported siblings'
+machinery is not automatically low-risk - it inherits whatever bugs those
+siblings' *shared C library calls* have at this tool's own call site,
+independently of whether the Rust port of the sibling itself reproduced
+them (it does, correctly, for the call sites that need it - `tvfilter`/
+`twarp` call the same function *without* the stride bug, since their own
+call sites pass the right argument). The check that actually catches this
+is per-call-site: read what every shared function is passed at *this*
+file's own call, not just "does this look like the sibling's version of
+the same call."

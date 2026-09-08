@@ -1,0 +1,10 @@
+tool = "tvfiltdeviator"
+input = "sine440_2s_44k.wav"
+description = "pvanalysis (of a sweep) -> tvfiltdeviator cross-synthesis, every new subsystem (time delay, frequency deviation) left at its default (inert) setting"
+legacy_steps = [
+    "pvanalysis -N1024 {fixtures}/sweep_3s_44k.wav analysis.pva",
+    "tvfiltdeviator -N1024 -Fanalysis.pva {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Baseline case, mirroring tvfilter's own basic_cross_synthesis case exactly (same fixtures, same flags): default settings throughout, so the new time-delay and frequency-deviation subsystems reduce to no-ops (time-delay-base/peak default to 0; response-mode frequency deviation's own master control -O defaults to 0, a real doc-vs-code mismatch - see pvc-core::tools::tvfiltdeviator's doc comment - which makes it inert by default too). Exercises the shared groundwork this tool reuses from tvfilter (time navigation, loop normalization skipped, EQ/compression/warp pipeline) plus the buggy-stride filter fetch at its simplest case (N == analysis_N, where the stride bug's own effect is smallest, though still present)."

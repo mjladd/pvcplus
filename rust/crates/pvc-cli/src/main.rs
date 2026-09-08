@@ -94,5 +94,7 @@ fn main() -> anyhow::Result<()> {
         Command::Delayfilter(args) => commands::delayfilter::run(&args),
 
         Command::Filtdeviator(args) => commands::filtdeviator::run(&args),
+
+        Command::Tvfiltdeviator(args) => commands::tvfiltdeviator::run(&args),
     }
 }

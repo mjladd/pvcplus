@@ -1,0 +1,10 @@
+tool = "tvfiltdeviator"
+input = "sine440_2s_44k.wav"
+description = "nonzero response-shaped time delay and response-mode frequency deviation together"
+legacy_steps = [
+    "pvanalysis -N1024 {fixtures}/sweep_3s_44k.wav analysis.pva",
+    "tvfiltdeviator -N1024 -Fanalysis.pva -/a0.02 -:0.06 -O1 -h-2 -j2 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Exercises the two genuinely new subsystems together: -/a (time delay base) and -: (time delay peak) give each bin a response-shaped time delay between 0.02s and 0.06s into the source's own delay line; -O1 explicitly engages frequency deviation master control (its real default is 0 - a doc-vs-code mismatch, see pvc-core::tools::tvfiltdeviator's doc comment - so the baseline case never exercises this formula at all), and -h/-j deviate each bin's frequency by up to 2 semitones in either direction, response-shaped. Uses pvc analyze (PVA1 format) for the filter response, matching pvc tvfilter's own precedent. Measured max abs sample error against the real oracle: ~3.05e-05 (a single 16-bit quantization step), matching the baseline case's own tolerance exactly."
