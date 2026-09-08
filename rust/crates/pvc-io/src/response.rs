@@ -71,6 +71,37 @@ pub fn read_fr_amplitudes(path: &Path) -> Result<(Vec<f32>, usize), ResponseErro
     Ok((amps, n))
 }
 
+/// Reads a `.fr`-shaped file without knowing `n` ahead of time (same
+/// size-inference as [`read_fr_amplitudes`]), but keeps *both* halves of
+/// each pair instead of dropping the odd slots - needed for a response
+/// whose odd slots hold real data instead of the dead "frequency" values
+/// every other `.fr` consumer in this crate ignores (`groupdelaymaker`'s
+/// own output stores a per-bin *delay time in seconds* there; see
+/// `pvc_core::tools::groupdelaymaker`'s doc comment). Returns
+/// `(pairs, n)` where `pairs[k] = (even_slot, odd_slot)` for bin `k`,
+/// `k` in `0..=n/2`.
+pub fn read_fr_pairs(path: &Path) -> Result<(Vec<(f32, f32)>, usize), ResponseError> {
+    let bytes = fs::read(path)?;
+    if !bytes.len().is_multiple_of(4) || bytes.len() < 8 {
+        return Err(ResponseError::SizeMismatch(
+            path.display().to_string(),
+            bytes.len(),
+            0,
+            0,
+        ));
+    }
+    let n = bytes.len() / 4 - 2;
+    let pairs = bytes
+        .chunks_exact(8)
+        .map(|c| {
+            let even = f32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+            let odd = f32::from_le_bytes([c[4], c[5], c[6], c[7]]);
+            (even, odd)
+        })
+        .collect();
+    Ok((pairs, n))
+}
+
 /// Writes a `.fr` file: `data` (expected to be `n + 2` floats, but
 /// written as-is - the caller owns validating its length) as raw
 /// little-endian f32s.
@@ -106,6 +137,19 @@ mod tests {
         write_fr(&path, &data).unwrap();
         let read_back = read_fr(&path, 8).unwrap();
         assert_eq!(read_back, data);
+    }
+
+    #[test]
+    fn read_fr_pairs_keeps_both_halves() {
+        let data: Vec<f32> = (0..10).map(|i| i as f32 * 0.5).collect();
+        let path = tempfile("pairs.fr");
+        write_fr(&path, &data).unwrap();
+        let (pairs, n) = read_fr_pairs(&path).unwrap();
+        assert_eq!(n, 8);
+        assert_eq!(
+            pairs,
+            vec![(0.0, 0.5), (1.0, 1.5), (2.0, 2.5), (3.0, 3.5), (4.0, 4.5)]
+        );
     }
 
     #[test]
