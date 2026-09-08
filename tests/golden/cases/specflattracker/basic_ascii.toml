@@ -1,0 +1,8 @@
+tool = "specflattracker"
+input = "noise_then_tone_44k.wav"
+description = "spectral flatness tracker, ASCII output, default amplitude method - noise_then_tone exercises a real flatness transition (noise-like lead-in dropping to a tonal steady state)"
+legacy_steps = [
+    "specflattracker {input} {output}",
+]
+output_ext = "txt"
+tolerance = { kind = "numeric", max_abs_error = 1e-3 }
