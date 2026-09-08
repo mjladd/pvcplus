@@ -1,0 +1,10 @@
+tool = "ratechanger"
+input = "sine440_2s_44k.wav"
+description = "ratechanger: linear interpolation synthesis (-X2) at 0.75x input rate"
+legacy_steps = [
+    "cp {input} {output}",
+    "ratechanger -X2 -r0.75 -d1.0 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Exercises linearlyInterpolate (an aliasing-demo mode per the tool's own usage() text) at a sub-unity rate (-r0.75, slowed down - the opposite direction from hold_decimate_rate_change.toml's 1.5x), covering the same interpolation path pvc twarp's own dumptwarp-verified interpolate_frame bug touches conceptually but is a genuinely distinct, freshly-read function in ratechanger.c (see pvc-core::tools::ratechanger's doc comment - this one really does interpolate, unlike twarp's makeInterpolatedFilterFrame). -d1.0 fixes the output duration so both sides skip the duration-search convergence loop (see sinc_no_table.toml's own notes). Verified directly against a freshly-recorded oracle: max absolute per-sample difference is exactly 1/32768 (one 16-bit quantization step)."

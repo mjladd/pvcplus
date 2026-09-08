@@ -22,6 +22,7 @@ pub mod pitchtrack;
 pub mod plot;
 pub mod preset;
 pub mod pv;
+pub mod ratechanger;
 pub mod response;
 pub mod ring;
 pub mod ringfilter;

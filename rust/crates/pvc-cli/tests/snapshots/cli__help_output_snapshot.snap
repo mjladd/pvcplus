@@ -1,6 +1,5 @@
 ---
 source: crates/pvc-cli/tests/cli.rs
-assertion_line: 12
 expression: help
 ---
 A modern CLI for the PVCplus phase-vocoder toolkit.
@@ -43,6 +42,7 @@ Commands:
   delayfilter          Per-bin time-delay resynthesis: reads a source `.pva` file and, for each frequency bin, fetches its source frame from a bin-specific point earlier in the source's own timeline - the per-bin delay times (and amp multipliers) come from a `groupdelaymaker`-produced response file
   filtdeviator         Fixed-spectrum, additive source+filter phase-vocoder filter (like `pvc filter`) plus a per-bin, response-shaped time delay into the filter's own delay line, a self-referential decay/feedback accumulator on that same delay line, and a per-bin frequency deviation shaped by the response (the tool's own headline "response-correlated frequency deviation")
   tvfiltdeviator       `pvc tvfilter`'s own time-varying cross-synthetic filter plus a per-bin, response-shaped time delay into the source's own delay line and a per-bin frequency deviation shaped by the response (the same "response-correlated frequency deviation" `pvc filtdeviator` has)
+  ratechanger          Varispeed resampler: reads raw audio directly (no `.pva` analysis file first) and resynthesizes it at a possibly time-varying playback rate and/or semitone shift, via windowed-sinc summation, sample-and-hold/decimation, or linear interpolation
   help                 Print this message or the help of the given subcommand(s)
 
 Options:

@@ -1,0 +1,10 @@
+tool = "ratechanger"
+input = "sine440_2s_44k.wav"
+description = "ratechanger: sample-and-hold/decimation synthesis (-X1) at 1.5x input rate"
+legacy_steps = [
+    "cp {input} {output}",
+    "ratechanger -X1 -r1.5 -d1.0 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Exercises holdSampleOrDecimate (an aliasing-demo mode per the tool's own usage() text) together with a real rate change (-r1.5, rate multiplier as a function of input time) - and the real, narrow float/double signature mismatch this mode has versus its two siblings (see pvc-core::tools::ratechanger's doc comment): holdSampleOrDecimate's own dataTpt parameter is declared float in the C, unlike sumSincFunctions/linearlyInterpolate's double, so this mode alone loses precision on its time position. -d1.0 fixes the output duration so both sides skip the duration-search convergence loop (see sinc_no_table.toml's own notes on why that's tested separately, not here). Verified directly against a freshly-recorded oracle: max absolute per-sample difference is exactly 1/32768 (one 16-bit quantization step)."

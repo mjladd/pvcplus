@@ -418,6 +418,18 @@ pub enum Command {
     /// `analysis_N`-vs-`analysis_Nplus2` filter-fetch stride bug already
     /// found and reproduced in `pvc convolver`.
     Tvfiltdeviator(Box<TvfiltdeviatorArgs>),
+
+    /// Varispeed resampler: reads raw audio directly (no `.pva` analysis
+    /// file first) and resynthesizes it at a possibly time-varying
+    /// playback rate and/or semitone shift, via windowed-sinc summation,
+    /// sample-and-hold/decimation, or linear interpolation.
+    ///
+    /// Ports `ratechanger` (`legacy/pvc_src/ratechanger.c`); see
+    /// `pvc-core::tools::ratechanger`'s doc comment for what's in and out
+    /// of scope, including a real, verified heap-buffer-overflow in the
+    /// C's own default sinc-table lookup (confirmed under ASan - safely
+    /// clamped here instead of reproduced).
+    Ratechanger(Box<RatechangerArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -4552,6 +4564,149 @@ pub struct TvfiltdeviatorArgs {
 
     pub input: PathBuf,
     pub output: PathBuf,
+}
+
+/// `pvc ratechanger`'s flag surface. Unlike every other `Args` struct in
+/// this file, `--input`/`--output` here name a *raw audio* file, not a
+/// `.pva` analysis file - see `pvc-core::tools::ratechanger`'s doc
+/// comment. Flags deliberately not exposed: the dead `crack()` letters
+/// `c`/`f`/`F`/`g`/`i`/`Q`/`w`/`T`/`Y` (accepted by the parser, no `case`
+/// in the switch).
+#[derive(clap::Args, Debug)]
+pub struct RatechangerArgs {
+    /// `-X`: per-sample synthesis method.
+    #[arg(long = "synthesis-mode", value_parser = parse_synthesis_mode, default_value = "sinc")]
+    pub synthesis_mode: pvc_core::tools::ratechanger::SynthesisMode,
+
+    /// `-t`: use the Blackman-windowed sinc lookup table (fast) instead
+    /// of computing `sin`/`cos` directly (slow). Only affects
+    /// `--synthesis-mode sinc`.
+    #[arg(long = "table-lookup", value_parser = parse_on_off, default_value = "on", num_args = 1)]
+    pub table_lookup: bool,
+
+    /// `-L`: lookup-table interpolation points per sinc period.
+    #[arg(long = "pi-interpolation-points", default_value_t = 100.0)]
+    pub pi_interpolation_points: f32,
+
+    /// `-B`: sinc window truncation level in dB (must be `< 0`; typically
+    /// `-30` to `-96`).
+    #[arg(
+        long = "truncation-db",
+        default_value_t = -60.0,
+        allow_hyphen_values = true
+    )]
+    pub truncation_db: f32,
+
+    /// `-d`: output duration in seconds. `0` (the default) triggers
+    /// output-duration synthesis regardless of `--synthesize-duration`,
+    /// matching the C's own `if (outputDuration <= 0.) synthesizeOutputDuration = true;`.
+    #[arg(long, default_value_t = 0.0)]
+    pub duration: f32,
+
+    /// `-D`: search for an output duration that synchronizes the
+    /// completion of the rate-change control functions with the end of
+    /// the output, via an iterative convergence algorithm (see
+    /// `pvc_core::tools::ratechanger::resolve_output_duration`). Always
+    /// on when `--duration` is `0` or unset, regardless of this flag.
+    #[arg(long = "synthesize-duration")]
+    pub synthesize_duration: bool,
+
+    /// `-C`: input channel to process, `1`-based. `0` (the default)
+    /// processes every input channel.
+    #[arg(long, default_value_t = 0)]
+    pub channel: usize,
+
+    /// `-n`: post-synthesis normalization.
+    #[arg(long, value_parser = parse_normalize_mode, default_value = "input")]
+    pub normalize: pvc_core::tools::ratechanger::NormalizeMode,
+
+    /// `-O`: source time-position origin in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long = "time-origin", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub time_origin: ControlFn,
+
+    /// `-r`: rate multiplier as a function of *input* sound time - a
+    /// plain number, or `@path`.
+    #[arg(long = "rate-in", value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub rate_in: ControlFn,
+
+    /// `-R`: rate multiplier as a function of *output* sound time - a
+    /// plain number, or `@path`.
+    #[arg(long = "rate-out", value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub rate_out: ControlFn,
+
+    /// `-s`: semitone pitch shift as a function of *input* sound time -
+    /// a plain number, or `@path`.
+    #[arg(long = "semitones-in", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub semitones_in: ControlFn,
+
+    /// `-S`: semitone pitch shift as a function of *output* sound time -
+    /// a plain number, or `@path`.
+    #[arg(long = "semitones-out", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub semitones_out: ControlFn,
+
+    /// `-a`: amplitude envelope in dB as a function of *input* sound
+    /// time - a plain number, or `@path`.
+    #[arg(long = "gain-in", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain_in: ControlFn,
+
+    /// `-A`: amplitude envelope in dB as a function of *output* sound
+    /// time - a plain number, or `@path`.
+    #[arg(long = "gain-out", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain_out: ControlFn,
+
+    /// `-b`: input time window low boundary in seconds - a plain number,
+    /// or `@path`.
+    #[arg(long = "window-low", value_parser = parse_control_fn, default_value = "0")]
+    pub window_low: ControlFn,
+
+    /// `-e`: input time window high boundary in seconds (`<= 0` = end of
+    /// input) - a plain number, or `@path`.
+    #[arg(long = "window-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub window_high: ControlFn,
+
+    /// `-m`: impose a new sample rate on the output header (`<= 0`, the
+    /// default, keeps the input's own sample rate). Does not itself
+    /// resample - only changes the output file's declared rate.
+    #[arg(long = "new-sample-rate", default_value_t = 0)]
+    pub new_sample_rate: i32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_synthesis_mode(s: &str) -> Result<pvc_core::tools::ratechanger::SynthesisMode, String> {
+    use pvc_core::tools::ratechanger::SynthesisMode;
+    match s {
+        "sinc" => Ok(SynthesisMode::Sinc),
+        "hold" => Ok(SynthesisMode::HoldDecimate),
+        "linear" => Ok(SynthesisMode::LinearInterp),
+        _ => Err(format!(
+            "expected \"sinc\", \"hold\", or \"linear\", got {s:?}"
+        )),
+    }
+}
+
+fn parse_on_off(s: &str) -> Result<bool, String> {
+    match s {
+        "on" => Ok(true),
+        "off" => Ok(false),
+        _ => Err(format!("expected \"on\" or \"off\", got {s:?}")),
+    }
+}
+
+fn parse_normalize_mode(s: &str) -> Result<pvc_core::tools::ratechanger::NormalizeMode, String> {
+    use pvc_core::tools::ratechanger::NormalizeMode;
+    match s {
+        "none" => Ok(NormalizeMode::None),
+        "input" => Ok(NormalizeMode::Input),
+        "independent" => Ok(NormalizeMode::Independent),
+        "together" => Ok(NormalizeMode::Together),
+        "if-clipping" => Ok(NormalizeMode::IfClipping),
+        _ => Err(format!(
+            "expected \"none\", \"input\", \"independent\", \"together\", or \"if-clipping\", got {s:?}"
+        )),
+    }
 }
 
 fn parse_spectral_type(
