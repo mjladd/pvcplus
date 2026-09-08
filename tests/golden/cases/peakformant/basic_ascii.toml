@@ -1,0 +1,8 @@
+tool = "peakformant"
+input = "sine440_2s_44k.wav"
+description = "peak formant tracker, ASCII output"
+legacy_steps = [
+    "peakformant {input} {output}",
+]
+output_ext = "txt"
+tolerance = { kind = "numeric", max_abs_error = 1e-3 }

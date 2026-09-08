@@ -331,6 +331,16 @@ pub enum Command {
     /// irconvolvesequencer.c`).
     Irconvolvesequencer(Box<IrconvolvesequencerArgs>),
 
+    /// Peak formant tracker: a time-series of the loudest bin's
+    /// frequency over a detection band, never audio.
+    ///
+    /// Ports `peakformant`'s audio-processing path (`legacy/pvc_src/
+    /// peakformant.c`); see `pvc-core::tools::peakformant`'s doc comment
+    /// for why it reuses `pvc centroid`'s whole two-pass pipeline
+    /// (confirmed byte-for-byte identical apart from the one real
+    /// per-frame analysis difference).
+    Peakformant(Box<PeakformantArgs>),
+
     /// Periodic/noise spectrum separator: tracks each bin's frame-to-
     /// frame frequency deviation and gates it on or off depending on
     /// whether that deviation stays under a threshold, extracting either
@@ -2191,6 +2201,64 @@ fn parse_centroid_output_format(
             "expected \"freq\", \"octave\", \"octave-pitchclass\", \"semitones-deviation\", or \"neg-semitones-deviation\", got {s:?}"
         )),
     }
+}
+
+/// `pvc peakformant`'s flag surface - identical shape to [`CentroidArgs`]
+/// (see `pvc-core::tools::peakformant`'s doc comment for why).
+#[derive(clap::Args, Debug)]
+pub struct PeakformantArgs {
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    #[arg(long = "band-octave-pitchclass")]
+    pub band_octave_pitchclass: bool,
+
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// `< 0` means Nyquist.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    #[arg(long = "channel-method", value_parser = parse_channel_method, default_value = "average")]
+    pub channel_method: pvc_core::tools::peakformant::ChannelMethod,
+
+    /// `-l`: envelope ascent (attack) time.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-L`: envelope descent (release) time.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    #[arg(long = "output-rate", default_value_t = 500.0)]
+    pub output_rate: f32,
+
+    #[arg(long = "output-format", value_parser = parse_centroid_output_format, default_value = "freq")]
+    pub output_format: pvc_core::tools::peakformant::OutputFormat,
+
+    /// Reference pitch in octave.pitchclass notation, used only by
+    /// `semitones-deviation`/`neg-semitones-deviation` output formats.
+    #[arg(long = "reference-pitch", default_value_t = 8.0)]
+    pub reference_pitch: f32,
+
+    #[arg(long = "output-type", value_parser = parse_output_type, default_value = "ascii")]
+    pub output_type: OutputType,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
 }
 
 /// `pvc flux`'s flag surface - see `pvc-core::tools::fluxoid`'s doc

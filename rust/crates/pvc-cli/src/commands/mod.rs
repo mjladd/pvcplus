@@ -14,6 +14,7 @@ pub mod info;
 pub mod irconvolver;
 pub mod irconvolvesequencer;
 pub mod legacy;
+pub mod peakformant;
 pub mod pitchtrack;
 pub mod plot;
 pub mod preset;

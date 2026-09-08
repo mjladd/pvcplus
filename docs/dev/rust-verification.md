@@ -1730,3 +1730,60 @@ and an EQ-banding side channel. Worth remembering for the next
 `crack()`-parsed tool with a `temp = ...` line that's never assigned
 back anywhere: it may be exactly this pattern, not a transcription
 mistake to "fix" by adding the missing assignment.
+
+## `pvc peakformant`: byte-for-byte identical to `pvc centroid` apart from one library call, confirmed by diffing the C sources directly
+
+`diff legacy/pvc_src/{centroid,peakformant}.c` shows every line differs
+only in cosmetic text (the startup banner literally still says "CENTROID
+ENVELOPE TRACKER" in `peakformant.c` - a copy-paste artifact left over
+from wherever this tool was cloned from, not fixed here since it is
+exactly what the real tool prints) or in the one real difference:
+`centroid.c` calls `find_centroid()` (amplitude²-weighted mean frequency
+over the detection band); `peakformant.c` calls
+`findFreqOfPeakFormant()` (`legacy/pvc_lib/findFreqOfPeakFormant.c`) -
+plain peak-picking, returning whichever bin in the band has the highest
+amplitude, no weighting at all. Confirmed by reading both library
+functions side by side rather than assumed from the tools' near-identical
+`usage()` text and flag surface, per this project's own established
+method (the `groupdelaymaker`/`chordresponsemaker` mismatch is the
+canonical reason not to skip this step even when a `diff` looks
+this clean).
+
+Given that level of confirmed structural identity, `tools::peakformant`
+reuses `tools::centroid`'s whole two-pass pipeline directly - band-bound
+resolution (`resolve_band_bound`, now `pub(crate)`), bin-range derivation
+(`resolve_bin_range`, also promoted, since `findFreqOfPeakFormant`'s own
+`i1`/`i2` formula is the exact same one `find_centroid` uses), per-frame
+attack/release smoothing, multi-channel average/peak combination, and
+the warp/output-format pass-2 conversion - and swaps in only a new
+`find_peak_formant()` for the analysis core. This also means every real
+finding already documented for `centroid` (the dead `-T`/`-S`/`-H`
+flags, the frame-0 `old_temp`-vs-band-midpoint asymmetry) applies here
+unmodified, without re-deriving any of it - confirmed applicable by the
+same `diff`, not merely assumed to carry over.
+
+One difference worth naming explicitly: `find_centroid` falls back to
+its caller's `old_value` when every bin in the band has zero amplitude
+(`sum == 0`); `findFreqOfPeakFormant` has no such fallback because it
+never needs one - it always returns some bin's frequency (the first
+one in range, if nothing else beats it), even across total silence. Not
+a bug in either tool, just a consequence of peak-picking always having
+an answer where a weighted average over an all-zero-weight set does not.
+
+Oracle-verified against a freshly-built legacy binary at the same
+`numeric` tolerance already established for `centroid`'s own ASCII-output
+golden case, using the same `sine440_2s_44k` fixture and default flags -
+passed on the first run, which is itself confirming evidence for the
+"reuse `centroid`'s pipeline verbatim" decision above rather than
+something that needed debugging into place.
+
+**Takeaway:** an almost line-for-line `diff` between two tools' C source
+is stronger evidence for safe code reuse than a `usage()`-text
+resemblance ever is (see `groupdelaymaker`'s own takeaway for the
+opposite case) - but "almost" still means read the one function that
+differs before trusting it, since that's exactly where the one line
+that matters lives. Promoting a sibling's private helper to
+`pub(crate)` with a doc-comment pointer back to the tool that now reuses
+it (as done here for `resolve_bin_range`/`resolve_band_bound`) keeps
+that reuse discoverable later, rather than a silent coincidence two
+modules happen to share.
