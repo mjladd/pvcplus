@@ -1,0 +1,12 @@
+tool = "delayfilter"
+input = "sine440_2s_44k.wav"
+description = "pvanalysis -> groupdelaymaker -> delayfilter, a real per-bin group delay applied to a 440Hz sine"
+legacy_steps = [
+    "pvanalysis -N1024 {input} analysis.pva",
+    "groupdelaymaker -fanalysis.pva -F{fixtures}/groupdelay_table.txt -D-6 -i-96 -I0 -s2 delay.fr",
+    "cp {input} {output}",
+    "delayfilter -Fanalysis.pva -Bdelay.fr -T1 -d2.0 {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Reuses groupdelaymaker's own golden fixture (groupdelay_table.txt: a 440Hz tone with a 0.5s delay and a 220Hz tone with a 0.1s delay, both 4 harmonic partials, resolved with the average overlap method) so the response's own dominant bin (440Hz) lines up with the input sine's own frequency. -T1 is required to get any delay effect at all: delayfilter's own usage() text claims -T's default is [1.], but the real tool's actual initializer sets its control-function constant to 0. (confirmed by reading legacy/pvc_src/delayfilter.c directly) - the documented default doesn't match the real one, so a bare invocation with no -T is a no-op delay-wise; this case exercises the real, intended behavior with -T explicitly set. Like twarp, delayfilter opens its output-file argument in SFM_READ first just to read a pre-set header format - it never creates a file, so {output} must already exist; the `cp` step supplies that template (see pvc-core::tools::twarp's own doc comment on the same convention, and this file's own rescale-to-analysis-peak quirk, also reproduced here). Tolerance kind is `sample` (absolute), not `spectral`, for the same reason as twarp's own basic_chain case: the default rescale-to-the-analysis-file's-own-peak behavior (an FFT-magnitude value, not a waveform peak) makes the whole file quiet, where a dB-relative comparison blows tiny absolute differences up into large numbers. Max observed absolute error against the real oracle was ~1/32768 (~0.00003, a single 16-bit quantization step); 0.0005 leaves headroom for CI toolchain variance while staying tight enough to catch a real regression."

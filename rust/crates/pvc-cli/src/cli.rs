@@ -378,6 +378,18 @@ pub enum Command {
     /// spectralextractor`'s doc comment for a real dead pitch/frequency-
     /// shift computation reproduced faithfully, and what's out of scope.
     Spectralextractor(Box<SpectralExtractorArgs>),
+
+    /// Per-bin time-delay resynthesis: reads a source `.pva` file and, for
+    /// each frequency bin, fetches its source frame from a bin-specific
+    /// point earlier in the source's own timeline - the per-bin delay
+    /// times (and amp multipliers) come from a `groupdelaymaker`-produced
+    /// response file.
+    ///
+    /// Ports `delayfilter`'s audio-processing path (`legacy/pvc_src/
+    /// delayfilter.c`); see `pvc-core::tools::delayfilter`'s doc comment
+    /// for what's in and out of scope, including a real `-C` flag whose
+    /// own numeric value is never actually used by the original tool.
+    Delayfilter(Box<DelayfilterArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -3853,6 +3865,182 @@ pub struct SpectralExtractorArgs {
     pub threshold: f32,
 
     pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+/// `pvc delayfilter`'s flag surface. Long names follow the same
+/// letter-in-doc-comment convention as [`ConvolverArgs`]/
+/// [`SpectralExtractorArgs`]; see `pvc-core::tools::delayfilter`'s doc
+/// comment for the flags deliberately not exposed here (`-C`/`-Z`/`-_`/
+/// `-=`/`-v`/`-r`/`-q`, plus the dead `-h`/`-I`/`-K`/`-N`/`-s`).
+#[derive(clap::Args, Debug)]
+pub struct DelayfilterArgs {
+    /// `-M`: analysis/resynthesis window length. `0` means auto (`2 *
+    /// fft`, where `fft` is always the source file's own FFT size -
+    /// `delayfilter` has no independent `--fft`).
+    #[arg(long, default_value_t = 0)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// `-D`: output frames per second (sets the hop size). Values under
+    /// `32` reset to `200`, matching the C's own safety clamp.
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// `-d`: output duration in seconds. `0` (the default) means "use the
+    /// source file's own analysis duration" (before the delay tail is
+    /// added - see `pvc-core::tools::delayfilter`'s doc comment on
+    /// `func_dur` vs `dur`).
+    #[arg(long, default_value_t = 0.0)]
+    pub duration: f32,
+
+    /// `-x`: scales how much each bin's own delay is applied when
+    /// time-shifting that bin's control-function lookups (`0` = no
+    /// shift, `1` = full shift) - a plain number, or `@path`.
+    #[arg(long = "delay-time-scaler", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub delay_time_scaler: ControlFn,
+
+    /// `-P`: pitch shift in semitones - a plain number, or `@path`.
+    /// Nonzero (or time-varying, with `--freq-shift`) picks
+    /// oscillator-bank resynthesis; both left at `0` picks overlap-add.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// `-a`: frequency shift in Hz - a plain number, or `@path`.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// `-A`: gain in dB - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// `-Q`: source time-position origin in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long = "time-origin", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub time_origin: ControlFn,
+
+    /// `-Y`: source navigation rate multiplier - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub rate: ControlFn,
+
+    /// `-b`: pitch transposition of the group-delay response, in
+    /// semitones - a plain number, or `@path`.
+    #[arg(long = "delay-transpose", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub delay_transpose: ControlFn,
+
+    /// `-e`: frequency shift of the group-delay response, in Hz - a plain
+    /// number, or `@path`.
+    #[arg(long = "delay-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub delay_shift: ControlFn,
+
+    /// `-w`: warp index for reshaping the group-delay response. Truncated
+    /// to an integer, matching the original tool's own `(int)` cast on
+    /// this one flag (see `pvc-core::tools::delayfilter`'s doc comment).
+    #[arg(
+        long = "delay-warpshape",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub delay_warpshape: f32,
+
+    /// `-V`: decibel gain applied to a bin with zero delay - a plain
+    /// number, or `@path`.
+    #[arg(long = "zero-delay-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub zero_delay_gain: ControlFn,
+
+    /// `-y`: decibel gain applied to a bin at the maximum delay - a plain
+    /// number, or `@path`.
+    #[arg(long = "max-delay-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub max_delay_gain: ControlFn,
+
+    /// `-z`: curve shape (warp index) of the zero-to-max delay gain
+    /// interpolation - a plain number, or `@path`.
+    #[arg(long = "delay-gain-curve", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub delay_gain_curve: ControlFn,
+
+    /// `-T`: multiplier applied to every bin's own delay time (also sizes
+    /// the output's extra ring-out tail) - a plain number, or `@path`.
+    /// Real default is `0` (no delay applied at all) - the original
+    /// tool's own `usage()` text claims `[1.]`, but its actual
+    /// initializer sets this control function's constant to `0.`; the
+    /// documented default doesn't match the real one, confirmed by
+    /// reading both. Reproduced here rather than "corrected" to `1`.
+    #[arg(long = "delay-window", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub delay_window: ControlFn,
+
+    /// `-E`: input spectrum compression threshold in dB (must be `<= 0`).
+    #[arg(
+        long = "comp-threshold",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub comp_threshold: f32,
+
+    /// `-c`: input spectrum decibels of compression (must be `<= 0`).
+    #[arg(long = "comp-db", default_value_t = 0.0, allow_hyphen_values = true)]
+    pub comp_db: f32,
+
+    /// `-L`: output envelope release time in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// `-l`: output envelope attack time in seconds - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-f`: output frequency change response time in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "freq-response-time", value_parser = parse_control_fn, default_value = "0")]
+    pub freq_response_time: ControlFn,
+
+    /// `-W`: input spectrum magnitude warp index - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    /// `-H`: low shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    /// `-X`: high shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    /// `-m`: low shelf EQ frequency in Hz.
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    /// `-R`: high shelf EQ frequency in Hz.
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// `-t`: oscillator resynthesis threshold in dB.
+    #[arg(long, default_value_t = -60.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    /// `-B`: path to the group-delay response file (a `groupdelaymaker`
+    /// `.fr`-shaped file of per-bin `(amp, delay-seconds)` pairs).
+    /// Required.
+    #[arg(long = "delay-filter")]
+    pub delay_filter: PathBuf,
+
+    /// `-F`: path to the source `.pva` analysis file to resynthesize
+    /// from.
+    pub analysis: PathBuf,
+
     pub output: PathBuf,
 }
 

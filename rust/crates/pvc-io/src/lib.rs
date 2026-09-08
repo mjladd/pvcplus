@@ -12,4 +12,4 @@ pub use control::{
 };
 pub use ir::{read_ir, write_ir, IrData, IrError, IrHeader};
 pub use pva::{read_legacy_pva, read_pva, write_pva, PvaData, PvaError, PvaHeader};
-pub use response::{read_fr, read_fr_amplitudes, write_fr, ResponseError};
+pub use response::{read_fr, read_fr_amplitudes, read_fr_pairs, write_fr, ResponseError};

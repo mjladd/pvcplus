@@ -90,5 +90,7 @@ fn main() -> anyhow::Result<()> {
         Command::Specflattracker(args) => commands::specflattracker::run(&args),
 
         Command::Convolver(args) => commands::convolver::run(&args),
+
+        Command::Delayfilter(args) => commands::delayfilter::run(&args),
     }
 }

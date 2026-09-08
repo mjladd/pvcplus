@@ -1990,3 +1990,100 @@ established a precedent for) is worth the setup cost - this bug was
 never going to be found by reading `makeInterpolatedFilterFrame.c` in
 isolation, since the function itself is correct; the bug is entirely in
 one call site passing the wrong variable, four files away.
+
+## `pvc delayfilter`: a documented default that doesn't match the code, and a shift term that quietly differs from its closest-looking sibling
+
+`delayfilter.c` resynthesizes a pre-analyzed `.pva` source file (not raw
+audio - no live FFT, the same "navigate a pre-analyzed file over time"
+shape as `twarp`/`tvfilter`) through a per-bin, time-varying delay line:
+each frequency bin gets its own delay time (and amp multiplier) from a
+`groupdelaymaker`-produced response file, then fetches the *source*
+analysis frame from that many seconds earlier than the tool's own
+navigated time position. Different bins can read from different points in
+the source's own timeline within the same output frame - a
+comb/diffusion-style effect, and `groupdelaymaker.rs`'s own doc comment
+had already flagged this as "the delay-line tool" waiting to consume its
+output.
+
+**The tool's own `usage()` text documents the wrong default for its
+headline flag.** `-T` ("delay time multiplier") is printed as `[1.]`, but
+the real initializer sets `maxdelayt.A[0] = 0.` - confirmed by reading the
+init block directly, not the help text. Since every per-bin delay is
+`response_delay * dwin` (`dwin` being `-T`'s own resolved value), a bare
+invocation with no `-T` at all is a complete no-op as far as the delay
+effect goes: every bin reads from time zero delay, regardless of what the
+response file says. This port's CLI defaults `--delay-window` to `0`,
+matching the real behavior, not the documented one; the golden case
+explicitly passes `--delay-window 1` to exercise the feature at all.
+
+**A per-bin shift formula that looks like `tvfilter::filter_lookup` but
+isn't, in one specific respect.** Both tools resolve a bin's response
+value via the same shift-then-transpose-then-interpolate index math
+(confirmed byte-for-byte identical once written side by side - see
+[`group_delay_lookup`](../../rust/crates/pvc-core/src/tools/delayfilter.rs)'s
+doc comment), and this port does reuse that shape. But the term that
+converts a Hz shift into bin units divides by *different* things in the
+two tools: `tvfilter.c` divides by the *filter file's own* fundamental
+(`analysis_fundamental = nyquist / analysis_n2`), while `delayfilter.c`
+divides by the *source's own* fundamental (`fundamental = R / N`) -
+confirmed by reading the exact line in each file, not assumed from how
+alike the surrounding code looks. Getting this backwards would have been
+invisible in the common case (both tools force their own audio FFT size
+equal to their respective response file's size by default in most real
+usage), which is exactly why it needed a direct side-by-side read rather
+than a "looks the same as `tvfilter`" assumption - see
+`pvcplus-port-methodology`'s own `groupdelaymaker`/`chordresponsemaker`
+precedent for the same kind of near-miss.
+
+**One C-side optimization was deliberately not carried over, and
+documented rather than silently dropped.** The C batches bins sharing an
+integer virtual analysis-frame index to reuse a single `fseek`/`fread`
+pair - a disk-I/O saving that doesn't exist once the whole file is loaded
+into memory up front (this port's own approach, following
+`tvfilter`/`twarp`'s established precedent). That batching has one small
+side effect: three curve-shaping control functions (`-V`/`-y`/`-z`) get
+evaluated, for every bin in a batch, at the *first* bin's own time-shift
+rather than each bin's own. This is invisible at every default setting
+(all three default to a constant, and `ControlFn::at` ignores its time
+argument entirely for a constant), so this port evaluates each bin's own
+time-shift instead of reproducing the exact non-contiguous forward-scan
+grouping order for a quirk nothing exercises by default.
+
+**Confirmed dead flags, the same way as every prior tool in this
+project**: cross-referencing `crack()`'s own flag list against the
+`switch`'s `case`s turned up five (`-h`, `-I`, `-K`, `-N`, `-s`) that
+parse successfully but do nothing - none appear in the tool's own
+`usage()` text either, the same signature as `ringtvfilter.c`'s
+`master_dBgain` and `ring.c`'s own dead flags before it. Also confirmed:
+`-C` ("process one channel") toggles a boolean, but the actual channel
+number it's given is never used anywhere - `beginchan` is never assigned
+from it in `delayfilter.c` or in the shared `outfile_setup()` it calls
+into, so a nonzero `-C` always processes channel 1 regardless of the
+number - matching the established "not worth porting a `-C` with no real
+per-channel selection behind it" precedent from `ring.rs`.
+
+The golden case (`delayfilter/basic_delay`) reuses `groupdelaymaker`'s own
+fixture unchanged (a 440Hz tone with a 0.5s delay, a 220Hz tone with a
+0.1s delay) against the same 440Hz sine fixture most other cases use, so
+the response's own dominant bin lines up with the input's actual
+frequency. It matched the real oracle to a single 16-bit quantization
+step (max abs error ~0.00003) on the first attempt after the formula-level
+read above - a useful contrast with `convolver`'s own entry just above
+this one, where an equally careful read still missed a wrong-variable
+call site four files away. The difference here: `delayfilter.c` has no
+call into a shared multi-purpose library function whose own parameter
+naming could mislead a reader: every formula this port needed lived
+directly in `delayfilter.c`'s own frame loop, so a direct line-by-line
+transcription had nowhere to go quietly wrong the way a mismatched
+library call did for `convolver`.
+
+**Takeaway:** a tool's own `usage()` text is documentation, not code - two
+tools in this project now (`delayfilter`'s `-T` here, and see
+`groupdelaymaker`'s neighbor entry above for another case of "read the
+initializer, not the help string") have shipped with a default that the
+printed help simply gets wrong. And two structurally similar-looking
+per-bin lookup formulas (`tvfilter::filter_lookup` and this tool's
+`group_delay_lookup`) can still diverge in one specific divisor - the
+`pvcplus-port-methodology` habit of writing both source files side by
+side before reusing anything, rather than trusting how alike they read,
+paid for itself again here.
