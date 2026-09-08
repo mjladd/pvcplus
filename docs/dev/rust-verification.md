@@ -1787,3 +1787,85 @@ that matters lives. Promoting a sibling's private helper to
 it (as done here for `resolve_bin_range`/`resolve_band_bound`) keeps
 that reuse discoverable later, rather than a silent coincidence two
 modules happen to share.
+
+## `pvc specflattracker`: a close `centroid` sibling with a real pass-2 quirk `peakformant` didn't have, and a doc-vs-code default mismatch
+
+`specflattracker.c` shares `centroid.c`'s whole two-pass shape (same
+`diff`-confirmed byte-identical band-bound-parsing and bin-range-
+derivation blocks already reused for `peakformant`), but unlike
+`peakformant` - a same-shape sibling with *no* pass-2 differences at
+all - this one has three real differences worth its own writeup.
+
+**The per-frame core**, `find_spectralflatness()` (`legacy/pvc_lib/
+find_spectralflatness.c`), computes the ratio of a per-bin quantity's
+geometric mean to its arithmetic mean over the detection band - `1.0`
+for a noise-like (flat) spectrum, near `0.0` for a tonal one
+concentrated in a few bins. `-m` (`methodFlag`) selects that quantity:
+raw amplitude, frame-to-frame amplitude change, or frame-to-frame
+frequency change - the latter two need a `previous_channel` buffer,
+seeded to the current frame's own values on `frame_count == 0` (so
+amplitude/frequency-change methods always see all-zero deltas on the
+very first frame). The geometric mean is computed as `exp(mean(ln(value)))`,
+not a running product, which means **a single zero-valued bin anywhere
+in the band collapses the entire frame's flatness to the amplitude-
+threshold floor** - `ln(0.0) == -inf` in IEEE-754, and `-inf` poisons
+the mean's sum regardless of every other bin's value, then
+`exp(-inf) == 0.0`. Reproduced with plain `f64::ln`/`f64::exp` (which
+follow the same limiting behavior as the C's `log`/`exp`), not specially
+guarded - confirmed this is what the real tool does with silence in the
+band via the golden case's own `noise_then_tone` fixture, not
+special-cased from reading alone.
+
+**A real pass-2 interpolation quirk `centroid.c` does not have**:
+`specflattracker.c`'s output loop adds `if (tp == 0.) old_temp = temp;`
+inside the `while (tp < 1.)` sub-sample interpolation loop, immediately
+before `curve()` uses `old_temp`. Tracing the arithmetic (`tp -= (int)
+tp` after each outer iteration) shows `tp` only lands on exactly `0.0`
+at the very start of the stream for a typical `--output-rate` that
+doesn't evenly divide `frames-per-sec` back to a whole ratio (the
+default `500`/`200` gives `tpinc = 0.4`, which drifts off `0.0` after
+the first frame) - so in the default configuration this only changes
+frame 0's very first output sample, from interpolating away from the
+declared-but-never-really-meaningful `old_temp = 0.` towards `curve`
+trivially returning the first frame's own value instead. Still real,
+still reproduced exactly (`if tp == 0.0 { old_temp = temp; }`, in the
+same place inside the loop, not hoisted to a one-time special case)
+since an `--output-rate` that exactly equals `--frames-per-sec` makes
+`tp` land on `0.0` on *every* frame, not just the first.
+
+**A confirmed dead flag, unlike in `centroid`/`peakformant`**:
+`-G`/reference-pitch is still parsed and printed at startup, but
+`specflattracker.c`'s own `outformat` only has two branches (`0` = raw
+coefficient, `1` = decibels via `amp_to_dB`) - the whole octave/
+semitones-of-deviation branch family that would have consumed
+`refoctave`/`midC`/`log_of_2` is simply absent from this tool's `if`/
+`else` chain, confirmed by reading it directly rather than assuming
+`centroid`'s own already-established live/dead flag list transfers
+unchanged. Not exposed as a CLI flag here.
+
+**A doc-vs-code default mismatch, resolved in favor of the code**:
+`specflattracker.c`'s own `usage()` text claims `-c`'s (amplitude
+threshold) default is `-200` dB, but the variable it actually sets
+(`amplitudeThresholdInDecibels=-96.`) is declared with `-96.` as its
+real initializer. `pvc specflattracker --amplitude-threshold` defaults
+to `-96.0`, matching what an un-flagged real invocation actually runs
+with, not its own usage text's stale claim.
+
+Oracle-verified at the same `numeric` tolerance already established for
+`centroid`'s/`peakformant`'s own ASCII-output golden cases, passing on
+the first run against the `noise_then_tone_44k` fixture - chosen
+specifically (over `centroid`'s/`peakformant`'s shared `sine440`
+fixture) to exercise a real, audible flatness transition and put real
+pressure on the zero-amplitude-bin collapse behavior above, not just a
+steady tone.
+
+**Takeaway:** two tools sharing a `diff`-confirmed identical pipeline
+skeleton can still differ in real, easy-to-miss ways beyond their one
+obviously-different library call - `peakformant`'s port needed no pass-2
+changes at all, so it would have been easy to assume the same held here
+without rereading `specflattracker.c`'s own pass-2 loop line by line.
+The `if (tp == 0.)` quirk in particular is the kind of single added line
+that a whole-file `diff` surfaces immediately but a "looks like the same
+shape" skim does not - worth treating every sibling-reuse candidate's
+`diff` output as a checklist to walk line by line, not just a confidence
+signal to stop reading early.

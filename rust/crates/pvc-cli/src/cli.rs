@@ -341,6 +341,18 @@ pub enum Command {
     /// per-frame analysis difference).
     Peakformant(Box<PeakformantArgs>),
 
+    /// Spectral flatness tracker: a time-series of the geometric-to-
+    /// arithmetic mean ratio of each frame's bins over a detection band
+    /// (near `1.0` for noise-like spectra, near `0.0` for tonal ones),
+    /// never audio.
+    ///
+    /// Ports `specflattracker`'s audio-processing path (`legacy/
+    /// pvc_src/specflattracker.c`); see `pvc-core::tools::
+    /// specflattracker`'s doc comment for why it reuses most of `pvc
+    /// centroid`'s two-pass pipeline, plus a real pass-2 interpolation
+    /// quirk absent from `centroid` and reproduced faithfully here.
+    Specflattracker(Box<SpecflattrackerArgs>),
+
     /// Periodic/noise spectrum separator: tracks each bin's frame-to-
     /// frame frequency deviation and gates it on or off depending on
     /// whether that deviation stays under a threshold, extracting either
@@ -2259,6 +2271,100 @@ pub struct PeakformantArgs {
 
     pub input: PathBuf,
     pub output: PathBuf,
+}
+
+/// `pvc specflattracker`'s flag surface - mostly the same shape as
+/// [`CentroidArgs`]/[`PeakformantArgs`], minus `--reference-pitch` (dead
+/// in the real tool - see `pvc-core::tools::specflattracker`'s doc
+/// comment), plus `--method` and `--amplitude-threshold`.
+#[derive(clap::Args, Debug)]
+pub struct SpecflattrackerArgs {
+    #[arg(long, default_value_t = 1024)]
+    pub fft: usize,
+
+    #[arg(long, default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    #[arg(long = "band-octave-pitchclass")]
+    pub band_octave_pitchclass: bool,
+
+    #[arg(long = "band-low", value_parser = parse_control_fn, default_value = "0")]
+    pub band_low: ControlFn,
+
+    /// `< 0` means Nyquist.
+    #[arg(long = "band-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub band_high: ControlFn,
+
+    #[arg(long = "channel-method", value_parser = parse_channel_method, default_value = "average")]
+    pub channel_method: pvc_core::tools::specflattracker::ChannelMethod,
+
+    /// `-m`: which per-bin quantity feeds the flatness ratio.
+    #[arg(long, value_parser = parse_flatness_method, default_value = "amplitude")]
+    pub method: pvc_core::tools::specflattracker::FlatnessMethod,
+
+    /// `-c`: amplitude threshold in dB for excluding/flooring low-valued
+    /// bins. The real tool's own `usage()` text claims `-200` as the
+    /// default, but its actual variable initializer is `-96.` - this
+    /// matches the code, not the usage text (see `pvc-core::tools::
+    /// specflattracker`'s doc comment).
+    #[arg(long = "amplitude-threshold", default_value_t = -96.0, allow_hyphen_values = true)]
+    pub amplitude_threshold: f32,
+
+    /// `-l`: trajectory ascent (attack) time.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-L`: trajectory descent (release) time.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    #[arg(long, value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub warp: ControlFn,
+
+    #[arg(long = "output-rate", default_value_t = 500.0)]
+    pub output_rate: f32,
+
+    #[arg(long = "output-format", value_parser = parse_specflattracker_output_format, default_value = "coefficient")]
+    pub output_format: pvc_core::tools::specflattracker::OutputFormat,
+
+    #[arg(long = "output-type", value_parser = parse_output_type, default_value = "ascii")]
+    pub output_type: OutputType,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
+fn parse_flatness_method(
+    s: &str,
+) -> Result<pvc_core::tools::specflattracker::FlatnessMethod, String> {
+    use pvc_core::tools::specflattracker::FlatnessMethod;
+    match s {
+        "amplitude" => Ok(FlatnessMethod::Amplitude),
+        "amplitude-change" => Ok(FlatnessMethod::AmplitudeChange),
+        "frequency-change" => Ok(FlatnessMethod::FrequencyChange),
+        _ => Err(format!(
+            "expected \"amplitude\", \"amplitude-change\", or \"frequency-change\", got {s:?}"
+        )),
+    }
+}
+
+fn parse_specflattracker_output_format(
+    s: &str,
+) -> Result<pvc_core::tools::specflattracker::OutputFormat, String> {
+    use pvc_core::tools::specflattracker::OutputFormat;
+    match s {
+        "coefficient" => Ok(OutputFormat::Coefficient),
+        "decibels" => Ok(OutputFormat::Decibels),
+        _ => Err(format!(
+            "expected \"coefficient\" or \"decibels\", got {s:?}"
+        )),
+    }
 }
 
 /// `pvc flux`'s flag surface - see `pvc-core::tools::fluxoid`'s doc

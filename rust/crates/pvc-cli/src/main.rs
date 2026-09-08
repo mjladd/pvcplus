@@ -86,5 +86,7 @@ fn main() -> anyhow::Result<()> {
         Command::Spectralextractor(args) => commands::spectralextractor::run(&args),
 
         Command::Peakformant(args) => commands::peakformant::run(&args),
+
+        Command::Specflattracker(args) => commands::specflattracker::run(&args),
     }
 }
