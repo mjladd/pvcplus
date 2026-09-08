@@ -1,61 +1,51 @@
-//! Ports `centroid.c`: a two-pass analysis tool outputting a time-series
-//! of the amplitude²-weighted mean frequency ("spectral centroid") over
-//! a detection band - see `pvc-core::tools::envelope`'s doc comment for
-//! the shared two-pass shape (this tool included), which this doc
-//! comment only calls out real *differences* from.
+//! Ports `peakformant.c`: confirmed byte-for-byte identical to
+//! `centroid.c` (`diff legacy/pvc_src/{centroid,peakformant}.c` - every
+//! difference is either cosmetic text (banner, usage, scratch-file
+//! prefix) or the one real difference below), so this module reuses
+//! `tools::centroid`'s whole two-pass pipeline (band-bound resolution,
+//! per-channel attack/release smoothing, multi-channel average/peak
+//! combination, warp, output-format conversion) and only replaces the
+//! per-frame core analysis - see `tools::centroid`'s doc comment for
+//! everything shared, including the provably-dead `-T`/`-S`/`-H` flags
+//! (peakformant's `crack()` switch has no cases for them either,
+//! confirmed the same way) and the frame-0 `old_temp` seeding
+//! convention this port also follows unmodified for consistency with
+//! its sibling (not independently re-verified against
+//! `peakformant.c`'s own analogous multi-channel state-carry behavior -
+//! see that module's own doc comment on the same point).
 //!
-//! **Real bug, confirmed by grepping every reference: `-T`/`-S`
-//! (compress-threshold/gate-threshold) have no `case` in `centroid.c`'s
-//! `crack()` switch at all** - unlike `envelope`/`fluxoid`, centroid has
-//! **no compress/gate/output-scale stage whatsoever**; its pass 2 only
-//! warps the raw centroid frequency (`-W`, via
-//! [`crate::warp::curve`]) onto `[band_low, band_high]` and converts it
-//! to the requested output format. Not exposed as CLI flags at all,
-//! matching this project's established treatment of provably-dead
-//! legacy flags (`pvc compand`'s dead `-L`, `pvc harmonize`'s dead
-//! `-J`).
+//! **The one real difference**: `centroid.c` calls `find_centroid()`
+//! (amplitude²-weighted mean frequency over the band); `peakformant.c`
+//! calls `findFreqOfPeakFormant()` (`legacy/pvc_lib/
+//! findFreqOfPeakFormant.c`) - simple peak-picking, returning the
+//! frequency of whichever bin in the band has the highest amplitude, no
+//! weighting or averaging at all. Confirmed by reading both library
+//! functions side by side, not assumed from the tools' similar shape -
+//! per this project's own established methodology (`groupdelaymaker`'s
+//! usage-vs-actual-math mismatch is the canonical example of why).
+//! `findFreqOfPeakFormant`'s bin-range derivation (`i1 = 1 + 2*(int)
+//! (lowf/fundamental)`, clamped, bumped apart if equal) is the exact
+//! same formula `find_centroid` uses, re-expressed in this crate's
+//! `(amp, freq)`-pair terms by `tools::centroid::resolve_bin_range` -
+//! reused unmodified here since the formula is genuinely identical, not
+//! merely similar-looking.
 //!
-//! **Real bug, also dead: `-H`/`--warp`** (a *second*, different warp
-//! from `-W`'s distribution warp) is parsed and printed in the startup
-//! banner, but its only call site (`spectmagwarp(channel, N+2,
-//! swarpshape.A[0], 0)`) is commented out in the source - confirmed by
-//! reading `centroid.c` directly. Not exposed here either.
-//!
-//! **`-G`/`--reference-pitch` does not collide with anything internally**
-//! despite `-G` meaning "compression amount" in most other tools in this
-//! family - `centroid.c`'s `crack()` has exactly one `case 'G'`
-//! (`refpitch = crackfloat(...)`, a plain float, not a control
-//! function), used only by the `semitones-deviation`/
-//! `neg-semitones-deviation` output formats. The doc's warning about a
-//! "collision" is a cross-tool naming coincidence, not an internal
-//! ambiguity.
-//!
-//! **Frame-0 asymmetry vs. `fluxoid`** (a sibling that looks similar):
-//! `find_centroid` seeds its `old_value` state to the *band midpoint*
-//! `(hif+lowf)/2` on the very first frame, and `centroid.c` never
-//! overrides that afterward - so frame 0's attack/release smoothing
-//! compares the real computed centroid against the band midpoint, not
-//! against itself (unlike `fluxoid`, whose caller forces `old_temp =
-//! temp` on frame 0, making its own smoothing step a true no-op there).
+//! Unlike `find_centroid` (which falls back to `old_value` when every
+//! bin in the band has zero amplitude), `findFreqOfPeakFormant` always
+//! has a well-defined answer (it just returns the first bin's own
+//! frequency if nothing beats it), so no such fallback is needed here.
 
 use crate::pvoc::Analyzer;
+use crate::tools::centroid::{resolve_band_bound, resolve_bin_range};
 use crate::warp::curve;
 use crate::window::{make_windows, Window};
 use crate::ControlFn;
 
+pub use crate::tools::centroid::OutputFormat;
 pub use crate::tools::envelope::ChannelMethod;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OutputFormat {
-    Freq,
-    Octave,
-    OctavePitchclass,
-    SemitonesDeviation,
-    NegSemitonesDeviation,
-}
-
 #[derive(Debug, Clone)]
-pub struct CentroidParams {
+pub struct PeakformantParams {
     pub fft_size: usize,
     pub window_size: usize,
     pub window: Window,
@@ -74,96 +64,27 @@ pub struct CentroidParams {
     pub reference_pitch: f32,
 }
 
-/// Ports `find_centroid()` (`legacy/pvc_lib/find_centroid.c`):
-/// power(amplitude²)-weighted mean frequency over `[k1, k2]`, clamped to
-/// `[lowf, hif]`. Falls back to `old_value` if every bin in the band has
-/// zero amplitude (`sum == 0`). `k1`/`k2` must already be resolved by
-/// [`resolve_bin_range`] (bounds-clamped, `k1==k2` bumped apart) -
-/// matching the C's own clamp-then-bump order exactly, see that
-/// function's doc comment.
-fn find_centroid(
-    bins: &[(f32, f32)],
-    k1: usize,
-    k2: usize,
-    lowf: f32,
-    hif: f32,
-    old_value: f32,
-) -> f32 {
-    let mut sum = 0.0f32;
-    let mut weighted = 0.0f32;
-    for &(amp, freq) in &bins[k1..=k2] {
-        let amp2 = amp * amp;
-        sum += amp2;
-        weighted += freq * amp2;
-    }
-    let value = if sum > 0.0 { weighted / sum } else { old_value };
-    value.clamp(lowf, hif)
-}
-
-/// Ports the shared `i1`/`i2` bin-range derivation used by
-/// `find_centroid`/`find_fluxoid` (`legacy/pvc_lib/find_centroid.c:26-32`,
-/// `find_fluxoid.c`'s equivalent): unlike `envelope.c`'s own *inline*
-/// band-sum loop (which clamps nothing, a real unguarded OOB read for a
-/// user-supplied `--band-high` past Nyquist - see `tools::envelope`'s
-/// doc comment), these library functions clamp `k2` to the array's last
-/// valid bin **before** checking `k2 == k1` and bumping it apart - not
-/// the reverse order. That order matters: a `k1`/`k2` that both land
-/// exactly on the clamped max bin bumps `k2` one *past* it
-/// (`k2 = k1 + 1`), a real one-past-the-end read in the C for that
-/// narrow edge case (`lowf`'s own bin exactly equal to the clamped max)
-/// that this port re-clamps a second time afterward instead of
-/// reproducing, to stay panic-safe on a Rust slice index.
-///
-/// `pub(crate)`, not private: `tools::peakformant`'s own
-/// `findFreqOfPeakFormant()` uses this exact same `i1`/`i2` formula
-/// (confirmed by reading both C files side by side), so it reuses this
-/// function rather than re-deriving it.
-pub(crate) fn resolve_bin_range(
-    lowf: f32,
-    hif: f32,
-    fundamental: f32,
-    n2: usize,
-) -> (usize, usize) {
-    let k1 = (lowf / fundamental) as usize;
-    let mut k2 = (hif / fundamental) as usize;
-    k2 = k2.min(n2);
-    if k2 == k1 {
-        k2 = k1 + 1;
-    }
-    (k1, k2.min(n2))
-}
-
-/// `pub(crate)`, not private: `tools::peakformant` reuses this too - its
-/// own band-bound parsing block is byte-for-byte identical to
-/// `centroid.c`'s (confirmed by diffing the two source files).
-pub(crate) fn resolve_band_bound(
-    value: f32,
-    octave_pitchclass: bool,
-    is_low: bool,
-    nyquist: f32,
-) -> f32 {
-    if octave_pitchclass {
-        if value < 3.0 {
-            if is_low {
-                0.0
-            } else {
-                nyquist
-            }
-        } else {
-            crate::response::oppc_to_hz(value)
+/// Ports `findFreqOfPeakFormant()`: the frequency of the loudest bin in
+/// `[k1, k2]`. `k1`/`k2` must already be resolved by
+/// [`resolve_bin_range`] (bounds-clamped, `k1==k2` bumped apart).
+fn find_peak_formant(bins: &[(f32, f32)], k1: usize, k2: usize) -> f32 {
+    let mut peak_amp = bins[k1].0;
+    let mut freq = bins[k1].1;
+    for &(amp, f) in &bins[k1 + 1..=k2] {
+        if amp > peak_amp {
+            peak_amp = amp;
+            freq = f;
         }
-    } else if value < 0.0 {
-        if is_low {
-            0.0
-        } else {
-            nyquist
-        }
-    } else {
-        value
     }
+    freq
 }
 
-fn analyze_channel(input: &[f32], sample_rate: u32, params: &CentroidParams, dur: f32) -> Vec<f32> {
+fn analyze_channel(
+    input: &[f32],
+    sample_rate: u32,
+    params: &PeakformantParams,
+    dur: f32,
+) -> Vec<f32> {
     let r = sample_rate as f32;
     let n = params.fft_size;
     let n2 = n / 2;
@@ -171,12 +92,6 @@ fn analyze_channel(input: &[f32], sample_rate: u32, params: &CentroidParams, dur
     let nyquist = r / 2.0;
     let fundamental = r / n as f32;
     let ir = d as f32 / r;
-    // `ar_dB = 10^(-60/20)`: same recipe as `smooth_setup`, but
-    // centroid/fluxoid inline it and branch attack-vs-decay based on
-    // `temp > old_temp` directly, rather than calling
-    // `smooth_setup`/`smooth_one_value` - see this module's doc comment
-    // on the frame-0 midpoint seed for why a bespoke loop (not
-    // `smooth_one_value`) is used here.
     let ar_db = 10.0f64.powf(-60.0 / 20.0);
 
     let mut nw = params.window_size;
@@ -190,7 +105,6 @@ fn analyze_channel(input: &[f32], sample_rate: u32, params: &CentroidParams, dur
     let mut valid: i64 = nw as i64;
     let mut pos = 0usize;
     let mut samples_seen: usize = 0;
-    let mut frame_count: usize = 0;
 
     let mut old_temp = 0.0f32;
     let mut out = Vec::new();
@@ -228,11 +142,7 @@ fn analyze_channel(input: &[f32], sample_rate: u32, params: &CentroidParams, dur
 
         let (k1, k2) = resolve_bin_range(lowf, hif, fundamental, n2);
 
-        if frame_count == 0 {
-            old_temp = (lowf + hif) * 0.5;
-        }
-
-        let mut temp = find_centroid(&frame.bins, k1, k2, lowf, hif, old_temp);
+        let mut temp = find_peak_formant(&frame.bins, k1, k2);
 
         let release = params.release.at(t, dur);
         let (releasec, minusreleasec) = if release <= 0.0 {
@@ -258,7 +168,6 @@ fn analyze_channel(input: &[f32], sample_rate: u32, params: &CentroidParams, dur
 
         out.push(temp);
         samples_seen += d;
-        frame_count += 1;
 
         if eof_after_this_hop {
             break;
@@ -283,7 +192,7 @@ fn combine_channels(per_channel: &[Vec<f32>], method: ChannelMethod) -> Vec<f32>
 pub fn process(
     channels: &[Vec<f32>],
     sample_rate: u32,
-    params: &CentroidParams,
+    params: &PeakformantParams,
     dur: f32,
 ) -> Vec<f32> {
     let r = sample_rate as f32;
@@ -315,13 +224,13 @@ pub fn process(
     }
     assert!(
         tpinc <= 1.0,
-        "centroid: output rate must be >= frames-per-sec"
+        "peakformant: output rate must be >= frames-per-sec"
     );
 
     let mut tp = 0.0f32;
     let mut out = Vec::new();
-    for (frame_count, &raw) in combined.iter().enumerate() {
-        let t = frame_count as f32 * ir;
+    for &raw in combined.iter() {
+        let t = out.len() as f32 * ir;
         let lowf = resolve_band_bound(
             params.band_low.at(t, dur),
             params.band_octave_pitchclass,
@@ -368,8 +277,8 @@ pub fn process(
 mod tests {
     use super::*;
 
-    fn default_params(fft_size: usize) -> CentroidParams {
-        CentroidParams {
+    fn default_params(fft_size: usize) -> PeakformantParams {
+        PeakformantParams {
             fft_size,
             window_size: 0,
             window: Window::Hamming,
@@ -388,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn sine_input_centroid_near_440hz() {
+    fn sine_input_peak_formant_near_440hz() {
         let params = default_params(1024);
         let sample_rate = 44100u32;
         let input: Vec<f32> = (0..sample_rate)
@@ -399,6 +308,33 @@ mod tests {
         let out = process(&[input], sample_rate, &params, 1.0);
         assert!(!out.is_empty());
         let mid = out[out.len() / 2];
-        assert!((mid - 440.0).abs() < 50.0, "centroid {mid} not near 440Hz");
+        let fundamental = sample_rate as f32 / 1024.0;
+        assert!(
+            (mid - 440.0).abs() < fundamental,
+            "peak formant {mid} not near 440Hz"
+        );
+    }
+
+    #[test]
+    fn two_tone_input_picks_the_louder_bin() {
+        // A loud 440Hz tone plus a much quieter 1000Hz tone: the peak
+        // formant should track the loud tone, unlike a centroid (which
+        // would land somewhere between the two).
+        let params = default_params(1024);
+        let sample_rate = 44100u32;
+        let input: Vec<f32> = (0..sample_rate)
+            .map(|i| {
+                let t = i as f32 / sample_rate as f32;
+                0.9 * (2.0 * std::f32::consts::PI * 440.0 * t).sin()
+                    + 0.05 * (2.0 * std::f32::consts::PI * 1000.0 * t).sin()
+            })
+            .collect();
+        let out = process(&[input], sample_rate, &params, 1.0);
+        let mid = out[out.len() / 2];
+        let fundamental = sample_rate as f32 / 1024.0;
+        assert!(
+            (mid - 440.0).abs() < fundamental,
+            "peak formant {mid} should track the louder 440Hz tone"
+        );
     }
 }

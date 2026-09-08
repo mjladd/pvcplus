@@ -84,5 +84,7 @@ fn main() -> anyhow::Result<()> {
         Command::Irconvolvesequencer(args) => commands::irconvolvesequencer::run(&args),
 
         Command::Spectralextractor(args) => commands::spectralextractor::run(&args),
+
+        Command::Peakformant(args) => commands::peakformant::run(&args),
     }
 }

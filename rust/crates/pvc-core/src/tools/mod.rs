@@ -13,6 +13,7 @@ pub mod impulseresponse;
 pub mod irconvolver;
 pub mod irconvolvesequencer;
 pub mod noisefilter;
+pub mod peakformant;
 pub mod pitchtracker;
 pub mod pv;
 pub mod ring;
