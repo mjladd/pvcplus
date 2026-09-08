@@ -1869,3 +1869,124 @@ that a whole-file `diff` surfaces immediately but a "looks like the same
 shape" skim does not - worth treating every sibling-reuse candidate's
 `diff` output as a checklist to walk line by line, not just a confidence
 signal to stop reading early.
+
+## `pvc convolver`: a real, severe stride bug found only by building and patching the real binary, plus two "reads like a bug, isn't" findings that turned out correct on inspection
+
+`convolver.c` spectrally multiplies a live input ("Sound A") against a
+pre-analyzed `.pva` filter file ("Sound B"), navigated over time the same
+way `tvfilter`/`twarp` navigate their own filter/resynthesis sources.
+Porting it needed three new pieces beyond what those siblings already
+established: `tools::ring`'s `RawAnalyzer`/`lean_convert`/
+`lean_unconvert`/`apply_shelf_eq` (already `pub(crate)` for exactly this
+kind of reuse), a fresh naive real-array spectral multiply (see below),
+and pan-mixing between the dry sounds and their convolution.
+
+**The tool's own headline feature is genuinely broken, confirmed by
+reading the source**: `convolver.c`'s own banner calls itself "SHORT-TERM
+FFT SPECTRAL MULTIPLICATION," and a correctly-written complex-multiply
+block (handling the packed-rfft DC/Nyquist special cases and the real
+cross terms a true complex product needs) sits right there in the
+source - wrapped in `/* ... */`, never compiled. The *active* code does
+`C_buffer[i] = normamp*C_dB*buffer[i]*Fbuffer[i]` for every `i` - a plain
+element-wise multiply of two rfft-packed real/imaginary arrays, which is
+not a complex product at all. Reproduced exactly (the naive multiply,
+not the commented-out correct one), since that is what the real tool's
+output actually is.
+
+**A second real bug, this one requiring no faithful reproduction at all
+since it's genuinely unreachable**: `-l`/`-L`'s own smoothing
+coefficients (`envattack`/`envrelease`/`minusattack`/`minusrelease`) are
+declared with no initializer, and are only ever *assigned* inside a
+`/* ... */`-commented-out block - but the `CartesianSmooth()` call that
+*consumes* them is not commented out, and does run whenever `-l`/`-L`
+make `smoothingFlag` truthy. This reads uninitialized stack memory - a
+genuine C-level bug with no well-defined value to port, unlike a
+deterministic-but-wrong formula. `-l`/`-L`/`-k` are not exposed by this
+port at all, rather than guessing at a "faithful" stand-in for undefined
+behavior.
+
+**The one that took the most work to actually pin down**: this port's
+golden case initially failed by up to 170dB (`spectral` comparison)
+against a freshly-recorded oracle, even though duration, peak amplitude,
+and frame count all matched exactly and an isolated "pan = -1, Sound A
+only" test matched the oracle to four decimal places. Isolating "pan = 1,
+Sound A silent, output = Sound B's own `unconvert1()` reconstruction
+alone" showed the real divergence: a rising-sweep filter file
+reconstructed at roughly the *wrong instantaneous frequency* throughout,
+worsening over the file's length. `unconvert1()`'s own formula (read
+directly from `legacy/pvc_lib/unconvert.c`) matched this port's
+`PhaseTracker::unconvert` letter for letter, and an isolated Rust test
+feeding it a *constant*-frequency filter reconstructed perfectly - so the
+bug had to be in which bytes of the `.pva` file were being read, not in
+the phase-vocoder math. Confirmed by patching a debug build of the real
+`convolver.c` (rebuilt inside the pinned Docker image) to dump `F[]`
+directly and diffing bin-for-bin against this port's own fetch for the
+identical file and frame index: `convolver.c`'s own call to
+`makeInterpolatedFilterFrame()` passes `analysis_N` where that function's
+own parameter is *named* `analysis_Nplus2` -
+
+```c
+makeInterpolatedFilterFrame ( &filter, F_lower, F_higher, F,
+        iframes_per_sec, analysis_N, filttnow, ainchan, analysis_chan
+) ;
+```
+
+- and that function's own seek-offset formula and `fread` count both use
+this parameter as the per-frame float stride. Every fetch therefore
+advances by `analysis_N` floats, not the true on-disk `analysis_N + 2` -
+two floats short of a real frame - drifting further with every
+additional frame fetched (frame 0 happens to land correctly; by frame
+*k* the read start has drifted `2*k` floats *before* the true frame *k*,
+silently reading into what's actually the previous true frame's own
+tail). The fetched array's own last bin (the Nyquist bin) is never
+written by the short `fread` at all, and stays `0.0` amplitude for the
+entire program run, since nothing else in the file ever touches those
+two array slots. `tools::convolver::buggy_filter_frame` reproduces this
+exactly against the *true*, correctly-parsed on-disk frame stream
+(reconstructed by `commands::convolver::run` from `pvc_io`'s
+already-correct per-channel frame lists, since this bug only makes sense
+against the real byte layout) - after which the same golden case matched
+to within a single 16-bit quantization step (`3.0517578125e-05`,
+`1/32768`) end to end.
+
+That same golden case's tolerance is `sample` (absolute), not `spectral`
+(relative dB) like most other oscillator-bank-adjacent cases in this
+repo: the naive (non-complex) multiply concentrates most of the output's
+energy in a handful of blocks and leaves long, physically real
+near-silent stretches elsewhere (confirmed sensible, not an artifact -
+a fixed 440Hz tone and a continuously-sweeping filter only produce
+substantial naive-multiply energy where their spectra briefly coincide).
+A relative-dB comparison blows up from ordinary 16-bit quantization alone
+in those stretches even when the absolute difference is one LSB; `sample`
+tolerance doesn't have that failure mode.
+
+Two things that looked exactly like bugs on first read and were
+double-checked against the real binary before being written up as such
+- both turned out to be real, correct behavior, not new findings:
+`makeInterpolatedFilterFrame`'s own comments label `channel[i-1]` as
+"FREQ" and `channel[i]` as "AMP" (the *opposite* of the amp-even/freq-odd
+convention used everywhere else in this codebase) - but since
+`filtfprop` is a separately-established, already-oracle-verified `int`-
+truncation bug (`crate::timenav::interpolate_frame`'s own doc comment:
+"this does not actually interpolate"), both of that function's
+assignments reduce to a verbatim copy of `F_lower`'s corresponding
+value regardless of the label, so the mislabeling has zero effect on
+output - not worth an independent finding of its own. And `RIfindpeak()`
+takes no absolute value and clamps nothing - a real/imaginary buffer
+that's entirely negative would report its least-negative value as "the
+peak," which looked like an oversight until confirmed (by reading the
+call site) that the result only ever feeds a reciprocal normalization
+factor, where the sign works out the same regardless.
+
+**Takeaway:** matching duration, peak amplitude, and frame count while
+still failing badly is a strong signal the bug is in *which* data is
+being processed, not in the DSP math applied to it - worth reaching for
+an isolating test (a fixed pan setting that zeroes out everything but
+one code path) before re-deriving formulas that already checked out
+against the source. And when a formula-level read finds nothing wrong
+but the oracle still disagrees, patching a debug build of the real
+binary to dump intermediate state directly (as `dumptwarp.c` already
+established a precedent for) is worth the setup cost - this bug was
+never going to be found by reading `makeInterpolatedFilterFrame.c` in
+isolation, since the function itself is correct; the bug is entirely in
+one call site passing the wrong variable, four files away.

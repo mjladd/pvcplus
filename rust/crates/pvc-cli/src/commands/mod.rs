@@ -2,6 +2,7 @@ pub mod analyze;
 pub mod centroid;
 pub mod compand;
 pub mod convert_units;
+pub mod convolver;
 pub mod denoise;
 pub mod envelope;
 pub mod filter;

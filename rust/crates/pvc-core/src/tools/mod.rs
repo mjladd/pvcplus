@@ -2,6 +2,7 @@ pub mod analyze;
 pub mod centroid;
 pub mod chordresponsemaker;
 pub mod compander;
+pub mod convolver;
 pub mod envelope;
 pub mod filter;
 pub mod filtresponsemaker;
