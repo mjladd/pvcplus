@@ -2269,3 +2269,128 @@ call sites pass the right argument). The check that actually catches this
 is per-call-site: read what every shared function is passed at *this*
 file's own call, not just "does this look like the sibling's version of
 the same call."
+
+## `pvc ratechanger`: a real, verified heap-buffer-overflow in the tool's own default configuration
+
+`ratechanger.c` is a genuinely different shape of tool from everything
+ported so far in this phase: it reads raw audio directly (no `.pva`
+analysis file, no FFT anywhere in it) and resamples it at a possibly
+time-varying playback rate, via one of three per-sample synthesis
+methods - windowed-sinc summation, sample-and-hold/decimation, or linear
+interpolation. It also has its own time-management machinery
+(`setUpTimeManagementValues`/`advanceToNextDataTimePoint`/
+`makeBoundaries`), confirmed by reading both files in full to be
+genuinely distinct from `twarp`/`convolver`'s shared
+`findFilterTimeAndConstrainByWindow`-based navigator (`crate::timenav`) -
+neither function name appears in the other file, and `ratechanger.c` has
+no wrap/fold/clip/onset-release machinery at all, just a hard stop when
+the time position exits its window or the output duration is reached.
+
+**The headline finding: the tool's own default flags crash it.** Reading
+`sumSincFunctions`'s table-lookup path raised a question worth checking
+before trusting it: the lookup table (`halfSincLookupTable`) is sized as
+`10 + floor(isr * sincTruncationXinSeconds) * PIinterpolationPoints`
+index units, but the per-sample lookup index derives from `x = |dataTpt *
+isr - n|`, where `n` ranges out to `xBegin`/`xEnd` - each of which pads
+the *exact* truncation width by an explicit `± 0.5` sample for rounding.
+That's up to a full extra sample's worth of index range (`100` units at
+the default `PIinterpolationPoints = 100`) against a table whose only
+safety margin is a flat `10` index units (`0.1` samples' worth) - nowhere
+close. Rather than trust the arithmetic alone, this was checked against
+the real binary: an ASan build of `ratechanger.c` (via this project's own
+pinned Docker image, `cmake -DCMAKE_C_FLAGS="-fsanitize=address -g
+-O0"`), run with no flags beyond an input and a pre-existing output file,
+crashed with a `heap-buffer-overflow` at `ratechanger.c:1515` on the
+*very first output sample*. A plain (non-ASan) release build of the same
+binary doesn't crash - it silently reads whatever heap-adjacent bytes an
+ordinary allocator happens to place there and keeps going, which is
+exactly why this class of bug is easy to ship unnoticed: the tool
+"works," prints plausible-looking RMS/peak stats, and produces a
+complete, playable output file, all while quietly folding undefined
+memory contents into a handful of samples per file. This is real
+undefined behavior in the shipped tool, not a hypothetical from reading
+the arithmetic in isolation, and it's present in the tool's *default*
+configuration (`-X0`, sinc synthesis; `-t1`, table lookup on - the
+combination anyone gets by not passing either flag at all).
+
+Since the C's own behavior past its buffer boundary is undefined (an
+implementation detail of a specific allocator on a specific run, not a
+deterministic value), there's nothing meaningful to reproduce here.
+`pvc_core::tools::ratechanger::sum_sinc_functions` clamps the lookup
+index to the table's own bounds instead - safe, and the closest available
+approximation to "whatever the real tool was already doing, minus the
+memory-safety bug." The golden cases for this tool deliberately avoid the
+table-lookup default entirely (`-t0`, the math/`sin`/`cos` path, which
+has no such bug) so they can compare against a real, non-crashing oracle
+run; the default table-lookup path is exercised only by this port's own
+Rust unit tests (which can't crash, by construction), not by a golden
+case, since there is no working oracle output to compare it against.
+
+**A general N-layer crossfade system that's never actually
+multi-layer.** `ratechanger.c` carries `layerMode`/`layerDataTpt`/
+`layerRiseTimeDur`/`layerHoldTimeDur`/`layerFallTimeDur` arrays and a
+per-layer rise/hold/fall ramp loop, but `main()` always hardcodes
+`numberOfLayers = 1` with both rise and fall durations at `0` and hold
+spanning the entire output duration - so the single layer is in `HOLD`
+mode (`rampValue == 1.0`) for the tool's entire run, every time, and no
+CLI flag exposes a second layer. `layerDataTpt[0]` also turns out to
+receive the exact same per-frame `increment` as the shared `dataTpt`
+local (both seeded identically in `setUpTimeManagementValues`), so the
+two are always numerically identical - the "per-layer" position is just
+`dataTpt` wearing an extra array index. This port drops the dead layer
+loop and resamples directly from the shared time position; not a
+behavioral simplification, since the general machinery could never
+produce anything else through the tool's own CLI surface.
+
+**A real, narrow precision quirk between three sibling functions,
+reproduced faithfully.** `sumSincFunctions` and `linearlyInterpolate`
+both declare their own time-position parameter `double dataTpt`;
+`holdSampleOrDecimate` declares the same parameter `float dataTpt`. Since
+all three are called with the same `double` local at their call site,
+`-X1` (sample-and-hold/decimate, one of the tool's own aliasing-demo
+modes per its `usage()` text) silently loses precision on its time
+position that the other two modes keep. Modeled by giving
+`hold_sample_or_decimate` an `f32` parameter where its two siblings take
+`f64`, with the narrowing applied at the call site in
+`synthesize_channel` rather than folded into a shared helper - the three
+functions' own signatures disagree, so the Rust port's function
+signatures disagree too.
+
+**Dead `crack()` flags**, confirmed by cross-referencing the parser's own
+accept string against every `case` in the `switch`: `c`, `f`, `F`, `g`,
+`i`, `Q`, `w`, `T`, `Y` are all accepted but have no handler. Not exposed
+as `pvc ratechanger` flags - the same "accepted letter, no case"
+pattern already found in several earlier tools this phase (`ring.c`'s
+`master_dBgain`, `compander.c`'s `-W`/`-s`/`-h`).
+
+**Window-boundary defaulting only ever touches a table's first
+breakpoint.** `main()` defaults `-b`/`-e` exactly once, before any
+per-frame evaluation, by mutating `analysisDatawinlow.A[0]`/
+`analysisDatawinhi.A[0]` in place - the same array slot a constant
+control function's value lives in, but only the *first* breakpoint of a
+genuine multi-point table. Modeled as
+`RatechangerParams::resolve_window_defaults`, called once by the CLI
+layer before any resampling starts, including the obscure
+table-truncation edge case rather than only handling the common constant
+case.
+
+Golden coverage: three cases (`sinc_no_table`, `hold_decimate_rate_change`,
+`linear_interp_slow_rate`), one per synthesis mode, each with `--duration`
+fixed explicitly so both sides skip the output-duration convergence
+search (`resolve_output_duration` has its own dedicated Rust unit test
+instead - bit-exact agreement on a 100-attempt floating-point convergence
+loop's own frame count is a much higher bar than a sample-tolerance
+golden case is built for). All three matched the real oracle to a single
+16-bit quantization step (`1/32768`) on the first attempt once the
+above was accounted for.
+
+**Takeaway:** this tool's own worst bug wasn't found by reading a formula
+and noticing it looked wrong - the arithmetic looked plausible enough on
+a first read that it was worth a second look specifically *because* the
+table's safety margin (`10` index units) was suspiciously small next to
+the range the surrounding rounding math could produce (`100` units). The
+lesson generalizes past this one tool: a fixed-size lookup table fed by
+index arithmetic that includes an explicit rounding pad is worth checking
+against its own worst case, not just its typical case, and when the
+arithmetic alone doesn't settle it, an ASan build of the real binary
+settles it in minutes.

@@ -19,6 +19,7 @@ pub mod noisefilter;
 pub mod peakformant;
 pub mod pitchtracker;
 pub mod pv;
+pub mod ratechanger;
 pub mod ring;
 pub mod ringfilter;
 pub mod ringtvfilter;

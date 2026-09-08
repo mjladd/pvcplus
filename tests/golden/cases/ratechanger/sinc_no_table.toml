@@ -1,0 +1,10 @@
+tool = "ratechanger"
+input = "sine440_2s_44k.wav"
+description = "ratechanger: windowed-sinc synthesis (math path, table lookup off) at unity rate"
+legacy_steps = [
+    "cp {input} {output}",
+    "ratechanger -X0 -t0 -d1.0 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Table lookup (-t1, the tool's own default) is deliberately NOT exercised here: it crashes the real C oracle outright, even on this same input - see pvc-core::tools::ratechanger's own doc comment on the verified heap-buffer-overflow in sumSincFunctions's table path, confirmed under ASan at ratechanger.c:1515 on the very first output sample of an ordinary default-flags run. -t0 selects the math (sin/cos) sinc path instead, which has no such bug, so this case exercises the resampling arithmetic itself. -d1.0 fixes the output duration explicitly (no -D) so both sides skip the iterative output-duration convergence search entirely - pvc_core::tools::ratechanger::resolve_output_duration is covered separately by its own Rust unit test rather than by a sample-exact golden case, since bit-exact agreement on a 100-attempt floating-point convergence loop's own frame count is a much higher bar than this project's golden harness is set up to chase. Verified directly against a freshly-recorded oracle: max absolute per-sample difference is exactly 1/32768 (one 16-bit quantization step)."
