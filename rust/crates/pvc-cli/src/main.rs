@@ -92,5 +92,7 @@ fn main() -> anyhow::Result<()> {
         Command::Convolver(args) => commands::convolver::run(&args),
 
         Command::Delayfilter(args) => commands::delayfilter::run(&args),
+
+        Command::Filtdeviator(args) => commands::filtdeviator::run(&args),
     }
 }
