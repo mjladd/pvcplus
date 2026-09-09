@@ -1,7 +1,7 @@
 //! Ports `roomresponsemaker.c` (9318 lines, the largest and most
 //! structurally distinct tool in this project): a recursive image-source
 //! polygonal-room acoustics engine, not a phase-vocoder filter/resynthesis
-//! tool like every other Phase 5 tool. **This module is now through Phase 3
+//! tool like every other Phase 5 tool. **This module is now through Phase 4
 //! of a multi-phase port.**
 //!
 //! **Phase 1** covered the room/speaker/listener geometry layer: room
@@ -33,27 +33,44 @@
 //! `makePreEchoValues()`, a small piece of setup math both the reflection
 //! and (out of scope here) direct-sound pulse paths depend on.
 //!
-//! **What Phase 3 deliberately does *not* cover, and why**: reading
-//! `writeReflectionPulsesIntoImpulseResponse()` in full (lines ~4404-5062)
-//! showed that the overwhelming majority of that function - everything
-//! feeding `impulseResponseNow` before the gain computed here ever gets
-//! multiplied onto it - is a wall/reflection-order impulse-response *file*
-//! cache-and-convolve engine (`testSequence`/`recallIR`/`addToIRfileCodes`/
-//! `convolveTwoArrays`/`makeReflectionOrderImpulseResponseNow`/the
-//! `filterAndNormalize*` family), not distance-driven synthetic pulse
-//! placement as the function's own name suggests. That engine reads actual
-//! wall/reflection-order impulse-response audio files, is a substantial and
-//! distinct later phase on its own, and is not started here.
-//! `writeDirectSourcePulsesIntoImpulseResponse()` and its whole
-//! speaker-dispersion/source-threshold-proximity dependency chain
+//! **Phase 4** (this update) covers the *pure signal-processing* pieces of
+//! the wall/reflection-order impulse-response engine Phase 3 identified but
+//! deferred: [`convolve_two_arrays`] (`convolveTwoArrays`),
+//! [`crop_end_for_silence`]/[`crop_ir_data_end_for_silence`]
+//! (`cropEndForSilence`/`cropIR_DataEndForSilence`), [`find_peak_amp`],
+//! [`filter_fft`]/[`filter_audio_array`] (`filterFFT`/`filterAudioArray`),
+//! [`smooth_release_of_cropped_end`], the wall-IR-sequence selection inside
+//! `createAndReorderWallReflectionSequence()`
+//! ([`wall_sequence_for_reflection`], [`compare_wall_sequences`],
+//! [`select_and_reorder_wall_reflection_sequences`]), and
+//! [`average_reflection_order_delay_times`]. Everything here operates on
+//! plain slices/`Vec`s and already-available [`ReflectionPath`] data - no
+//! file I/O.
+//!
+//! **What Phase 4 deliberately does *not* cover, and why**: the actual
+//! wall/reflection-order impulse-response *file* cache-and-convolve engine,
+//! namely `readInWallImpulseResponses`/`readInReflectionOrderImpulseResponses`,
+//! `recallIR`/`addToIRfileCodes` (the file-based memoization these
+//! functions' own callers use `compare_wall_sequences`'s sort order to
+//! drive), `filterAndNormalizeImpulseResponseNow`/`filterAndNormalize*`
+//! (the very code this phase's finding 14 says needs to renormalize
+//! [`convolve_two_arrays`]'s `1/N`-scaled output), and `getWallImpulseResponseChannelAssignments`/
+//! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`
+//! (all three genuinely file-driven, `fopen`/`fscanf` in the C, unlike
+//! everything else read for this phase), is still not started; it's real
+//! file I/O and belongs with `pvc-cli`/`pvc-io`. `makeSpaceReflectionCoordinates`
+//! is pure geometry with no I/O, but its only consumer
+//! (`reflectionSoundPathCoordinates`, confirmed via its single call site at
+//! line ~3119 inside `mirrorPolygonCoordinatesAroundAllSides()`) is
+//! plot-file output, not audio math - deferred to whichever later phase
+//! handles plotting, alongside `writeDirectSourcePulsesIntoImpulseResponse()`
+//! and its speaker-dispersion/source-threshold-proximity dependency chain
 //! (`makeSourceToSpeakerDistancesAndAngles`,
 //! `findSourceToSpeakerAngleDifferencesFromSourceToListenerAngle`,
 //! `makeSourceToThresholdProximityProportion`/`Distance`,
-//! `isSourceBehindOrInFrontOfSpeakerThreshold`) remains fully deferred, same
-//! as Phase 2 left it - direct-sound pulses are a distinct concern from the
-//! reflection math this phase covers. Plotting-file output and CLI wiring
-//! are also still not started, so `crack()` flag cross-referencing is still
-//! deferred to that later phase, same as Phases 1-2.
+//! `isSourceBehindOrInFrontOfSpeakerThreshold`), both still deferred exactly
+//! as Phases 2-3 left them. CLI wiring is also still not started, so
+//! `crack()` flag cross-referencing remains deferred to that later phase.
 //!
 //! **`pvc-core` does no I/O of its own** (matching `tools::chordmapperplus`'s
 //! established convention) - every function here takes already-read file
@@ -1615,6 +1632,479 @@ pub fn reflection_pulse_passes_inclusion_threshold(
     amp >= db_to_amp.convert(impulse_inclusion_threshold_decibels)
 }
 
+// ---------------------------------------------------------------------
+// Phase 4: wall/reflection-order impulse-response signal-processing math
+// ---------------------------------------------------------------------
+
+/// Ports `convolveTwoArrays()`'s actual signal-processing algorithm (block
+/// overlap-add FFT convolution via [`crate::fft::rfft`], whose packed
+/// layout this function relies on being bit-for-bit the C's own `rfft` -
+/// see `fft.rs`'s module doc comment): the full linear convolution of
+/// `array0` (treated as the fixed "filter", `Lh0` taps) against `array1`
+/// (the "signal", processed in `Lh0`-sample blocks), returning a buffer of
+/// length `array0.len() + array1.len() - 1`. The C's own memory
+/// caching/reuse across repeated calls (`previousN`/`convolveTwoArraysReset`
+/// static state, all pure allocation bookkeeping) is not reproduced - this
+/// port allocates fresh scratch space per call, which is numerically
+/// identical.
+///
+/// **Finding 13: the raw result is scaled by `1 / N`** relative to the
+/// mathematically "true" linear convolution of `array0`/`array1`, where
+/// `N = (2 * array0.len() - 1).next_power_of_two()` is this call's own
+/// internal per-block FFT size. This isn't a port bug - it falls straight
+/// out of `crate::fft::rfft`'s own forward-transform normalization
+/// convention (confirmed by `fft.rs`'s own `impulse_has_flat_magnitude_spectrum`/
+/// `forward_then_inverse_round_trips` tests: a bare forward+inverse round
+/// trip is unity-gain, but multiplying *two* forward-transformed spectra
+/// together before a single inverse leaves one un-cancelled factor of the
+/// forward transform's own `1/N` scale in the result), and the real C's
+/// own `rfft.c` has the identical convention - so the real
+/// `convolveTwoArrays()` produces exactly this same scaled-down result.
+/// Whatever later phase actually calls this is expected to renormalize
+/// (most likely `filterAndNormalizeImpulseResponseNow()`/
+/// `filterAndNormalizeWallImpulseResponses()`, both still deferred),
+/// matching the precedent already established in `tools::impulseresponse`
+/// (whose own explicit post-`rfft` peak-normalization step exists for the
+/// same underlying reason: raw `rfft` output isn't unity-scaled).
+///
+/// **Finding 14, a genuine algorithmic bug (not a port artifact) - confirmed
+/// by direct derivation and a hand-checked test case, faithfully
+/// reproduced**: whenever `array1.len()` is *not* an exact multiple of the
+/// block size `array0.len()` (`Lh0`), the final block is "under-full"
+/// (`sampsToRead < Lh0`), and this algorithm silently drops
+/// `Lh0 - sampsToRead` samples of otherwise-correct convolution data from
+/// the output's tail, while also mis-placing the final overlap-add carry
+/// (`BthisB`) at the wrong global offset. The carry is captured from each
+/// block's own *local* indices `[Lh0, Lh0 + Lh0m1)` - correct only when
+/// every block reads a full `Lh0` real samples - but the flush step then
+/// writes that carry starting at `array1Index` (the real, possibly-short
+/// count of samples actually consumed), not at `block_start + Lh0`. The
+/// local convolution values at indices `[sampsToRead, Lh0)` - which *are*
+/// valid, correct output for the corresponding global positions (a
+/// zero-padded FIR block's filter taps still reach back into real input
+/// samples there) - are read by neither the per-block output-copy loop
+/// (bounded by `sampsToRead`) nor the carry capture (starting at `Lh0`),
+/// and are lost outright; every value from that point on is then shifted
+/// one slot earlier than it should be. Since `array1.len()` being an exact
+/// multiple of `array0.len()` is the unusual case for real audio-length
+/// inputs, this bug is expected to fire on almost every real call to the
+/// real C's own `convolveTwoArrays()` where the two arrays' lengths don't
+/// happen to divide evenly - corrupting the last `Lh0` or more samples of
+/// its output. Reproduced exactly (not worked around), since this port's
+/// purpose is to match the real, verifiable-by-oracle C - `pvc-core`
+/// callers of this function should be aware the last several samples of
+/// its output can be wrong whenever `array1.len() % array0.len() != 0`.
+pub fn convolve_two_arrays(array0: &[f32], array1: &[f32]) -> Vec<f32> {
+    let lh0 = array0.len();
+    let lh1 = array1.len();
+    debug_assert!(lh0 > 0 && lh1 > 0, "both arrays must be non-empty");
+
+    let l0 = 2 * lh0 - 1;
+    let n = l0.next_power_of_two();
+    let n2 = n >> 1;
+    let lh0m1 = lh0 - 1;
+
+    let mut cv_buffer = vec![0.0f32; n];
+    cv_buffer[..lh0].copy_from_slice(array0);
+    crate::fft::rfft(&mut cv_buffer, n2, true);
+
+    let mut b_this_b = vec![0.0f32; lh0m1];
+    let mut output = vec![0.0f32; lh1 + lh0m1];
+
+    let mut array1_index = 0usize;
+    while array1_index < lh1 {
+        let mut cv_in_buffer = vec![0.0f32; n];
+        let samps_to_read = (lh1 - array1_index).min(lh0);
+        cv_in_buffer[..samps_to_read]
+            .copy_from_slice(&array1[array1_index..array1_index + samps_to_read]);
+
+        crate::fft::rfft(&mut cv_in_buffer, n2, true);
+
+        let mut cv_out_buffer = vec![0.0f32; n];
+        cv_out_buffer[0] = cv_in_buffer[0] * cv_buffer[0];
+        cv_out_buffer[1] = cv_in_buffer[1] * cv_buffer[1];
+        let mut i = 2usize;
+        while i < n {
+            let j = i + 1;
+            let real = (cv_in_buffer[i] * cv_buffer[i]) - (cv_in_buffer[j] * cv_buffer[j]);
+            let imag = (cv_in_buffer[i] * cv_buffer[j]) + (cv_in_buffer[j] * cv_buffer[i]);
+            cv_out_buffer[i] = real;
+            cv_out_buffer[j] = imag;
+            i += 2;
+        }
+
+        crate::fft::rfft(&mut cv_out_buffer, n2, false);
+
+        for i in 0..lh0m1 {
+            cv_out_buffer[i] += b_this_b[i];
+        }
+        b_this_b.copy_from_slice(&cv_out_buffer[lh0..lh0 + lh0m1]);
+
+        output[array1_index..array1_index + samps_to_read]
+            .copy_from_slice(&cv_out_buffer[..samps_to_read]);
+        array1_index += samps_to_read;
+    }
+
+    output[array1_index..array1_index + lh0m1].copy_from_slice(&b_this_b);
+    output
+}
+
+/// Ports `cropEndForSilence()`'s actual index math: the length `array`
+/// would be trimmed to after dropping every trailing sample below
+/// `threshold`. The C's two return paths (`index + 1` when cropping
+/// happened, `sameSize` when the last sample already meets `threshold`)
+/// both reduce to the same `index + 1` value, so this port has only one
+/// path; the C's own `shortenMemory`-gated realloc is pure memory
+/// bookkeeping, not reproduced (matching this module's established
+/// convention of returning lengths/values rather than replicating C's
+/// alloc/free calls). **Not reproduced**: the C's boundary condition
+/// (`(array[index] < threshold) && (index >= 0)`) checks the array
+/// element *before* the bounds guard, so an empty `array` would read one
+/// element past the start in the C - undefined behaviour, not a value-level
+/// bug, so this port simply guards `index >= 0` first instead (returning
+/// `0` for an empty array, the well-defined intent).
+pub fn crop_end_for_silence(array: &[f32], threshold: f32) -> usize {
+    if array.is_empty() {
+        return 0;
+    }
+    let mut index = array.len() as isize - 1;
+    while index >= 0 && array[index as usize] < threshold {
+        index -= 1;
+    }
+    (index + 1) as usize
+}
+
+/// Ports `cropIR_DataEndForSilence()`: like [`crop_end_for_silence`], but
+/// returns the *last-loud* sample index itself (no `+ 1`) plus a release
+/// tail of `output_sample_rate * end_crop_release_time_seconds` samples,
+/// capped at `array.len()` - a deliberately different contract from
+/// [`crop_end_for_silence`] (this one exists to leave room for
+/// [`smooth_release_of_cropped_end`]'s fade, not to crop tight), not a
+/// bug despite the near-identical name/purpose. Returns `i64` rather than
+/// `usize` because the C's own clamp is one-sided (only an *upper* bound
+/// against `array.len()`): a fully-silent `array` with a release time too
+/// short to push the sum positive can make the C return a small negative
+/// `int`, which this port preserves rather than silently clamping to `0`.
+pub fn crop_ir_data_end_for_silence(
+    array: &[f32],
+    threshold: f32,
+    output_sample_rate: f32,
+    end_crop_release_time_seconds: f32,
+) -> i64 {
+    let mut index: i64 = array.len() as i64 - 1;
+    while index >= 0 && array[index as usize] < threshold {
+        index -= 1;
+    }
+    index += (output_sample_rate * end_crop_release_time_seconds) as i64;
+    index.min(array.len() as i64)
+}
+
+/// Ports `findPeakAmp()`. The C's own "peak amp found is 0" `stderr`
+/// warning on an all-zero (or empty) `array` is diagnostic-only, not
+/// reproduced (matching this project's convention of not porting `stderr`
+/// logging - see e.g. `tools::spectrummapper`'s own findings).
+pub fn find_peak_amp(array: &[f32]) -> f32 {
+    array.iter().fold(0.0f32, |peak, &x| peak.max(x.abs()))
+}
+
+/// Ports `filterFFT()`'s per-bin low/high dB-per-octave rolloff shaping of
+/// an already-`rfft`-forward-transformed buffer (`fft_array`, packed per
+/// `crate::fft`'s layout: slots `[0]`/`[1]` hold DC/Nyquist, every other
+/// pair is a `(re, im)` bin). `n` is the transform's own real-sample size
+/// (`2 * n2`); the loop below walks `n / 2` "bins" via `fundamental`.
+///
+/// **Finding 15, confirmed by the `rfft` packing** (not present in a
+/// standard bin-per-slot FFT layout): the loop's `k == 0` iteration reads
+/// slots `[0]`/`[1]`, which the packed layout uses for *DC and Nyquist
+/// together*, not for bin 0's own (real, imaginary) pair - bin 0 has no
+/// imaginary part, so the layout reuses slot `[1]` for the *Nyquist* bin's
+/// (also purely real) amplitude instead. Whenever `low_freq > 0.` (the
+/// tool's own common case), `binFreq(0) = 0. < low_freq` is always true,
+/// and the `k == 0` branch hard-zeros *both* slots - meaning the Nyquist
+/// bin's amplitude is unconditionally destroyed by the *low*-frequency
+/// rolloff, regardless of `high_freq`, and is never evaluated against the
+/// `high_freq`/`high_rolloff` branch at all (no other `k` value ever maps
+/// to slot `[1]`). Reproduced exactly here - not a guess, confirmed by
+/// tracing which slots each `k` actually touches against `fft.rs`'s
+/// documented packing. This is now the *second* independent confirmation
+/// of this exact rfft-packing gotcha in this codebase: `tools::irconvolver`'s
+/// own `apply_bandpass_rolloff` (its module doc comment) already documents
+/// the identical DC/Nyquist-slot-sharing asymmetry in its own,
+/// differently-shaped rolloff loop.
+/// Rolloff shape shared by [`filter_fft`]/[`filter_audio_array`] - the C's
+/// own `lowFreq`/`highFreq`/`lowRolloffInDBperOctave`/`highRolloffInDBperOctave`/
+/// `compoundLevels` parameter group, bundled to keep both functions' own
+/// argument count reasonable.
+#[derive(Debug, Clone, Copy)]
+pub struct BandpassRolloff {
+    pub low_freq: f32,
+    pub high_freq: f32,
+    pub low_rolloff_db_per_octave: f32,
+    pub high_rolloff_db_per_octave: f32,
+    pub compound_levels: i32,
+}
+
+pub fn filter_fft(
+    fft_array: &mut [f32],
+    n: usize,
+    fundamental: f32,
+    rolloff: &BandpassRolloff,
+    db_to_amp: &crate::units::DbToAmp,
+) {
+    for k in 0..(n / 2) {
+        let i = 2 * k;
+        let j = i + 1;
+        let bin_freq = k as f32 * fundamental;
+
+        if bin_freq < rolloff.low_freq {
+            if k == 0 {
+                fft_array[i] = 0.0;
+                fft_array[j] = 0.0;
+            } else {
+                let rolloff_db = ((crate::response::hz_to_midi(rolloff.low_freq)
+                    - crate::response::hz_to_midi(bin_freq))
+                    / 12.0)
+                    * rolloff.low_rolloff_db_per_octave;
+                let rolloff_amp = db_to_amp.convert(rolloff_db);
+                for _ in 0..rolloff.compound_levels.max(0) {
+                    fft_array[i] *= rolloff_amp;
+                    fft_array[j] *= rolloff_amp;
+                }
+            }
+        } else if bin_freq > rolloff.high_freq {
+            let rolloff_db = ((crate::response::hz_to_midi(bin_freq)
+                - crate::response::hz_to_midi(rolloff.high_freq))
+                / 12.0)
+                * rolloff.high_rolloff_db_per_octave;
+            let rolloff_amp = db_to_amp.convert(rolloff_db);
+            for _ in 0..rolloff.compound_levels.max(0) {
+                fft_array[i] *= rolloff_amp;
+                fft_array[j] *= rolloff_amp;
+            }
+        }
+    }
+}
+
+/// Ports `filterAudioArray()`: zero-pads `signal` to the next power of two
+/// past `2 * signal.len() - 1`, forward-`rfft`s it, applies [`filter_fft`],
+/// then inverse-`rfft`s - returning the *full* padded-length buffer.
+///
+/// **Finding 16**: the C writes its own zero-padded, now-N-samples-long
+/// result back into `audioArrayForFilter` but leaves
+/// `lengthOfAudioArrayForFilter` (the length every caller actually reads)
+/// at its original, pre-filter value - the line that would update it
+/// (`lengthOfAudioArrayForFilter = N`) is commented out in the source.
+/// Every real caller therefore only ever reads the first
+/// `signal.len()` samples of this function's output and silently discards
+/// the rest - including whatever time-domain "ringing" tail a steep
+/// rolloff spread past the original length. This port returns the full
+/// `N`-sample buffer rather than guessing at the truncation itself; a
+/// later phase reproducing real oracle output must truncate this
+/// function's return value back to `signal.len()` to match.
+pub fn filter_audio_array(
+    signal: &[f32],
+    sample_rate: f32,
+    rolloff: &BandpassRolloff,
+    db_to_amp: &crate::units::DbToAmp,
+) -> Vec<f32> {
+    debug_assert!(!signal.is_empty());
+    let l = 2 * signal.len() - 1;
+    let n = l.next_power_of_two();
+    let n2 = n >> 1;
+    let fundamental = sample_rate / n as f32;
+
+    let mut buf = vec![0.0f32; n];
+    buf[..signal.len()].copy_from_slice(signal);
+
+    crate::fft::rfft(&mut buf, n2, true);
+    filter_fft(&mut buf, n, fundamental, rolloff, db_to_amp);
+    crate::fft::rfft(&mut buf, n2, false);
+
+    buf
+}
+
+/// Ports `smoothReleaseOfCroppedEnd()`: fades the last portion of `array`
+/// (a release-time proportion of its own duration, capped at 33%) linearly
+/// to silence via [`crate::warp::curve`] (`curve(1., 0., n, 0.)`, the same
+/// primitive `tools::spectwarper` already reuses).
+///
+/// **Finding 17, faithfully reproduced**: when the computed fade length
+/// rounds to exactly `1` sample, the C's own `(float) i / (float)
+/// (numSamples - 1)` divides `0. / 0.` - `NaN`, not `0.` - so that single
+/// sample is multiplied by `NaN` (corrupted) rather than left alone or
+/// silenced. This port does not special-case it away.
+pub fn smooth_release_of_cropped_end(
+    array: &mut [f32],
+    release_time_seconds: f32,
+    sample_rate: f32,
+) {
+    let size = array.len();
+    let dur = size as f32 / sample_rate;
+    let release_time_proportion = release_time_seconds / dur;
+
+    let num_samples = if release_time_proportion > 0.33 {
+        (0.5 + size as f32 * 0.33) as i64
+    } else {
+        (0.5 + size as f32 * release_time_proportion) as i64
+    };
+
+    for i in 0..num_samples {
+        let j = size as i64 - num_samples + i;
+        if j < 0 || j as usize >= size {
+            continue;
+        }
+        let n = i as f32 / (num_samples - 1) as f32;
+        array[j as usize] *= crate::warp::curve(1.0, 0.0, n, 0.0);
+    }
+}
+
+/// Ports the wall-IR-sequence selection inside
+/// `createAndReorderWallReflectionSequence()` (lines ~7407-7449) - a
+/// *different* wall-count-based mode select from [`wall_gainscale_amplitude`]'s
+/// own (buggy, see finding 11): this one is the "correct" reference copy
+/// finding 11's write-up points to. Given one [`ReflectionPath`]'s own
+/// `mirror_wall_sequence` (last-to-first order), returns the subset of
+/// walls this reflection's *impulse-response file lookup* actually uses,
+/// in first-to-last physical bounce order, each index taken modulo
+/// `wall_num_input_channels` (mapping a wall number to an available IR
+/// input channel): `mode > 0` keeps the first `mode` walls (closest to the
+/// source), `mode < 0` keeps the last `mode.abs()` walls (closest to the
+/// speaker), `mode == 0` keeps every wall.
+pub fn wall_sequence_for_reflection(
+    mirror_wall_sequence_last_to_first: &[usize],
+    mode: i32,
+    wall_num_input_channels: usize,
+) -> Vec<usize> {
+    let order = mirror_wall_sequence_last_to_first.len();
+    debug_assert!(order > 0, "a reflection path always has order >= 1");
+    debug_assert!(wall_num_input_channels > 0);
+
+    let (start_n, num_walls) = if mode > 0 {
+        let num_walls = (mode as usize).min(order);
+        (order - 1, num_walls)
+    } else if mode < 0 {
+        let num_walls = (mode.unsigned_abs() as usize).min(order);
+        (num_walls - 1, num_walls)
+    } else {
+        (order - 1, order)
+    };
+
+    (0..num_walls)
+        .map(|i| mirror_wall_sequence_last_to_first[start_n - i] % wall_num_input_channels)
+        .collect()
+}
+
+/// Ports `isFirstSequenceGreaterLesserOrEqualToSecond()`'s comparison
+/// logic: compares `seq0`/`seq1` element-by-element up to `compare_length`
+/// entries, out-of-range entries (past each `Vec`'s own real length)
+/// treated as `0` - the first differing position decides the order (ties
+/// on that position resolved `>=` toward `Greater`); if every position
+/// through `compare_length` matches, the *longer* sequence sorts greater.
+///
+/// **Finding 19, not reproduced as-is**: the C always passes its own
+/// `highOrderLimit` as `compare_length`, relying on the shared backing
+/// array's out-of-range tail being `0` - true only because that array is
+/// `calloc`'d once, at start-up, and *never re-zeroed between calls*. A
+/// later reflection's shorter sequence can therefore read a stale,
+/// leftover value from an earlier (longer) sequence that previously
+/// occupied the same slot, not a real zero - a genuine cross-call memory-
+/// reuse hazard, not a fixed value-level bug (same class this project
+/// already declines to reproduce for uninitialized-default parameters,
+/// e.g. `tools::inharmonator`'s finding 2). This port always compares
+/// against a *virtual* zero-padding out to `compare_length`, matching the
+/// C's well-defined first-use behavior rather than its undefined
+/// memory-reuse hazard.
+pub fn compare_wall_sequences(
+    seq0: &[usize],
+    seq1: &[usize],
+    compare_length: usize,
+) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+
+    let at = |seq: &[usize], i: usize| -> usize { seq.get(i).copied().unwrap_or(0) };
+
+    for i in 0..compare_length {
+        let (a, b) = (at(seq0, i), at(seq1, i));
+        if a != b {
+            return if a >= b {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            };
+        }
+    }
+    seq0.len().cmp(&seq1.len())
+}
+
+/// Ports `createAndReorderWallReflectionSequence()`'s full per-channel
+/// flow: select every `reflections` entry whose own `order` falls within
+/// `[low_order_limit, high_order_limit]`, build each one's wall-IR
+/// sequence via [`wall_sequence_for_reflection`], then stable-sort the
+/// selected set via [`compare_wall_sequences`] (matching the C's own
+/// bubble sort, which - since it only ever swaps on a strict `Greater` -
+/// is itself stable; Rust's `sort_by` preserves the same relative order
+/// among ties). Each returned entry's `usize` is the reflection's own
+/// index into `reflections`, matching the C's own stored `thisReflection`
+/// pointer (later phases doing IR-file-cache lookups need it to trace a
+/// sorted sequence back to its originating reflection).
+///
+/// **Finding 18**: `sortSequence()` - a separate, simpler ascending-order
+/// bubble sort over a single flat array - is dead code (confirmed via
+/// `grep`: declared and defined, never called anywhere in the file) and
+/// is not ported.
+pub fn select_and_reorder_wall_reflection_sequences(
+    reflections: &[ReflectionPath],
+    mode: i32,
+    wall_num_input_channels: usize,
+    low_order_limit: usize,
+    high_order_limit: usize,
+) -> Vec<(usize, Vec<usize>)> {
+    let mut selected: Vec<(usize, Vec<usize>)> = reflections
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| r.order >= low_order_limit && r.order <= high_order_limit)
+        .map(|(i, r)| {
+            (
+                i,
+                wall_sequence_for_reflection(
+                    &r.mirror_wall_sequence,
+                    mode,
+                    wall_num_input_channels,
+                ),
+            )
+        })
+        .collect();
+
+    selected.sort_by(|a, b| compare_wall_sequences(&a.1, &b.1, high_order_limit));
+    selected
+}
+
+/// Ports `findAverageReflectionOrderDelayTimes()`: for each reflection
+/// order from `1` to `high_order_limit`, the mean [`ReflectionPath::time_seconds`]
+/// across every `reflections` entry of that order - index `0` of the
+/// returned `Vec` is order `1`, matching the C's own `orderAverageReflectionTimes[order - 1]`.
+/// An order with no reflections at all divides by zero, producing `NaN`
+/// (the C's own `stderr`-printed diagnostic behavior, faithfully
+/// reproduced via the same `0. / 0.` float division - not a crash, and
+/// this function is itself diagnostic-only in the C, feeding only a
+/// `stderr` printout, not further audio math).
+pub fn average_reflection_order_delay_times(
+    reflections: &[ReflectionPath],
+    high_order_limit: usize,
+) -> Vec<f32> {
+    (1..=high_order_limit)
+        .map(|order| {
+            let (sum, count) = reflections
+                .iter()
+                .filter(|r| r.order == order)
+                .fold((0.0f32, 0u32), |(sum, count), r| {
+                    (sum + r.time_seconds, count + 1)
+                });
+            sum / count as f32
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2230,5 +2720,320 @@ mod tests {
         // sound gain.
         let want = db_to_amp.convert(0.0).powi(3);
         assert!((got - want).abs() < 1e-5, "got {got}, want {want}");
+    }
+
+    // ---- Phase 4 ----
+
+    #[test]
+    fn convolve_two_arrays_matches_hand_computed_two_tap_kernel_scaled_by_1_over_n() {
+        // A 2-tap kernel [1, 0.5] convolved with an impulse train: linear
+        // FIR filtering, hand-verifiable up to convolve_two_arrays' own
+        // 1/N scale factor (see the function's doc comment / finding 13) -
+        // here Lh0=2, L0=3, N=next_power_of_two(3)=4.
+        let kernel = [1.0f32, 0.5];
+        let signal = [1.0f32, 0.0, 0.0, 1.0, 0.0, 0.0];
+        let out = convolve_two_arrays(&kernel, &signal);
+        assert_eq!(out.len(), kernel.len() + signal.len() - 1);
+        let true_convolution = [1.0, 0.5, 0.0, 1.0, 0.5, 0.0, 0.0];
+        let n = 4.0f32;
+        for (i, (&got, &true_v)) in out.iter().zip(true_convolution.iter()).enumerate() {
+            assert!(
+                (got - true_v / n).abs() < 1e-4,
+                "index {i}: got {got}, want {}",
+                true_v / n
+            );
+        }
+    }
+
+    #[test]
+    fn convolve_two_arrays_drops_and_misplaces_tail_samples_on_an_under_full_final_block() {
+        // Finding 14: a = [1,2,3] (Lh0=3), b = [0.5,-1,0.25,2,1] (Lh1=5).
+        // Block size is Lh0=3, so block 0 reads 3 real samples (full) and
+        // block 1 reads only 2 (5 - 3): an under-full final block. The
+        // true linear convolution (hand-computed) is:
+        //   [0.5, 0, -0.25, -0.5, 5.75, 8, 3]
+        // but true[5] (= 8) is never written anywhere - it falls in the
+        // gap between the under-full block's own sampsToRead(2) and the
+        // fixed carry-capture offset Lh0(3) - and the final flush then
+        // writes the *next* value (true[6] = 3) one slot too early, at
+        // global position 5 instead of 6, leaving position 6 as 0.
+        let a = [1.0f32, 2.0, 3.0];
+        let b = [0.5f32, -1.0, 0.25, 2.0, 1.0];
+        let out = convolve_two_arrays(&a, &b);
+        let n = (2 * a.len() - 1).next_power_of_two() as f32; // Lh0=3 -> L0=5 -> N=8
+
+        let true_convolution = [0.5, 0.0, -0.25, -0.5, 5.75, 8.0, 3.0];
+        let scaled: Vec<f32> = out.iter().map(|&v| v * n).collect();
+
+        // Positions 0-4 (untouched by the under-full block's own carry
+        // boundary) match the true convolution exactly.
+        for i in 0..5 {
+            assert!(
+                (scaled[i] - true_convolution[i]).abs() < 1e-3,
+                "index {i}: got {}, want {}",
+                scaled[i],
+                true_convolution[i]
+            );
+        }
+        // Position 5 should be true_convolution[5] (8.0) but instead holds
+        // true_convolution[6] (3.0) - shifted one slot early.
+        assert!((scaled[5] - 3.0).abs() < 1e-3, "got {}", scaled[5]);
+        // Position 6 should be true_convolution[6] (3.0) but is left at 0
+        // - the true value 8.0 is dropped entirely, never written.
+        assert!(scaled[6].abs() < 1e-3, "got {}", scaled[6]);
+    }
+
+    #[test]
+    fn crop_end_for_silence_trims_trailing_below_threshold_samples() {
+        let array = [1.0, 1.0, 0.5, 0.01, 0.0, 0.0];
+        assert_eq!(crop_end_for_silence(&array, 0.1), 3);
+    }
+
+    #[test]
+    fn crop_end_for_silence_keeps_full_length_when_last_sample_is_loud() {
+        let array = [0.0, 0.0, 1.0];
+        assert_eq!(crop_end_for_silence(&array, 0.1), 3);
+    }
+
+    #[test]
+    fn crop_end_for_silence_empty_array_returns_zero() {
+        assert_eq!(crop_end_for_silence(&[], 0.1), 0);
+    }
+
+    #[test]
+    fn crop_ir_data_end_for_silence_adds_release_tail_with_no_plus_one() {
+        // Last loud sample is index 1 (value 1.0); with 0 release time the
+        // C returns the raw last-loud index, not index+1.
+        let array = [0.0, 1.0, 0.0, 0.0, 0.0];
+        assert_eq!(crop_ir_data_end_for_silence(&array, 0.5, 10.0, 0.0), 1);
+    }
+
+    #[test]
+    fn crop_ir_data_end_for_silence_adds_sample_rate_scaled_release_time() {
+        let array = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        // last loud index 1, + (10 * 0.2) = 1 + 2 = 3
+        assert_eq!(crop_ir_data_end_for_silence(&array, 0.5, 10.0, 0.2), 3);
+    }
+
+    #[test]
+    fn crop_ir_data_end_for_silence_clamps_to_array_length_only_on_the_high_side() {
+        let array = [0.0, 1.0, 0.0];
+        assert_eq!(crop_ir_data_end_for_silence(&array, 0.5, 1000.0, 1.0), 3);
+    }
+
+    #[test]
+    fn find_peak_amp_finds_largest_absolute_value() {
+        assert_eq!(find_peak_amp(&[0.1, -5.0, 3.0, -2.0]), 5.0);
+        assert_eq!(find_peak_amp(&[]), 0.0);
+    }
+
+    #[test]
+    fn filter_fft_zeroes_dc_and_nyquist_together_below_low_freq() {
+        // Finding: k == 0 shares slots [0]/[1] with DC and Nyquist in the
+        // rfft packing, so a low-frequency rolloff with low_freq > 0 zeros
+        // both, regardless of high_freq.
+        let db_to_amp = crate::units::DbToAmp::new();
+        let mut fft_array = vec![1.0f32; 8]; // N = 8, N/2 = 4 bins
+        let rolloff = BandpassRolloff {
+            low_freq: 50.0,
+            high_freq: 1_000_000.0,
+            low_rolloff_db_per_octave: -96.0,
+            high_rolloff_db_per_octave: -96.0,
+            compound_levels: 1,
+        };
+        filter_fft(&mut fft_array, 8, 100.0, &rolloff, &db_to_amp);
+        assert_eq!(fft_array[0], 0.0, "DC should be zeroed (below low_freq)");
+        assert_eq!(
+            fft_array[1], 0.0,
+            "Nyquist shares slot [1] with DC in this packing, so it is zeroed too, \
+             even though high_freq is effectively infinite"
+        );
+    }
+
+    #[test]
+    fn filter_fft_leaves_in_band_bins_untouched() {
+        let db_to_amp = crate::units::DbToAmp::new();
+        let mut fft_array = vec![2.0f32; 8];
+        let rolloff = BandpassRolloff {
+            low_freq: 50.0,
+            high_freq: 1_000_000.0,
+            low_rolloff_db_per_octave: -96.0,
+            high_rolloff_db_per_octave: -96.0,
+            compound_levels: 1,
+        };
+        filter_fft(&mut fft_array, 8, 100.0, &rolloff, &db_to_amp);
+        // bin 1 (fundamental=100Hz => bin1=100Hz) is >= low_freq(50) and <= high_freq: untouched.
+        assert_eq!(fft_array[2], 2.0);
+        assert_eq!(fft_array[3], 2.0);
+    }
+
+    #[test]
+    fn filter_audio_array_returns_full_padded_length_not_original() {
+        let db_to_amp = crate::units::DbToAmp::new();
+        let signal = [1.0f32, 0.5, -0.5, 0.25, -0.25];
+        let rolloff = BandpassRolloff {
+            low_freq: 0.0,
+            high_freq: 1_000_000.0,
+            low_rolloff_db_per_octave: 0.0,
+            high_rolloff_db_per_octave: 0.0,
+            compound_levels: 1,
+        };
+        let out = filter_audio_array(&signal, 100.0, &rolloff, &db_to_amp);
+        // L = 2*5-1 = 9, N = next_power_of_two(9) = 16.
+        assert_eq!(out.len(), 16);
+    }
+
+    #[test]
+    fn smooth_release_of_cropped_end_fades_tail_to_zero() {
+        let mut array = vec![1.0f32; 100];
+        // release_time_seconds / (100/1000 = 0.1s duration) = 0.5 -> capped
+        // at 0.33 -> numSamples = round(100*0.33) = 33.
+        smooth_release_of_cropped_end(&mut array, 0.05, 1000.0);
+        assert!(
+            (array[array.len() - 1]).abs() < 1e-4,
+            "last sample should fade near 0"
+        );
+        assert_eq!(array[0], 1.0, "untouched head sample stays at 1.0");
+    }
+
+    #[test]
+    fn smooth_release_of_cropped_end_single_sample_fade_produces_nan() {
+        // A tiny release time on a short array can round numSamples down
+        // to exactly 1, at which point the C's own i/(numSamples-1) is
+        // 0./0. = NaN - faithfully reproduced, not special-cased away.
+        let mut array = vec![1.0f32; 4];
+        smooth_release_of_cropped_end(&mut array, 0.001, 1000.0);
+        assert!(array[array.len() - 1].is_nan());
+    }
+
+    #[test]
+    fn wall_sequence_for_reflection_mode_positive_keeps_first_walls_from_source() {
+        // last-to-first: index 0 = last bounce (near speaker) = wall 5,
+        // index 3 = first bounce (near source) = wall 2.
+        let seq = [5, 4, 3, 2];
+        let out = wall_sequence_for_reflection(&seq, 2, 100);
+        // mode=2: first 2 walls from the source side, in first-to-last order.
+        assert_eq!(out, vec![2, 3]);
+    }
+
+    #[test]
+    fn wall_sequence_for_reflection_mode_negative_keeps_last_walls_near_speaker() {
+        let seq = [5, 4, 3, 2];
+        let out = wall_sequence_for_reflection(&seq, -2, 100);
+        // mode=-2: last 2 walls near the speaker, in first-to-last order.
+        assert_eq!(out, vec![4, 5]);
+    }
+
+    #[test]
+    fn wall_sequence_for_reflection_mode_zero_keeps_all_walls_reversed() {
+        let seq = [5, 4, 3, 2];
+        let out = wall_sequence_for_reflection(&seq, 0, 100);
+        assert_eq!(out, vec![2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn wall_sequence_for_reflection_applies_channel_modulo() {
+        let seq = [7, 3];
+        let out = wall_sequence_for_reflection(&seq, 0, 4);
+        assert_eq!(out, vec![3, 3]); // 3 % 4 == 3, 7 % 4 == 3
+    }
+
+    #[test]
+    fn compare_wall_sequences_orders_by_first_difference() {
+        assert_eq!(
+            compare_wall_sequences(&[1, 2], &[1, 3], 2),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_wall_sequences(&[1, 5], &[1, 3], 2),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            compare_wall_sequences(&[1, 2], &[1, 2], 2),
+            std::cmp::Ordering::Equal
+        );
+    }
+
+    #[test]
+    fn compare_wall_sequences_treats_missing_tail_as_zero() {
+        // seq0 is shorter; positions past its length compare as 0, so
+        // every position through compare_length ties - the final
+        // length-based tie-break then makes the shorter one Less.
+        assert_eq!(
+            compare_wall_sequences(&[1], &[1, 0, 0], 3),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_wall_sequences(&[1], &[1, 1], 3),
+            std::cmp::Ordering::Less
+        );
+    }
+
+    #[test]
+    fn compare_wall_sequences_falls_back_to_length_when_fully_equal() {
+        assert_eq!(
+            compare_wall_sequences(&[1, 2], &[1, 2, 3], 2),
+            std::cmp::Ordering::Less
+        );
+    }
+
+    fn make_reflection(
+        order: usize,
+        mirror_wall_sequence: Vec<usize>,
+        time_seconds: f32,
+    ) -> ReflectionPath {
+        ReflectionPath {
+            order,
+            distance: 0.0,
+            time_seconds,
+            mirror_wall_sequence,
+            image_source: Point::ORIGIN,
+            source_to_first_mirror_segment_intersection: Point::ORIGIN,
+        }
+    }
+
+    #[test]
+    fn select_and_reorder_wall_reflection_sequences_filters_by_order_and_sorts() {
+        let reflections = vec![
+            make_reflection(1, vec![3], 0.01),
+            make_reflection(2, vec![1, 0], 0.02),
+            make_reflection(3, vec![9, 9, 9], 0.03), // out of order-range, excluded
+            make_reflection(1, vec![1], 0.04),
+        ];
+        let selected = select_and_reorder_wall_reflection_sequences(&reflections, 0, 100, 1, 2);
+        // Order-3 reflection (index 2) is excluded; remaining sorted by
+        // wall_sequence_for_reflection's own output.
+        assert_eq!(selected.len(), 3);
+        assert!(selected.iter().all(|(i, _)| *i != 2));
+        // Sorted ascending by sequence content.
+        let seqs: Vec<&Vec<usize>> = selected.iter().map(|(_, s)| s).collect();
+        for w in seqs.windows(2) {
+            assert_ne!(
+                compare_wall_sequences(w[0], w[1], 2),
+                std::cmp::Ordering::Greater
+            );
+        }
+    }
+
+    #[test]
+    fn average_reflection_order_delay_times_averages_per_order() {
+        let reflections = vec![
+            make_reflection(1, vec![0], 0.10),
+            make_reflection(1, vec![0], 0.20),
+            make_reflection(2, vec![0, 0], 0.50),
+        ];
+        let averages = average_reflection_order_delay_times(&reflections, 2);
+        assert!((averages[0] - 0.15).abs() < 1e-6, "order 1 average");
+        assert!((averages[1] - 0.50).abs() < 1e-6, "order 2 average");
+    }
+
+    #[test]
+    fn average_reflection_order_delay_times_nan_for_order_with_no_reflections() {
+        let reflections = vec![make_reflection(1, vec![0], 0.10)];
+        let averages = average_reflection_order_delay_times(&reflections, 2);
+        assert!(
+            averages[1].is_nan(),
+            "order 2 has no reflections: 0./0. = NaN, matching the C"
+        );
     }
 }
