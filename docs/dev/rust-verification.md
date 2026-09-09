@@ -2817,3 +2817,167 @@ nor its absence ("a fixture fix that worked twice will work a third
 time") can be assumed - each tool's own sensitivity has to be checked on
 its own terms, the same discipline this whole phase has repeatedly
 needed for formula reuse, applied here to test methodology instead.
+
+## `pvc chordmapperplus`: the largest tool in this phase, built across four checkpointed sessions, and a missing final flush found only by matching a debug build's own loop count against the oracle's recorded length
+
+`chordmapperplus.c` is 6071 lines - alone longer than `formantsmapper`
+and `spectrummapper` combined, and structurally unlike every other tool
+this phase: not a single-signal-path filter or resynthesis tool, but a
+data-file-driven multi-tone additive chord/harmony synthesizer. An
+arbitrary number of independently configured "tones," each described by
+a 23-field record in a separate tone-data file, picks a source point out
+of a `.pva` analysis file, builds a set of partials around it (spacing/
+count/bandwidth, `passmode` selecting specific partials or `rejectmode`
+dropping every *n*th one), and resynthesizes them blended - per bin, per
+frame - between the *live* analysis value at that instant and a *static*
+spectral-morph value drawn from 80 pre-averaged "loudness bucket"
+snapshots of the whole file, indexed by a per-tone "stasis median"
+control. Given the size and genuine architectural novelty, this port
+shipped as four checkpointed phases on one branch rather than one PR,
+each independently built, tested, and reviewed before the next began -
+worth recording here as a real, working instance of that approach for
+whichever future oversized tool needs it again.
+
+**Phase 1** built the core: the tone-data-file parser (including a
+faithful port of `cut_data_lines()`'s own `{...}`-comment-stripping and
+`!`-solo/`m`-mute record filtering), per-tone partial/band setup, the
+static frequency-response averaging that feeds the live/static blend,
+and the core per-frame synthesis loop - time navigation (reusing
+`timenav::TimeNavigator`, the same module `twarp`/`tvfilter`/`convolver`
+already share), per-band pitch "tuning" toward each band's own
+amp-weighted average frequency, the blend itself, per-tone gain/
+transpose/spectral-stretch, and the per-tone bandpass tone filter.
+**Phase 2** added noise bands (the "residue" bins left over once every
+tone's own harmony bins are excluded), loop amplitude normalization,
+onset/release segment mode, rate-correlated tone/noise/force dynamics,
+and synthetic vibrato (`getVibratoValuesAndIncrement`'s own deterministic
+LFO core). **Phase 3** added the per-tone delay ring buffer, `ringTime`-
+based output-tail continuation once delays became real, per-tone
+output-channel routing, frequency-change-based noise-bin suppression,
+and the release-jump crossfade's own deterministic gain-scale math.
+**Phase 4** wired the CLI, ran the crash check, and recorded the first
+golden case.
+
+**A real bug found by re-verifying a formula against the real C, not by
+trusting a first reading**: `force_factor`'s per-band *tuning* use
+(`thisTuneFactor` in the C) is genuinely never clamped to `1.0` there,
+unlike the blend site's own `thisForceFactor` two hundred lines later,
+which is. A first Phase 1 draft used one `.min(1.0)`-clamped value for
+both call sites, on the reasonable-looking assumption that the same
+control value would be used the same way each place it appears -
+confirmed wrong by reading both sites side by side, not by a test
+failure. Fixed by tracking `force_factor_raw` (tuning) and
+`force_factor_clamped` (blend) separately.
+
+**A real naming-vs-behavior mismatch, caught the same way**: the C's own
+`-S`/`pitchChangeExpansionDecibels` flag suggests a gain *boost*, and its
+own default (`-50.`, not `0`/off - this feature is not opt-in) reads like
+it should make things louder. Reading the actual multiply
+(`channel[idx] *= dB_to_amp(pitchChangeExpansionDecibels * temp)`, where
+`temp` rises toward `1.0` as a noise bin's own frequency stabilizes)
+shows the opposite: a negative value here, the field's own real default,
+makes an unusually *stable* "noise" bin **quieter**. The reasoning makes
+sense once the behavior is confirmed - a residue bin whose frequency
+holds steady for a while is more likely a missed or mis-tracked harmonic
+than genuine noise, so the feature suppresses it rather than boosting
+it - but the C's own "expansion" name (and this port's own first-draft
+doc comment, corrected before committing) both point the wrong way. A
+useful reminder that "expansion" in a dynamics-processing sense
+(widening the *contrast* between two states of a signal) and "expansion"
+in a plain gain sense are not the same thing, and a flag's own name is
+not evidence for which one applies.
+
+**A real omission found only by comparing a debug build's own loop
+count against the recorded oracle's length, not by reading**:
+`chordmapperplus.c`'s own unconditional final `shiftout(output, Nw, I,
+1, 1)` call, right after the frame loop ends, writes one more
+`i_factor`-sized chunk of output - for the oscillator bank specifically
+(which this tool always uses; `P = 1.; obank = 1;` is hardcoded, never
+conditional, matching `ring`/`harmonizer`/`inharmonator`/
+`formantsmapper`'s own precedent), that chunk is `i_factor` samples of
+plain silence, the same finding `tools::twarp`/`tools::pv` already made
+for their own final flush. All three earlier phases omitted this - it's
+easy to miss, since it lives entirely outside the frame loop those
+phases were built around, and nothing in the per-frame math would ever
+surface it. The first golden case's own recorded output came out exactly
+one hop (`220` samples, at this case's `200` frames/sec and `44100`Hz)
+longer than this port's, which by itself only proves *some* length bug
+exists, not where. Confirmed the loop itself wasn't the culprit by
+patching a debug copy of the real C to print `frame_count`/`samps` right
+before that final flush call: both matched this port's own iteration
+count and `samps_written` exactly, which meant the extra length had to
+be coming from *after* the loop - the flush this port never reproduced.
+Fixed by unconditionally appending `i_factor` samples of silence at the
+very end of `process_channel`, matching `twarp`/`pv`'s own established
+pattern exactly.
+
+**Crash check**: `gdb -batch -ex run -ex bt` against the real binary on
+four representative invocations - a basic multi-tone chord, the same
+with noise bands enabled, `-R1` (natural vibrato detection), and `-O1`
+(per-tone source-point auto-tuning) - found no crash in any of them.
+Worth recording since it's a real possibility this project has hit
+twice before (`ratechanger`'s heap-buffer-overflow, `spectrummapper`'s
+two crash-on-every-run bugs): this tool's own `main()` already has the
+`fclose(ifd)` line commented out (line 4960 in the committed source),
+so it doesn't share `spectrummapper`'s exact copy-paste mistake, and
+nothing else turned up under the debugger either. No C source changes
+were needed for this tool at all across all four phases.
+
+**Deliberately not implemented, each with its own reason recorded in
+`pvc-core::tools::chordmapperplus`'s own doc comment and (where a flag
+would otherwise exist) `cli::ChordmapperplusArgs`'s own doc comments**:
+source-signal mixing (`-s`/`-a`/`-P`/`-G` - a third oscillator bank and
+its own full set of source-specific modifications, never started); the
+auto-adjust-center-frequency/bandwidth refinement (`-n`/`-o`/`-l`,
+default off, its own condition short-circuits to "always include" at
+that default so the always-true path is what's implemented); rate-
+correlated randomization (`-H`) and synthetic vibrato's own cycle-to-
+cycle randomization at a nonzero `-v` (both `randf()`/`random()`-driven,
+matching `tools::ring`'s own already-established precedent for not
+chasing a libc PRNG stream bit-exactly - `-v` in particular has no flag
+at all here rather than a misleading one, since a nonzero value would
+silently produce wrong output); frequency-change-based noise suppression
+was implemented in Phase 3, but a closely related feature, the
+`Rate_Correlated_Randomization_Switch`'s own noise amp/freq jitter, was
+not, for the same `randf()` reason; and the natural-vibrato release-
+jump crossfade's own *trigger* (`findJumpPointGainScales`'s own
+deterministic gain-scale math is implemented and unit-tested, but
+nothing calls it) - its trigger needs `timenav::TimeNavigator`, shared
+by every oscillator-bank tool in this project, to expose a "just entered
+release" transition it doesn't currently have, only fires together with
+an unimplemented `filtrate`-as-vibrato-periods rate-unit mode, and
+involves its own `randf()`-driven boundary re-anchoring step - extending
+a shared module for one tool's own narrow trigger condition isn't a call
+to make unilaterally at the tail end of an already-large port. The `-R1`
+natural-vibrato-detection flag that *is* implemented needed one small
+deliberate deviation from the real C: `afile` (the "original sound
+file" natural vibrato detection reads for pitch tracking) is referenced
+in `chordmapperplus.c` but never actually assigned anywhere in the file
+itself, so this port takes it as an explicit `--original-audio` CLI flag
+rather than guessing at what reading an unset global would do.
+
+**Golden coverage**: one case so far, a two-tone chord (440Hz plus a
+660Hz fifth, `force_factor = 1` on both tones - fully live per-frame
+blending rather than the static spectral-morph average, no noise bands,
+no vibrato), verified against a freshly-built Docker oracle after the
+final-flush fix above; sample-tolerance `0.0005`, the same default this
+project uses for most oscillator-bank output. Unlike `inharmonator`/
+`formantsmapper`, this case does not use the faded fixture those two
+tools' own golden cases needed - not because the lesson doesn't apply
+here (this tool is oscillator-bank resynthesis too, the same class of
+tool that needed it), but because this first case simply hasn't been
+tested against the faded fixture yet; a future case exercising a longer
+or more sensitive configuration should check both, the same "verify
+per tool, don't assume from a sibling" discipline `spectrummapper`'s own
+entry above already established.
+
+**Takeaway**: the single largest tool in this phase needed the same
+rigor as every smaller one - reading the whole source before writing any
+Rust, re-verifying non-obvious formulas against the real C rather than
+trusting a first reading, running the real binary under a debugger
+before assuming an oracle recording would "just work," and comparing a
+debug build's own internal state against this port's own when a golden
+test's failure mode (a plain length mismatch) didn't point at an obvious
+cause. The only thing that scaled with the tool's own size was the
+delivery shape - four checkpointed phases instead of one sitting - not
+the standard each phase was held to.

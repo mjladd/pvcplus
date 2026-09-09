@@ -1,0 +1,11 @@
+tool = "chordmapperplus"
+input = "sine440_2s_44k.wav"
+description = "chordmapperplus: two-tone chord (440Hz fundamental + 660Hz fifth), fully live blending, no noise, no vibrato"
+legacy_steps = [
+    "pvanalysis -N1024 {input} analysis.pva",
+    "cp {input} {output}",
+    "chordmapperplus -fanalysis.pva -F{fixtures}/chordmapperplus_tones.txt {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "The tone data file (chordmapperplus_tones.txt, checked in directly as plain text rather than gitignored like the *.formants/*.wav fixtures, since it needs no binary/audio generation step) has two tones: 440Hz with 4 partials and 660Hz (a fifth) with 3 partials, both force_factor=1 (fully live per-frame blending, not the static spectral-morph average) and noise_switch=0 (no noise bands). Verified against a freshly-recorded oracle: max absolute sample error was well inside this project's usual 0.0005 tolerance. Like twarp's own -F<analysis.pva> cases, this tool opens its output-file argument first just to read a pre-set header format, so {output} has to already exist - the cp step supplies that. This tool also has chordmapperplus.c's own real amplitude rescale-to-analysis-peak behavior (main() copies the analysis file's own stored peak amplitudes into ipeakamp[] on startup, exactly like twarp.c does), so the resynthesized output is quiet - see pvc-core::tools::twarp's doc comment for the general shape of this quirk, confirmed present here too."

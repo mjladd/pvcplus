@@ -104,5 +104,6 @@ fn main() -> anyhow::Result<()> {
         Command::Formantsmapper(args) => commands::formantsmapper::run(&args),
 
         Command::Spectrummapper(args) => commands::spectrummapper::run(&args),
+        Command::Chordmapperplus(args) => commands::chordmapperplus::run(&args),
     }
 }

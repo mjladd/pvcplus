@@ -474,6 +474,25 @@ pub enum Command {
     /// `>= 1.0`, and a real `dB_to_amp`-for-`amp_to_dB` copy-paste bug in
     /// the "impose" onset envelope.
     Spectrummapper(Box<SpectrummapperArgs>),
+
+    /// Data-file-driven multi-tone additive chord/harmony synthesizer -
+    /// the largest tool in this project's Phase 5 port. Each tone in the
+    /// `--tones` data file picks a source point out of the `--analysis`
+    /// `.pva` file, builds a set of partials around it, and resynthesizes
+    /// them blended between the live per-frame analysis and a static
+    /// spectral-morph average of the whole file.
+    ///
+    /// Ports `chordmapperplus` (`legacy/pvc_src/chordmapperplus.c`); see
+    /// `pvc-core::tools::chordmapperplus`'s own doc comment for the full,
+    /// phase-by-phase account of what's in and out of scope, including a
+    /// real per-band `force_factor` clamping bug found while re-verifying
+    /// Phase 1's own formulas, and a real naming-vs-behavior mismatch in
+    /// `--pitch-change-expansion` (a stable-frequency noise bin gets
+    /// *quieter*, not louder, despite the C's own "expansion" name).
+    /// Source-signal mixing (`-s`/`-a`/`-P`/`-G`) and the
+    /// auto-adjust-center-frequency/bandwidth refinement (`-n`/`-o`/`-l`)
+    /// are not implemented and have no flag here.
+    Chordmapperplus(Box<ChordmapperplusArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -5482,4 +5501,222 @@ pub enum PresetAction {
     },
     /// List example presets bundled with `pvc`.
     List,
+}
+
+/// `pvc chordmapperplus`'s full flag surface, mapped from
+/// `chordmapperplus.c`'s own `crack()` switch (not its accept string -
+/// `~`/`:`/`d`/`j`/`J`/`K`/`N`/`W`/`y`/`Z` are accepted there but have no
+/// `case`, so they're dead and have no flag here either). Source-signal
+/// mixing (`-s`/`-a`/`-P`/`-G`), the auto-adjust-center-frequency/
+/// bandwidth refinement (`-n`/`-o`/`-l`), and synthetic vibrato's own
+/// cycle-to-cycle randomization (`-v`) are real in the C but not
+/// implemented in this port (the last of those would silently produce
+/// wrong output at any nonzero value, per
+/// `pvc-core::tools::chordmapperplus::SyntheticVibrato`'s own doc
+/// comment, so it has no flag rather than a misleading one).
+#[derive(clap::Args, Debug)]
+pub struct ChordmapperplusArgs {
+    /// `-f`: path to the `.pva` analysis file every tone's own source
+    /// point is drawn from. Required.
+    #[arg(long)]
+    pub analysis: PathBuf,
+
+    /// `-F`: path to the tone data file (23 whitespace-separated fields
+    /// per tone - source point, transpose point, partial spacing/count/
+    /// bandwidth, spectral stretch, tone/noise levels, ...). Required.
+    #[arg(long)]
+    pub tones: PathBuf,
+
+    /// `-M`: resynthesis window length. `0` means auto (`2 *` the
+    /// analysis file's own FFT size).
+    #[arg(long = "window-size", default_value_t = 0)]
+    pub window_size: usize,
+
+    /// `-I`: resynthesis frames per second (sets the hop size). Values
+    /// under `32` reset to `200`.
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// Output duration in seconds. `0` (the default) means "use the
+    /// analysis file's own duration".
+    #[arg(long, default_value_t = 0.0)]
+    pub duration: f32,
+
+    /// `-x`: time-position origin in seconds into the analysis data - a
+    /// plain number, or `@path`.
+    #[arg(long = "time-origin", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub time_origin: ControlFn,
+
+    /// `-Y`: analysis-data playback rate multiplier - a plain number, or
+    /// `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub rate: ControlFn,
+
+    /// `-g`: analysis time window low boundary in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "window-low", value_parser = parse_control_fn, default_value = "0")]
+    pub window_low: ControlFn,
+
+    /// `-k`: analysis time window high boundary in seconds (negative =
+    /// end of analysis data) - a plain number, or `@path`.
+    #[arg(long = "window-high", value_parser = parse_control_fn, default_value = "-1", allow_hyphen_values = true)]
+    pub window_high: ControlFn,
+
+    /// `-/`: sampler-loop boundary smoothing time in seconds - a plain
+    /// number, or `@path`.
+    #[arg(long = "loop-smooth", value_parser = parse_control_fn, default_value = "0.2")]
+    pub loop_smooth: ControlFn,
+
+    /// `-z`: time-window behavior: stop once time exits the window
+    /// (`autostop`), or wrap/fold/clip at its edges forever (`loop`, the
+    /// real C's own default).
+    #[arg(long = "window-mode", value_parser = parse_window_mode, default_value = "loop", num_args = 1)]
+    pub window_mode: bool,
+
+    /// `-Q`: sampler-loop boundary behavior (only used in `loop` window
+    /// mode).
+    #[arg(long = "loop-mode", value_parser = parse_loop_mode, default_value = "wrap")]
+    pub loop_mode: pvc_core::timenav::LoopMode,
+
+    /// `-@`: onset/release segment mode.
+    #[arg(long = "onset-release", value_parser = parse_chordmapperplus_onset_release_mode, default_value = "off")]
+    pub onset_release: pvc_core::tools::chordmapperplus::OnsetReleaseMode,
+
+    /// `-e`: crossfade the analysis channel's own overall amplitude
+    /// toward a reference level at the loop window's own two boundaries
+    /// (only in `loop` window mode).
+    #[arg(long = "loop-normalize")]
+    pub loop_normalize: bool,
+
+    /// `-A`: master gain in decibels - a plain number, or `@path`.
+    #[arg(long = "master-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub master_gain: ControlFn,
+
+    /// `-m`: master gain for every tone, in decibels - a plain number, or
+    /// `@path`.
+    #[arg(long = "tones-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub tones_gain: ControlFn,
+
+    /// `-q`: frequency shift (Hz) applied to every tone whose own master
+    /// transposition switch is on - a plain number, or `@path`.
+    #[arg(long = "tones-freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub tones_freq_shift: ControlFn,
+
+    /// `-X`: pitch transposition (semitones) applied to every tone whose
+    /// own master transposition switch is on - a plain number, or
+    /// `@path`.
+    #[arg(long = "tones-pitch", value_parser = parse_control_fn, default_value = "1", allow_hyphen_values = true)]
+    pub tones_pitch: ControlFn,
+
+    /// `-T`: rate-correlated tone-level control in decibels - a plain
+    /// number, or `@path`. Has no audible effect unless `--rate` (`-Y`)
+    /// varies away from `1`.
+    #[arg(long = "rate-correlated-tone", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub rate_correlated_tone: ControlFn,
+
+    /// `-E`: rate-correlated noise-level control in decibels - a plain
+    /// number, or `@path`.
+    #[arg(long = "rate-correlated-noise", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub rate_correlated_noise: ControlFn,
+
+    /// `-B`: scale `force_factor`/the harmony and noise stasis medians
+    /// down as `--rate` approaches `0`.
+    #[arg(long = "rate-correlated-force-suppression")]
+    pub rate_correlated_force_suppression: bool,
+
+    /// `-L`: noise band decibel-limiter offset - a plain number, or
+    /// `@path`.
+    #[arg(long = "noise-limit", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub noise_limit: ControlFn,
+
+    /// `-b`: noise band decibel-limiter rolloff - a plain number, or
+    /// `@path`.
+    #[arg(long = "noise-limit-rolloff", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub noise_limit_rolloff: ControlFn,
+
+    /// `-S`: despite the real C's own "expansion" naming, a *negative*
+    /// value here makes a noise bin *quieter* once its own frequency has
+    /// been stable for a while - see
+    /// `pvc-core::tools::chordmapperplus::ChordmapperplusParams::pitch_change_expansion_db`'s
+    /// own doc comment. A plain number, or `@path`.
+    #[arg(long = "pitch-change-expansion", value_parser = parse_control_fn, default_value = "-50", allow_hyphen_values = true)]
+    pub pitch_change_expansion: ControlFn,
+
+    /// `-c`: a noise bin only gets the suppression above once its own
+    /// smoothed frequency-change metric drops below this - a plain
+    /// number, or `@path`.
+    #[arg(long = "frequency-change-threshold", value_parser = parse_control_fn, default_value = "0.1")]
+    pub frequency_change_threshold: ControlFn,
+
+    /// `-h`: how many seconds the frequency-change metric above takes to
+    /// rise (its own fall is always instant) - a plain number, or
+    /// `@path`.
+    #[arg(long = "frequency-change-response", value_parser = parse_control_fn, default_value = "0.1")]
+    pub frequency_change_response: ControlFn,
+
+    /// `-r`: synthetic vibrato rate in Hz, for tones whose own data-file
+    /// switch enables it - a plain number, or `@path`.
+    #[arg(long = "vibrato-rate", value_parser = parse_control_fn, default_value = "6")]
+    pub vibrato_rate: ControlFn,
+
+    /// `-U`: `1` (mechanical) uses the current natural-vibrato segment's
+    /// own period length; `0` (natural) uses the detected average
+    /// throughout. Only consulted with `--natural-vibrato`.
+    #[arg(long = "vibrato-period-mechanical", value_parser = parse_control_fn, default_value = "1")]
+    pub vibrato_period_mechanical: ControlFn,
+
+    /// `-R1`: detect natural vibrato periods from `--original-audio` and
+    /// use the detected loop window in place of `--window-low`/
+    /// `--window-high`. Requires `--original-audio` and
+    /// `--vibrato-reference`.
+    #[arg(long = "natural-vibrato")]
+    pub natural_vibrato: bool,
+
+    /// The original sound file `--natural-vibrato` runs pitch tracking
+    /// against - the real C's own equivalent input (a global `afile`) is
+    /// never actually assigned anywhere in `chordmapperplus.c` itself, so
+    /// this port takes it as an explicit flag instead of reproducing
+    /// whatever reading an unset global would do.
+    #[arg(long = "original-audio")]
+    pub original_audio: Option<PathBuf>,
+
+    /// `-u`: the reference fundamental frequency vibrato is detected
+    /// around - Hz, or `octave.pitchclass` (`<= 12`). Required with
+    /// `--natural-vibrato`.
+    #[arg(long = "vibrato-reference", allow_hyphen_values = true)]
+    pub vibrato_reference: Option<f32>,
+
+    /// `-V`: how far a period's own length may deviate from the running
+    /// median and still count as "in vibrato" (as a proportion), before
+    /// this search widens its own threshold and retries.
+    #[arg(long = "vibrato-deviation", default_value_t = 0.05)]
+    pub vibrato_deviation: f32,
+
+    /// `-t`: oscillator-bank resynthesis threshold in decibels - bins
+    /// quieter than this are skipped entirely.
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    /// `-C`: which output channel to resynthesize (`0` = every channel
+    /// used by any tone's own routing, each written independently;
+    /// `1..` = only that one, 1-based).
+    #[arg(long = "channel", default_value_t = 0)]
+    pub channel: usize,
+
+    /// Output audio file path.
+    pub output: PathBuf,
+}
+
+fn parse_chordmapperplus_onset_release_mode(
+    s: &str,
+) -> Result<pvc_core::tools::chordmapperplus::OnsetReleaseMode, String> {
+    use pvc_core::tools::chordmapperplus::OnsetReleaseMode;
+    match s {
+        "off" => Ok(OnsetReleaseMode::Off),
+        "on" => Ok(OnsetReleaseMode::On),
+        "onset-only" => Ok(OnsetReleaseMode::OnsetOnly),
+        _ => Err(format!(
+            "expected \"off\", \"on\", or \"onset-only\", got {s:?}"
+        )),
+    }
 }

@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod centroid;
+pub mod chordmapperplus;
 pub mod chordresponsemaker;
 pub mod compander;
 pub mod convolver;

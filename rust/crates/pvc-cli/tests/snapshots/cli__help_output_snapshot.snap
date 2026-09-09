@@ -1,5 +1,6 @@
 ---
 source: crates/pvc-cli/tests/cli.rs
+assertion_line: 12
 expression: help
 ---
 A modern CLI for the PVCplus phase-vocoder toolkit.
@@ -46,6 +47,7 @@ Commands:
   inharmonator         Inharmonic partials remapper: builds a per-bin filter from a data table of discrete target partials (windowed bands around each partial's own bin), resynthesizes the residual spectrum separately, and feeds both through a spectral feedback delay line, optionally mixed with a delayed copy of the source
   formantsmapper       Formant mapper: reads source and target formant lists (binary files produced externally, not by any tool in this project), pairs each formant with its nearest counterpart in the other list, and remaps each source formant's own bin band onto the paired target's frequency and amplitude via one or two independently-controllable oscillator banks, optionally passing unclaimed bins through as a separate residue bank
   spectrummapper       Formant-*tracking* analysis tool: extracts formant peaks frame by frame from raw audio, greedily assembles them into time-continuous segments (tracks), links separate segments into longer chains, and writes the result to ASCII/binary formant-track files. Writes no audio output at all
+  chordmapperplus      Data-file-driven multi-tone additive chord/harmony synthesizer - the largest tool in this project's Phase 5 port. Each tone in the `--tones` data file picks a source point out of the `--analysis` `.pva` file, builds a set of partials around it, and resynthesizes them blended between the live per-frame analysis and a static spectral-morph average of the whole file
   help                 Print this message or the help of the given subcommand(s)
 
 Options:
