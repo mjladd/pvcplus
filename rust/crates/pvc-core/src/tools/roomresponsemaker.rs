@@ -1,15 +1,39 @@
 //! Ports `roomresponsemaker.c` (9318 lines, the largest and most
 //! structurally distinct tool in this project): a recursive image-source
 //! polygonal-room acoustics engine, not a phase-vocoder filter/resynthesis
-//! tool like every other Phase 5 tool. **This module is Phase 1 of a
-//! multi-phase port**: the room/speaker/listener geometry layer only - room
+//! tool like every other Phase 5 tool. **This module is now through Phase 2
+//! of a multi-phase port.**
+//!
+//! **Phase 1** covered the room/speaker/listener geometry layer: room
 //! polygon construction (synthesized or file-read), coordinate transforms,
 //! listener/source/speaker position resolution, and the small segment/angle
-//! utilities everything else builds on. It does not yet cover the recursive
-//! image-source reflection-path algorithm (`mirrorPolygonCoordinatesAroundAllSides`,
-//! `writeReflectionPulsesIntoImpulseResponse`) or any impulse-response
-//! audio/convolution/filtering code - those are later phases, not started
-//! here. No CLI wiring yet either.
+//! utilities everything else builds on.
+//!
+//! **Phase 2** (this update) covers the recursive image-source
+//! reflection-path algorithm itself: [`mirror_point`]
+//! (`mirrorPointAroundLineSegment`), [`polygon_reflex_vertex_flags`]/
+//! [`point_to_line_position`] (the reflex-vertex-flagging half of
+//! `isPolygonConcave()` that Phase 1 deliberately left out), and
+//! [`find_reflection_paths`] (`mirrorPolygonCoordinatesAroundAllSides`),
+//! the recursive search itself, restructured around an explicit
+//! [`RoomAcousticsInput`]/internal search-trail pair instead of the C's own
+//! order-indexed global arrays, but reproducing the same recursion
+//! structure, angle-window prefilter, accept/reject tests, and (bugs
+//! included) formulas.
+//!
+//! Still **not covered**: `writeReflectionPulsesIntoImpulseResponse`/
+//! `writeDirectSourcePulsesIntoImpulseResponse` (turning an accepted
+//! [`ReflectionPath`] into actual impulse-response pulses, which needs the
+//! wall/reflection-order impulse-response filtering infrastructure, a
+//! distinct and substantial later phase); the speaker-dispersion/source-
+//! threshold-proximity family (`makeSourceToSpeakerDistancesAndAngles`,
+//! `findSourceToSpeakerAngleDifferencesFromSourceToListenerAngle`,
+//! `makeSourceToThresholdProximityProportion`/`Distance`,
+//! `isSourceBehindOrInFrontOfSpeakerThreshold`, all direct-sound-only
+//! concerns unrelated to the reflection recursion this phase covers); or
+//! any impulse-response audio/convolution/filtering code. No CLI wiring
+//! yet either, so `crack()` flag cross-referencing is deferred to that
+//! phase, same as Phase 1.
 //!
 //! **`pvc-core` does no I/O of its own** (matching `tools::chordmapperplus`'s
 //! established convention) - every function here takes already-read file
@@ -90,16 +114,60 @@
 //!    sentinel) is the correct, portable form and is what this port's
 //!    file-selection logic actually follows.
 //!
-//! Also read, but deliberately deferred to a later phase (not needed by
-//! any function in this phase's scope, confirmed by grepping call sites):
-//! `mirrorPointAroundLineSegment` (only used by the reflection-path
-//! algorithm), `findIntersectionOfLinesContainingSegments` (only used by
-//! `makeSourceToThresholdProximityDistance`), `rotatePointToAngle` and
-//! `valueIsBetweenTheseTwo` (only used by the direct-sound amplitude and
-//! source-threshold-proximity functions), and `isPolygonConcave`'s reflex-
-//! vertex-flagging sub-step (depends on `pointToLinePosition`, itself out
-//! of scope) - [`polygon_is_concave`] here only reproduces the sign-change
-//! convex/concave *boolean*, not the per-vertex reflex-angle flags.
+//! Also read in Phase 1, but deferred there and now ported in Phase 2:
+//! `mirrorPointAroundLineSegment` (now [`mirror_point`]/[`mirror_point_f64`])
+//! and `isPolygonConcave()`'s reflex-vertex-flagging sub-step (now
+//! [`polygon_reflex_vertex_flags`]/[`point_to_line_position`]).
+//!
+//! Still deliberately deferred past Phase 2 (confirmed by grepping call
+//! sites - each is only used by direct-sound/dispersion code, not the
+//! reflection recursion): `findIntersectionOfLinesContainingSegments`
+//! (only used by `makeSourceToThresholdProximityDistance`),
+//! `rotatePointToAngle` and `valueIsBetweenTheseTwo` (only used by the
+//! direct-sound amplitude and source-threshold-proximity functions).
+//!
+//! 9. **The angle-window "straddles +/-PI" correction in
+//!    `mirrorPolygonCoordinatesAroundAllSides()` (lines 2696-2728) is dead
+//!    code**, found only by tracing which variables the accept test and the
+//!    recursive narrowing step actually read afterward. When a candidate
+//!    mirror side's parent angle window has differently-signed bounds more
+//!    than PI apart (i.e. straddles the +/-PI wraparound), the C computes a
+//!    "rotate negative angles into `[0, 2*PI)`" correction - but stores it
+//!    into `mirrorSegAngleLimitsLow`/`High`, its own by-value parameters,
+//!    which are never read again in this branch. The values the accept test
+//!    (lines 2733-2744) and the recursive narrowing step (lines 3170-3187)
+//!    actually use - `mirrorSegAngleLimitsTempLow`/`High` and the raw
+//!    parameters, respectively - were already captured from the *unrotated*
+//!    window one statement earlier, in both the straddling and
+//!    non-straddling branches alike. So `mirrorSegAngleLimitsTempLow`/`High`
+//!    equal the raw parent window in every case, straddling or not - the
+//!    dedicated correction has no observable effect (a second, narrower bug
+//!    lives inside that same dead block: its final "swap" reassigns
+//!    `mirrorSegAngleLimitsLow` twice instead of ever writing `...High`, and
+//!    its second `< 0.0` guard checks `mirrorSegAngleLimitsLow` a second
+//!    time instead of `...High` - moot either way, since the block is dead).
+//!    Net effect: whenever a candidate's parent window straddles +/-PI, only
+//!    the candidate's *own* two endpoint angles get rotated into `[0, 2*PI)`
+//!    before the accept test - the window bounds they're compared against
+//!    stay in the original, possibly-inverted (`low > high`) representation.
+//!    [`mirror_segment_angle_window_test`] reproduces this exactly: it does
+//!    not implement the dead rotation at all, since skipping it is
+//!    numerically identical to running it and discarding the result.
+//!    Confirmed by reading the data flow, not by an instrumented rebuild -
+//!    this phase's algorithmic core has no golden test yet to verify
+//!    against (see the module's scope note above).
+//!
+//! 10. **`pointToLinePosition()` can never actually return its own
+//!     documented "0 = 180 degrees" case.** The global array it feeds,
+//!     `polygonReflexVertexAngleFlags`, is commented as `-1 = reflex, 1
+//!     non-reflex, 0 = 180 degrees` (line 260) - but the function computes
+//!     its sign via `copysign(1., position)`, and C's `copysign` never
+//!     returns `0.0`: a perfectly collinear triple (`position == 0.0`)
+//!     still yields `+1`, not `0`. The three-state comment describes a
+//!     value the function cannot produce. [`point_to_line_position`]
+//!     reproduces the real (always +/-1) behavior via `f64::copysign`
+//!     rather than `.signum()` (which *would* introduce a real `0` case for
+//!     an exact-zero input, diverging from the C).
 //!
 //! **Worth the next phase double-checking** (found while reading `main()`'s
 //! control flow around this phase's own setup calls, but not itself part
@@ -738,6 +806,499 @@ pub fn angles_in_order(angles: &[f32]) -> bool {
     }
 }
 
+/// Ports `mirrorPointAroundLineSegment()` (byte-identical at both of its
+/// definitions, lines ~510 and ~2382): reflects `point` across the
+/// (infinite) line containing `line`, in `f64` - see the module doc
+/// comment's precision note. `line`'s four components are `(x0, y0, x1,
+/// y1)`, matching the C's flat `line[4]`.
+pub fn mirror_point_f64(point: (f64, f64), line: (f64, f64, f64, f64)) -> (f64, f64) {
+    let (px, py) = point;
+    let (lx0, ly0, lx1, ly1) = line;
+
+    if (lx0 - lx1).abs() < 0.000_000_001 {
+        // VERTICAL
+        (lx0 + (lx0 - px), py)
+    } else if (ly0 - ly1).abs() < 0.000_000_001 {
+        // HORIZONTAL
+        (px, ly0 + (ly0 - py))
+    } else {
+        // DIAGONAL: reflect through the perpendicular intersection of
+        // `point` with `line`.
+        let line_slope = (ly1 - ly0) / (lx1 - lx0);
+        let intercept_y = ly0 - (line_slope * lx0);
+        let out_line_slope = -1.0 / line_slope;
+        let out_intercept_y = py - (out_line_slope * px);
+        let ix = (out_intercept_y - intercept_y) / (line_slope - out_line_slope);
+        let iy = (out_line_slope * ix) + out_intercept_y;
+        (ix + (ix - px), iy + (iy - py))
+    }
+}
+
+/// `f32` convenience wrapper matching every real call site of
+/// `mirrorPointAroundLineSegment()`: convert to `f64`, mirror, truncate
+/// back to `f32` (see [`mirror_point_f64`] and the module doc comment's
+/// precision note).
+pub fn mirror_point(point: Point, line: Segment) -> Point {
+    let (x, y) = mirror_point_f64(
+        (point.x as f64, point.y as f64),
+        (
+            line.a.x as f64,
+            line.a.y as f64,
+            line.b.x as f64,
+            line.b.y as f64,
+        ),
+    );
+    Point::new(x as f32, y as f32)
+}
+
+/// Ports `pointToLinePosition()`: the sign of the 2D cross product of `(B -
+/// A)` and `(P - A)`, computed in `double` then reduced with `copysign` -
+/// see finding 10 for why this uses `f64::copysign` rather than
+/// `.signum()`. Returns `1` or `-1`, matching the C's actual (never-zero)
+/// range.
+pub fn point_to_line_position(a: Point, b: Point, p: Point) -> i8 {
+    let position = ((b.x as f64 - a.x as f64) * (p.y as f64 - a.y as f64))
+        - ((b.y as f64 - a.y as f64) * (p.x as f64 - a.x as f64));
+    1.0f64.copysign(position) as i8
+}
+
+/// Ports the reflex-vertex-flagging sub-step of `isPolygonConcave()` (run
+/// only when the polygon is concave - see [`polygon_is_concave`] for the
+/// sign-change test that decides that, ported separately in Phase 1).
+/// Returns one flag per vertex, indexed the same as a wall/mirror-side
+/// index (wall `i` runs from vertex `i` to vertex `i + 1`): `-1` = reflex,
+/// `1` = non-reflex (see finding 10 for why the C's own documented `0`
+/// case is unreachable - this port only ever produces `-1`/`1` too, except
+/// for the all-zero convex case below). For a convex polygon the C never
+/// populates this array (it stays zero-filled from `calloc`); this port
+/// matches that by returning all zeros without walking the loop at all.
+pub fn polygon_reflex_vertex_flags(polygon: &[Point], is_concave: bool) -> Vec<i8> {
+    let n = polygon.len();
+    if !is_concave {
+        return vec![0; n];
+    }
+
+    let mut flags = vec![0i8; n];
+    let mut side_count = [0i32; 3]; // bucket index = flag + 1, i.e. covers [-1, 0, 1]
+
+    for c0 in 0..n {
+        let v0 = c0;
+        let v1 = (c0 + 1) % n;
+        let v2 = (c0 + 2) % n;
+        let flag = point_to_line_position(polygon[v0], polygon[v1], polygon[v2]);
+        flags[(c0 + 1) % n] = flag;
+        side_count[(flag + 1) as usize] += 1;
+    }
+
+    if side_count[0] > side_count[2] {
+        for f in &mut flags {
+            *f *= -1;
+        }
+    }
+
+    flags
+}
+
+/// Ports the per-candidate-mirror-side angle-window prefilter inside
+/// `mirrorPolygonCoordinatesAroundAllSides()` (lines ~2653-2747): whether a
+/// candidate mirror side is even worth exploring at this recursion order, a
+/// cheap check run before the far more expensive segment-intersection
+/// chain test in [`find_reflection_paths`].
+///
+/// `endpoint_angles_from_speaker` are the mirror segment's two endpoint
+/// angles as seen from the speaker (unsorted, as `atan2` naturally
+/// produces them - this function sorts them, matching the C's own sort at
+/// the top of the loop body). `parent_window` is `None` for the first
+/// recursion order (which always passes, with no window yet established),
+/// `Some((low, high))` afterward.
+///
+/// Returns `(passes, sorted_endpoint_angles)`; the sorted angles feed
+/// [`narrow_mirror_segment_angle_window`] for any recursive call this
+/// candidate goes on to make. See finding 9 for why this function performs
+/// no "rotate past +/-PI" correction on the *window*, even though the C
+/// appears to attempt one - only the candidate's own two endpoint angles
+/// get that treatment, matching the C's real (buggy) behavior.
+pub fn mirror_segment_angle_window_test(
+    endpoint_angles_from_speaker: (f32, f32),
+    parent_window: Option<(f32, f32)>,
+) -> (bool, (f32, f32)) {
+    let mut angles = [
+        endpoint_angles_from_speaker.0,
+        endpoint_angles_from_speaker.1,
+    ];
+    if angles[0] > angles[1] {
+        angles.swap(0, 1);
+    }
+
+    let Some((low, high)) = parent_window else {
+        return (true, (angles[0], angles[1])); // order 1: always passes, no window yet
+    };
+
+    // "SAME SIGN OR STRADDLING ZERO" vs "STRADDLES +/-PI" (see finding 9):
+    // only the straddling branch rotates the candidate's own angles.
+    let same_sign = low.is_sign_negative() == high.is_sign_negative();
+    let short_window = (high - low).abs() < std::f32::consts::PI;
+    let candidate_angles = if same_sign || short_window {
+        angles
+    } else {
+        let mut rotated = angles;
+        if rotated[0] < 0.0 {
+            rotated[0] += std::f32::consts::TAU;
+        }
+        if rotated[1] < 0.0 {
+            rotated[1] += std::f32::consts::TAU;
+        }
+        if rotated[0] > rotated[1] {
+            rotated.swap(0, 1);
+        }
+        rotated
+    };
+
+    let window_low = low - (std::f32::consts::PI / 100.0);
+    let window_high = high + (std::f32::consts::PI / 100.0);
+
+    let mut passes = false;
+    if candidate_angles[0] >= window_low && candidate_angles[0] <= window_high {
+        passes = true;
+    }
+    if candidate_angles[1] >= window_low && candidate_angles[1] <= window_high {
+        passes = true;
+    }
+    if candidate_angles[0] < window_low && candidate_angles[1] > window_high {
+        passes = true;
+    }
+
+    (passes, (angles[0], angles[1]))
+}
+
+/// Ports the recursive-narrowing step run right before recursing to the
+/// next order (lines ~3170-3187): the intersection of the candidate's own
+/// sorted endpoint angles (from [`mirror_segment_angle_window_test`]) and
+/// the parent window, re-padded by the same `+/-PI/100` margin used by the
+/// accept test.
+pub fn narrow_mirror_segment_angle_window(
+    this_order: usize,
+    sorted_endpoint_angles: (f32, f32),
+    parent_window: Option<(f32, f32)>,
+) -> (f32, f32) {
+    let (mut low, mut high) = if this_order == 1 {
+        sorted_endpoint_angles
+    } else {
+        parent_window.expect("parent window is required when narrowing past order 1")
+    };
+    if sorted_endpoint_angles.0 > low {
+        low = sorted_endpoint_angles.0;
+    }
+    if sorted_endpoint_angles.1 < high {
+        high = sorted_endpoint_angles.1;
+    }
+    (
+        low - (std::f32::consts::PI / 100.0),
+        high + (std::f32::consts::PI / 100.0),
+    )
+}
+
+/// One accepted image-source reflection path found by
+/// [`find_reflection_paths`] - ports the "viable reflection" bookkeeping at
+/// lines ~3046-3128 of `mirrorPolygonCoordinatesAroundAllSides()`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReflectionPath {
+    pub order: usize,
+    pub distance: f32,
+    pub time_seconds: f32,
+    /// Mirror-side indices in the C's own `reflectionWalls_lastToFirst`
+    /// order: index 0 is the wall mirrored at recursion order 1, which is
+    /// physically the *last* wall the sound bounces off before reaching
+    /// the speaker; the last entry is physically the *first* bounce from
+    /// the source.
+    pub mirror_wall_sequence: Vec<usize>,
+    pub image_source: Point,
+    /// Where the direct segment from speaker to the final image source
+    /// crosses the order-1 mirror segment - feeds the source-orientation-
+    /// to-reflection angle-difference calculation in a later phase (not
+    /// computed here since it needs `rotatedSource`, itself dependent on
+    /// out-of-scope CLI/`main()` control flow - see Phase 1's own "worth
+    /// the next phase double-checking" note above).
+    pub source_to_first_mirror_segment_intersection: Point,
+}
+
+/// Aggregate counts [`find_reflection_paths`] returns alongside its
+/// [`ReflectionPath`] list - ports `totalExaminedReflections`,
+/// `viableReflectionCount`, and `viableReflectionCountByOrder` (all
+/// per-output-channel in the C; this port covers one channel's search per
+/// call, matching one `outputFileChannelNumber`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReflectionSearchStats {
+    pub total_examined: u32,
+    pub viable_count: u32,
+    pub viable_count_by_order: Vec<u32>,
+}
+
+/// Immutable per-search configuration for [`find_reflection_paths`] -
+/// groups the geometry/parameters the C reads from its own globals
+/// throughout `mirrorPolygonCoordinatesAroundAllSides()`.
+pub struct RoomAcousticsInput<'a> {
+    pub room: &'a [Point],
+    pub polygon_is_concave: bool,
+    /// From [`polygon_reflex_vertex_flags`]; pass all-zero for a convex
+    /// room (matching the C's own never-populated-when-convex array).
+    pub reflex_flags: &'a [i8],
+    pub listener: Point,
+    pub speaker: Point,
+    pub source: Point,
+    pub high_order_limit: usize,
+    /// `usage()`'s `-o`; the C's default is `1` (test applied). Ports
+    /// `listener_space_cross_reflections__include_0__exclude_1 == 1`.
+    pub exclude_listener_space_cross_reflections: bool,
+    pub speed_of_sound_feet_per_second: f32,
+}
+
+/// Per-recursion-level scratch state ported from the C's own order-indexed
+/// global arrays (`polygonCoordinates`, `sourceCoordinatesForThisPolygon`,
+/// `mirrorSegments`, `mirrorSideNumber`) - a stack here instead, since the
+/// C's arrays are safe only because the recursion is synchronous
+/// depth-first (each order's slot is written immediately before use and
+/// consumed only by that same call's own recursive child, never by a
+/// sibling). `polygons`/`sources` are indexed by order directly (`[0]` is
+/// the unmirrored room/source); `mirror_segments`/`mirror_sides` are
+/// indexed by `order - 1`.
+struct SearchTrail {
+    polygons: Vec<Vec<Point>>,
+    sources: Vec<Point>,
+    mirror_segments: Vec<Segment>,
+    mirror_sides: Vec<usize>,
+}
+
+/// Ports `mirrorPolygonCoordinatesAroundAllSides()`: the recursive
+/// image-source search for every valid reflection path (of any order up to
+/// `input.high_order_limit`) from `input.source` to `input.speaker` inside
+/// `input.room`. See the module doc comment for what this covers versus
+/// what's deferred, and finding 9 for a real bug reproduced inside
+/// [`mirror_segment_angle_window_test`].
+pub fn find_reflection_paths(
+    input: &RoomAcousticsInput,
+) -> (Vec<ReflectionPath>, ReflectionSearchStats) {
+    let mut results = Vec::new();
+    let mut stats = ReflectionSearchStats {
+        total_examined: 0,
+        viable_count: 0,
+        viable_count_by_order: vec![0; input.high_order_limit],
+    };
+    let mut trail = SearchTrail {
+        polygons: vec![input.room.to_vec()],
+        sources: vec![input.source],
+        mirror_segments: Vec::new(),
+        mirror_sides: Vec::new(),
+    };
+    mirror_polygon_around_all_sides(input, 1, None, None, &mut trail, &mut results, &mut stats);
+    (results, stats)
+}
+
+fn mirror_polygon_around_all_sides(
+    input: &RoomAcousticsInput,
+    this_order: usize,
+    mirror_side_to_skip: Option<usize>,
+    parent_window: Option<(f32, f32)>,
+    trail: &mut SearchTrail,
+    results: &mut Vec<ReflectionPath>,
+    stats: &mut ReflectionSearchStats,
+) {
+    if this_order > input.high_order_limit {
+        return;
+    }
+    let num_walls = input.room.len();
+    let mut viable_this_order = 0u32;
+
+    for mirror_side in 0..num_walls {
+        if Some(mirror_side) == mirror_side_to_skip {
+            // Don't re-mirror by the same wall that produced the parent
+            // order's own mirror polygon (lines 2626-2634).
+            continue;
+        }
+
+        let parent_polygon = &trail.polygons[this_order - 1];
+        let mirror_segment = Segment::new(
+            parent_polygon[mirror_side],
+            parent_polygon[(mirror_side + 1) % num_walls],
+        );
+
+        let angle0 = segment_angle(Segment::new(input.speaker, mirror_segment.a));
+        let angle1 = segment_angle(Segment::new(input.speaker, mirror_segment.b));
+        let (passes, sorted_angles) =
+            mirror_segment_angle_window_test((angle0, angle1), parent_window);
+        if !passes {
+            continue;
+        }
+
+        let mirrored_polygon: Vec<Point> = parent_polygon
+            .iter()
+            .map(|&p| mirror_point(p, mirror_segment))
+            .collect();
+        let image_source = mirror_point(trail.sources[this_order - 1], mirror_segment);
+
+        trail.polygons.push(mirrored_polygon);
+        trail.sources.push(image_source);
+        trail.mirror_segments.push(mirror_segment);
+        trail.mirror_sides.push(mirror_side);
+
+        let reflection_segment = Segment::new(input.speaker, image_source);
+        let (reflection_ok, first_intersection) =
+            evaluate_reflection_candidate(input, trail, this_order, reflection_segment);
+
+        stats.total_examined += 1;
+
+        if reflection_ok {
+            stats.viable_count += 1;
+            viable_this_order += 1;
+            let distance = segment_length(reflection_segment);
+            results.push(ReflectionPath {
+                order: this_order,
+                distance,
+                time_seconds: distance / input.speed_of_sound_feet_per_second,
+                mirror_wall_sequence: trail.mirror_sides[..this_order].to_vec(),
+                image_source,
+                source_to_first_mirror_segment_intersection: first_intersection,
+            });
+        }
+
+        if this_order < input.high_order_limit {
+            let new_window =
+                narrow_mirror_segment_angle_window(this_order, sorted_angles, parent_window);
+            mirror_polygon_around_all_sides(
+                input,
+                this_order + 1,
+                Some(mirror_side),
+                Some(new_window),
+                trail,
+                results,
+                stats,
+            );
+        }
+
+        trail.polygons.pop();
+        trail.sources.pop();
+        trail.mirror_segments.pop();
+        trail.mirror_sides.pop();
+    }
+
+    stats.viable_count_by_order[this_order - 1] += viable_this_order;
+}
+
+/// Ports the accept/reject test chain applied to one already-mirrored
+/// candidate (lines ~2812-3044): the mirror-segment intersection chain,
+/// the optional listener-proximity exclusion, the reflex-adjacent-wall
+/// test, and (for a concave room) the wall-containment test. `trail` must
+/// already have this candidate's own mirror segment/side/polygon pushed
+/// (matching the C writing `mirrorSegments[thisOrderMinusOne]`/
+/// `mirrorSideNumber[thisOrderMinusOne]` before this same loop at lines
+/// 2804-2808). Returns `(accepted, source_to_first_mirror_segment_intersection)`.
+fn evaluate_reflection_candidate(
+    input: &RoomAcousticsInput,
+    trail: &SearchTrail,
+    this_order: usize,
+    reflection_segment: Segment,
+) -> (bool, Point) {
+    let num_walls = input.room.len();
+    let mut first_intersection = Point::ORIGIN;
+
+    for order_index in 0..this_order {
+        let Some(intersection) =
+            segments_intersect(trail.mirror_segments[order_index], reflection_segment)
+        else {
+            return (false, first_intersection);
+        };
+
+        if order_index == 0 {
+            first_intersection = intersection;
+            if input.exclude_listener_space_cross_reflections {
+                let to_speaker = segment_length(Segment::new(intersection, input.speaker));
+                let to_listener = segment_length(Segment::new(intersection, input.listener));
+                if to_speaker > to_listener {
+                    return (false, first_intersection);
+                }
+            }
+        }
+
+        if order_index > 0 {
+            let (higher, lower) =
+                if trail.mirror_sides[order_index] > trail.mirror_sides[order_index - 1] {
+                    (
+                        trail.mirror_sides[order_index],
+                        trail.mirror_sides[order_index - 1],
+                    )
+                } else {
+                    (
+                        trail.mirror_sides[order_index - 1],
+                        trail.mirror_sides[order_index],
+                    )
+                };
+            let blocked_by_reflex_corner = if higher - lower == 1 {
+                input.reflex_flags[higher] == -1
+            } else if higher == num_walls - 1 && lower == 0 {
+                input.reflex_flags[lower] == -1
+            } else {
+                false
+            };
+            if blocked_by_reflex_corner {
+                return (false, first_intersection);
+            }
+        }
+    }
+
+    if input.polygon_is_concave
+        && !reflection_path_is_unobstructed(input, trail, this_order, reflection_segment)
+    {
+        return (false, first_intersection);
+    }
+
+    (true, first_intersection)
+}
+
+/// Ports the concave-room wall-containment test (lines ~2919-3044): the
+/// reflection segment (speaker to final image source) must not cross any
+/// non-mirror wall of the real room polygon, nor any non-mirror side of
+/// any intermediate mirrored polygon along this candidate's own chain.
+fn reflection_path_is_unobstructed(
+    input: &RoomAcousticsInput,
+    trail: &SearchTrail,
+    this_order: usize,
+    reflection_segment: Segment,
+) -> bool {
+    let num_walls = input.room.len();
+
+    let skip_next = trail.mirror_sides[0];
+    for side in 0..num_walls {
+        if side == skip_next {
+            continue;
+        }
+        let wall = Segment::new(input.room[side], input.room[(side + 1) % num_walls]);
+        if segments_intersect(wall, reflection_segment).is_some() {
+            return false;
+        }
+    }
+
+    for order_index in 0..this_order {
+        let previous_skip = trail.mirror_sides[order_index];
+        let next_skip = if order_index == this_order - 1 {
+            None
+        } else {
+            Some(trail.mirror_sides[order_index + 1])
+        };
+        let polygon = &trail.polygons[order_index + 1];
+        for side in 0..num_walls {
+            if side == previous_skip || Some(side) == next_skip {
+                continue;
+            }
+            let wall = Segment::new(polygon[side], polygon[(side + 1) % num_walls]);
+            if segments_intersect(wall, reflection_segment).is_some() {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1021,5 +1582,169 @@ mod tests {
     #[test]
     fn angles_in_order_detects_consistent_ascending_order() {
         assert!(angles_in_order(&[0.0, 1.0, 2.0, 3.0]));
+    }
+
+    #[test]
+    fn mirror_point_across_horizontal_line() {
+        let (x, y) = mirror_point_f64((2.0, 3.0), (0.0, 0.0, 5.0, 0.0));
+        assert!((x - 2.0).abs() < 1e-9 && (y - -3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn mirror_point_across_vertical_line() {
+        let (x, y) = mirror_point_f64((2.0, 3.0), (0.0, 0.0, 0.0, 5.0));
+        assert!((x - -2.0).abs() < 1e-9 && (y - 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn mirror_point_across_diagonal_line() {
+        // Reflect (2, 3) across y = x: swaps to (3, 2).
+        let (x, y) = mirror_point_f64((2.0, 3.0), (0.0, 0.0, 5.0, 5.0));
+        assert!((x - 3.0).abs() < 1e-9 && (y - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn mirror_point_f32_wrapper_matches_f64() {
+        let p = mirror_point(
+            Point::new(2., 3.),
+            Segment::new(Point::ORIGIN, Point::new(5., 0.)),
+        );
+        assert!((p.x - 2.0).abs() < 1e-5 && (p.y - -3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn point_to_line_position_opposite_sides_have_opposite_sign() {
+        let a = Point::new(0., 0.);
+        let b = Point::new(1., 0.);
+        let above = point_to_line_position(a, b, Point::new(0., 1.));
+        let below = point_to_line_position(a, b, Point::new(0., -1.));
+        assert_eq!(above, -below);
+    }
+
+    #[test]
+    fn reflex_vertex_flags_all_zero_for_convex_room() {
+        let flags = polygon_reflex_vertex_flags(&square(10.), false);
+        assert_eq!(flags, vec![0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn reflex_vertex_flags_finds_the_one_reflex_corner_of_an_l_shape() {
+        // Same L-shape as `l_shape_is_concave` above; (5, 5) at index 3 is
+        // the one interior (reflex) corner - hand-verified via the cross
+        // products `pointToLinePosition` computes (see this test's own
+        // commit for the by-hand derivation).
+        let l_shape = vec![
+            Point::new(0., 0.),
+            Point::new(10., 0.),
+            Point::new(10., 5.),
+            Point::new(5., 5.),
+            Point::new(5., 10.),
+            Point::new(0., 10.),
+        ];
+        let flags = polygon_reflex_vertex_flags(&l_shape, true);
+        assert_eq!(flags, vec![1, 1, 1, -1, 1, 1]);
+    }
+
+    #[test]
+    fn angle_window_order_one_always_passes() {
+        let (passes, sorted) = mirror_segment_angle_window_test((0.2, 0.1), None);
+        assert!(passes);
+        assert_eq!(sorted, (0.1, 0.2));
+    }
+
+    #[test]
+    fn angle_window_rejects_candidate_entirely_outside_window() {
+        let (passes, _) = mirror_segment_angle_window_test((2.0, 2.5), Some((0.0, 1.0)));
+        assert!(!passes);
+    }
+
+    #[test]
+    fn angle_window_accepts_candidate_endpoint_inside_window() {
+        let (passes, _) = mirror_segment_angle_window_test((0.5, 0.6), Some((0.0, 1.0)));
+        assert!(passes);
+    }
+
+    #[test]
+    fn angle_window_accepts_when_window_is_swallowed_by_candidate_span() {
+        let (passes, _) = mirror_segment_angle_window_test((0.1, 0.9), Some((0.4, 0.6)));
+        assert!(passes);
+    }
+
+    #[test]
+    fn narrow_angle_window_order_one_pads_its_own_sorted_angles() {
+        let (low, high) = narrow_mirror_segment_angle_window(1, (0.2, 0.8), None);
+        assert!((low - (0.2 - std::f32::consts::PI / 100.0)).abs() < 1e-6);
+        assert!((high - (0.8 + std::f32::consts::PI / 100.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn narrow_angle_window_intersects_with_parent() {
+        let (low, high) = narrow_mirror_segment_angle_window(2, (0.3, 0.5), Some((0.1, 0.6)));
+        assert!((low - (0.3 - std::f32::consts::PI / 100.0)).abs() < 1e-6);
+        assert!((high - (0.5 + std::f32::consts::PI / 100.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn find_reflection_paths_finds_expected_first_order_left_wall_reflection() {
+        // 10x10 square room, walls in order bottom/right/top/left (index 3
+        // is the left wall, x=0). Source above, speaker below, both on the
+        // vertical center line - the left-wall image-source reflection is
+        // hand-computable: mirroring source (5, 8) across x=0 gives image
+        // (-5, 8); the segment from speaker (5, 2) to that image crosses
+        // x=0 at y=5 (within the wall's [0, 10] span), at distance
+        // sqrt(10^2 + 6^2) = sqrt(136).
+        let room = square(10.);
+        let listener = Point::new(5., 2.); // == speaker, so the proximity
+                                           // exclusion test never rejects (see the test's own doc comment above).
+        let input = RoomAcousticsInput {
+            room: &room,
+            polygon_is_concave: false,
+            reflex_flags: &[0, 0, 0, 0],
+            listener,
+            speaker: Point::new(5., 2.),
+            source: Point::new(5., 8.),
+            high_order_limit: 1,
+            exclude_listener_space_cross_reflections: true,
+            speed_of_sound_feet_per_second: 1125.,
+        };
+
+        let (paths, stats) = find_reflection_paths(&input);
+
+        let left_wall = paths
+            .iter()
+            .find(|p| p.mirror_wall_sequence == vec![3])
+            .expect("left-wall (index 3) reflection should be found");
+        assert_eq!(left_wall.order, 1);
+        assert!((left_wall.distance - 136f32.sqrt()).abs() < 1e-3);
+        assert!((left_wall.time_seconds - (136f32.sqrt() / 1125.)).abs() < 1e-6);
+
+        assert_eq!(paths.len() as u32, stats.viable_count);
+        assert_eq!(stats.viable_count_by_order.len(), 1);
+        assert_eq!(stats.viable_count_by_order[0], stats.viable_count);
+        assert!(stats.total_examined >= stats.viable_count);
+    }
+
+    #[test]
+    fn find_reflection_paths_respects_high_order_limit() {
+        let room = square(10.);
+        let input = RoomAcousticsInput {
+            room: &room,
+            polygon_is_concave: false,
+            reflex_flags: &[0, 0, 0, 0],
+            listener: Point::new(5., 2.),
+            speaker: Point::new(5., 2.),
+            source: Point::new(5., 8.),
+            high_order_limit: 2,
+            exclude_listener_space_cross_reflections: true,
+            speed_of_sound_feet_per_second: 1125.,
+        };
+
+        let (paths, stats) = find_reflection_paths(&input);
+        assert!(paths.iter().all(|p| p.order <= 2));
+        assert_eq!(stats.viable_count_by_order.len(), 2);
+        assert!(
+            paths.iter().any(|p| p.order == 2),
+            "expected at least one second-order reflection"
+        );
     }
 }
