@@ -157,6 +157,22 @@ jobs:
         run: cargo test --release -p pvc-cli --test golden_pitchtracker -- --nocapture
         working-directory: rust
 
+      - name: Compare pvc spectralextractor output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_spectralextractor -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc peakformant output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_peakformant -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc specflattracker output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_specflattracker -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc convolver output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_convolver -- --nocapture
+        working-directory: rust
+
       - name: Compare pvc impulseresponse output against the C oracle (Phase 5)
         run: cargo test --release -p pvc-cli --test golden_impulseresponse -- --nocapture
         working-directory: rust
