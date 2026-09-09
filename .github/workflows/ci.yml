@@ -209,6 +209,10 @@ jobs:
         run: cargo test --release -p pvc-cli --test golden_spectrummapper -- --nocapture
         working-directory: rust
 
+      - name: Compare pvc chordmapperplus output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_chordmapperplus -- --nocapture
+        working-directory: rust
+
   rust:
     name: rust (fmt, clippy, test)
     runs-on: ubuntu-latest

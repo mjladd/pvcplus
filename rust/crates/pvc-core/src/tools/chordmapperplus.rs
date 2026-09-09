@@ -2540,6 +2540,17 @@ pub fn process_channel(
         frame_count += 1;
     }
 
+    // `shiftout(output, Nw, I, 1, 1)` - the unconditional final flush
+    // outside the frame loop. `chordmapperplus.c` always uses the
+    // oscillator bank (`P = 1.; obank = 1;`, hardcoded, never the
+    // overlap-add path), so this is always `I` samples of silence -
+    // confirmed both by `tools::twarp`/`tools::pv`'s own identical
+    // finding and empirically here (a debug build's own `frame_count`/
+    // `samps` matched this port's own loop count exactly, but the real
+    // oracle's own recorded output was one `i_factor`-sized chunk
+    // longer - exactly this flush).
+    output.extend(vec![0.0f32; i_factor]);
+
     output
 }
 
