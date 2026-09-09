@@ -139,6 +139,42 @@ cat > filter_breakpoints.txt <<'EOF'
 22050 -48
 EOF
 
+# formantsmapper -E/-g: binary formant-list files (see
+# pvc_io::formants's own doc comment on the exact layout) - normally
+# produced externally by a SuperCollider script
+# (legacy/pvc_src/FixedFormantAnalysis.template), not by any tool in
+# this codebase, so this project's own golden fixtures synthesize them
+# directly instead. n2=512 matches formantsmapper's own default -N1024.
+# One formant each, source at 440Hz mapped to a target at 880Hz (one
+# octave up), well inside sine440_2s_faded_44k.wav's own fundamental.
+python3 - <<'PYEOF'
+import struct
+
+def write_formants(path, n2, formants):
+    with open(path, "wb") as f:
+        f.write(struct.pack("<i", len(formants)))
+        f.write(struct.pack("<i", n2))
+        for (cf, amp, bw, q, idx, lo, hi) in formants:
+            f.write(struct.pack("<ffffiii", cf, amp, bw, q, idx, lo, hi))
+
+n2 = 512
+fundamental = 44100.0 / 1024.0
+
+def idx(freq):
+    return round(freq / fundamental)
+
+write_formants(
+    "formantsmapper_source.formants",
+    n2,
+    [(440.0, 0.5, 40.0, 11.0, idx(440.0), idx(440.0) - 3, idx(440.0) + 3)],
+)
+write_formants(
+    "formantsmapper_target.formants",
+    n2,
+    [(880.0, 0.5, 40.0, 22.0, idx(880.0), idx(880.0) - 3, idx(880.0) + 3)],
+)
+PYEOF
+
 echo "Generated fixtures in $OUT_DIR:"
 for f in "$OUT_DIR"/*.wav; do
 	soxi -V0 "$f" >/dev/null || { echo "INVALID: $f" >&2; exit 1; }

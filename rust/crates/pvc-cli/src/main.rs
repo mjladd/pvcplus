@@ -100,5 +100,7 @@ fn main() -> anyhow::Result<()> {
         Command::Ratechanger(args) => commands::ratechanger::run(&args),
 
         Command::Inharmonator(args) => commands::inharmonator::run(&args),
+
+        Command::Formantsmapper(args) => commands::formantsmapper::run(&args),
     }
 }

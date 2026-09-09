@@ -9,6 +9,7 @@ pub mod filtdeviator;
 pub mod filter;
 pub mod filtresponsemaker;
 pub mod fluxoid;
+pub mod formantsmapper;
 pub mod freqresponse;
 pub mod groupdelaymaker;
 pub mod harmonizer;

@@ -9,6 +9,7 @@ pub mod envelope;
 pub mod filtdeviator;
 pub mod filter;
 pub mod flux;
+pub mod formantsmapper;
 pub mod freqresponse;
 pub mod gen;
 pub mod harmonize;

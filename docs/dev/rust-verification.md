@@ -2530,3 +2530,124 @@ resynthesis can be legitimately, symmetrically sensitive to an input
 discontinuity neither implementation is expected to track bit-for-bit,
 and the fix is a better-designed fixture, not a wider tolerance chosen to
 paper over an apparent divergence before its cause is actually understood.
+
+## `pvc formantsmapper`: a large dead subsystem, a real unit-mismatch bug, and a format nothing in this codebase writes
+
+`formantsmapper.c` reads two lists of formants (spectral peaks - center
+frequency, amplitude, bandwidth) from binary files, one for an analyzed
+"source" sound and one for a "target" sound, pairs each source formant
+with its nearest-frequency target formant (and vice versa), and remaps
+each source formant's own bin band onto the paired target's frequency
+and amplitude via one or, optionally, two independently-controllable
+oscillator banks ("bank A"/"bank B"). Like `tools::ring`/
+`tools::harmonizer`/`tools::inharmonator`, it always resynthesizes via
+the oscillator bank (`P = 1.; obank = 1;` hardcoded).
+
+**The formant-list file format is not written by any tool in this
+codebase.** Grepping every `legacy/pvc_src/*.c` for a matching `fwrite`
+found none - the format is produced externally by a SuperCollider script
+(`legacy/pvc_src/FixedFormantAnalysis.template`). This project's own
+golden fixtures synthesize the (simple, fixed, 28-bytes-per-record)
+binary layout directly via a small Python script embedded in `gen.sh`,
+matching the project's existing "generated, never committed" fixture
+convention.
+
+**Source and target formant processing - filter by amplitude/frequency
+threshold, then optionally extend with synthetic harmonic-partial
+formants, sort, and deduplicate overlapping added partials - are
+byte-for-byte identical algorithms in the C**, confirmed by diffing both
+blocks directly, down to shared variable names reused verbatim across
+both (`l`, `transferCode`, `m1`). The one real difference: target's own
+extension dedup decides overlap by bandwidth-derived *frequency* overlap
+(computed directly from `centerFreq ± 0.5*bw`), while source's own
+decides it by *stop-band bin index* overlap instead - confirmed by
+reading both dedup blocks side by side, not assumed from the strong
+structural resemblance elsewhere. `extend_source_formants`/
+`extend_target_formants` stay separate functions in the port rather than
+one shared implementation, per this project's own reuse-before-rederive
+convention - the same rule applied from its usual "don't wrongly assume
+two similar-looking things are identical" direction to its converse
+here: don't force a shared abstraction across two functions just because
+most of their body happens to match.
+
+**A large, sophisticated subsystem is entirely dead code.** `main()`
+computes, per output bin, how much of a source formant's own amplitude
+is "used up" across every output formant that reuses it (summed
+separately for the source-formant-count and target-formant-count
+directions) into a pair of "duplicate formant" dB scalers, stored into
+`outputSourceFormantDuplicateDBScaler`/`outputTargetFormantDuplicateDBScaler`.
+Grepping every reference to both arrays - and to a third,
+`outputMappingSourcePartialMultiplier` (which harmonic partial a formant
+was synthesized from) - found no read of any of them anywhere past their
+own initial write. None of the three, nor the summing arrays that feed
+them, are ported; the per-bin state this port actually carries
+(`OutputBin`) is four fields, not seven.
+
+**A real, likely-unintended unit mismatch in the amplitude-scaler
+clamp.** `-~`'s own `amplitude_normalization_decibel_gain_limit`
+(default `200`, `usage()` calling it a "Decibel Gain Limit") is used two
+different ways in the same expression: the *comparison* treats `200` as
+a plain amplitude ratio (`amp_to_dB(200)` ≈ 46 dB), while the *clamped
+replacement value* treats the same `200` as if it were already a dB
+value (`dB_to_amp(200)`, an enormous ratio many orders of magnitude
+larger). Triggering the clamp at its own default therefore replaces a
+merely-large amplitude ratio with a *far larger* one - the opposite of
+what a "gain limit" evidently intends. Reproduced exactly as read, since
+there are two equally-plausible "intended" fixes and no way to tell
+which (if either) the original author meant.
+
+**A real doc-vs-code mismatch, the same class already found repeatedly
+this phase**: `usage()` labels *both* `-E` and `-g` "Target Formants
+File" - `-E` is actually the source formants file
+(`case 'E': strcpy(sourceFormantsFile, ...)`), confirmed by reading the
+`switch`, not the `usage()` text.
+
+**`CartesianSmooth`, not `smooth()`.** Attack/release smoothing here runs
+on the *raw* per-frame FFT buffer (real/imaginary pairs, before
+`convert()` turns it into amplitude/frequency), touching every array
+slot uniformly - unlike every other tool ported this phase, whose own
+`smooth()`/`Smoother` only ever touches amplitude (even-index) slots of
+an already-`convert()`ed amp/freq array. This meant the port's own
+per-channel loop couldn't reuse `pvc_core::pvoc::Analyzer` as-is (it
+bundles fold+rfft+convert into one call with no seam to intercept the
+raw buffer at) - a hand-rolled front end using the same crate's own
+already-`pub`/`pub(crate)` `fold`/`rfft`/`PhaseTracker::convert` pieces
+individually, not a new abstraction, gets the raw buffer to
+`CartesianSmoother` (a small, fresh struct - genuinely different data
+than `Smoother`, not a variant of the same algorithm) before conversion.
+
+**Enabling residue bins together with dual-bank mode silently drops bank
+B**, confirmed by reading the exact `if`/`else` nesting of `main()`'s own
+resynthesis dispatch rather than assumed from the flag names: whenever
+residue bins are on, the call is `noscbank2(outputMappedChannel,
+outputNumBins, ...)` - bank A's own bin count only - *regardless* of
+`bank_A_0__banks_A_and_B_1`. The `outputNumBins*2`-sized dual-bank branch
+is reached only when residue bins are off. A golden case
+(`dual_bank_with_residue`) deliberately gives bank B a large, distinct
+gain specifically so this would be audible if it ever reached the
+output, and confirms against the real oracle that it doesn't.
+
+**Dead `crack()` flags**: lowercase `q` and uppercase `Q` are both
+accepted but have no `case`. `-u` (`interpolationPathDiffusion`,
+`randf()`-driven per-formant interpolation-curve diffusion) is not
+ported, matching `tools::ring`'s established `randf()` precedent.
+`warpshape` is declared and initialized but never assigned by any flag
+and never read anywhere in the file - dead by construction.
+
+All three golden cases matched the real oracle to within 1e-4 (roughly
+two to three 16-bit quantization steps) on the first attempt against the
+faded fixture already established for `pvc inharmonator` - well inside
+this project's usual `0.0005` tolerance, no widening needed here.
+
+**Takeaway:** the single most valuable check in this tool's own port was
+the "is this array ever read again" grep, applied systematically to
+every per-bin array `main()` builds rather than just the ones a first
+read's own intuition flagged as suspicious - a sophisticated, carefully-
+commented subsystem (the duplicate-formant amplitude correction) turned
+out to be completely inert, and finding that *before* porting it saved
+re-deriving a formula whose own result would have gone nowhere. The
+inverse discipline mattered just as much: two blocks that looked
+identical enough to share (source/target formant extension) were kept
+separate specifically because one differing line, found only by reading
+both in full rather than trusting the resemblance, changes what
+"overlap" means for each.
