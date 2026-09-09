@@ -203,6 +203,7 @@ set(PVC_TOOLS
     formantsmapper harmonizer inharmonator delayfilter pitchtracker
     convolver impulseresponse irconvolver irconvolvesequencer
     channelmix channelcollect mixfiles ratechanger specflattracker
+    spectrummapper
     roomresponsemaker roomresponsesequencer
 )
 foreach(t ${PVC_TOOLS})

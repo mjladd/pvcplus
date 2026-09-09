@@ -1614,10 +1614,17 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
 
 	if( numFormants > 0 ) numberOfGroups++ ;
 
-	for( i = 0; i < numFormants; i++ ){ 
-		sprintf( tempstring, "%f %f\n\n", time, formantCenterFreqs[ i ] ) ;
-		fprintf( ASCIIfrequencyScatterPlot, "%s", tempstring ) ; 
-	}; 
+	// `-f` (ASCIIfrequencyScatterPlotFile) is documented as optional, but
+	// ASCIIfrequencyScatterPlot is fopen()'d unconditionally from an
+	// empty-string default when `-f` isn't passed, leaving it NULL - the
+	// original crashed here on the very first found formant whenever
+	// `-f` was omitted. Guarded rather than left crashing.
+	if( ASCIIfrequencyScatterPlot != NULL ){
+		for( i = 0; i < numFormants; i++ ){
+			sprintf( tempstring, "%f %f\n\n", time, formantCenterFreqs[ i ] ) ;
+			fprintf( ASCIIfrequencyScatterPlot, "%s", tempstring ) ;
+		};
+	} ;
 
 	if( numFormants > maximumFormantsFoundInAnyGroup )
 		maximumFormantsFoundInAnyGroup = numFormants ; 
@@ -1674,7 +1681,14 @@ pri( (outchan+1), "ANALYSIS: CHANNEL" ) ;
 
 
     // CLOSE  INPUT FILE
-fclose(ifd) ;  
+    // `ifd` is a distinct global FILE* (see pv.h) never assigned by this
+    // tool's own setupfiles()/openfiles() (which use SNDFILE*
+    // infile/outfile instead) - only the old, unbuilt fileio.OLD.c ever
+    // assigns it. Closing it here unconditionally crashes on every
+    // successful run, before any of the tool's own output files are
+    // even opened. Matches the project's existing precedent of fixing a
+    // genuine legacy crash bug in the C source (see
+    // irconvolvesequencer.c's own self-referential-sprintf fix).
 
 
 fprintf( stderr, "\n\nNUMBER OF FORMANT POINTS: %d\n", totalNumberOfFormants ) ; 
@@ -3316,7 +3330,7 @@ void usage()
 
 
 	"	S:	Binary Frequency Segments File Name\n"	"	f:	ASCII Frequency Scatter Plot File\n"
-	"	a:	ASCII frequency Segments Plot File Name\n"
+	"	a:	ASCII frequency Segments Plot File Name\n"
 	"	P:	"FREQUENCY_RESPONSE_PRINTOUT
 
 	);

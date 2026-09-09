@@ -460,6 +460,20 @@ pub enum Command {
     /// amplitude" correction subsystem and a real bug where enabling
     /// residue bins together with dual-bank mode silently drops bank B.
     Formantsmapper(Box<FormantsmapperArgs>),
+
+    /// Formant-*tracking* analysis tool: extracts formant peaks frame by
+    /// frame from raw audio, greedily assembles them into time-continuous
+    /// segments (tracks), links separate segments into longer chains, and
+    /// writes the result to ASCII/binary formant-track files. Writes no
+    /// audio output at all.
+    ///
+    /// Ports `spectrummapper` (`legacy/pvc_src/spectrummapper.c`); see
+    /// `pvc-core::tools::spectrummapper`'s doc comment for what's in and
+    /// out of scope, including a real amplitude-rescale bug that
+    /// double-applies a frame's own peak amplitude whenever that peak is
+    /// `>= 1.0`, and a real `dB_to_amp`-for-`amp_to_dB` copy-paste bug in
+    /// the "impose" onset envelope.
+    Spectrummapper(Box<SpectrummapperArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -5244,6 +5258,208 @@ pub struct FormantsmapperArgs {
 
     pub input: PathBuf,
     pub output: PathBuf,
+}
+
+/// `pvc spectrummapper`'s flag surface. Long names follow the same
+/// letter-in-doc-comment convention as [`FormantsmapperArgs`]. Flags
+/// deliberately not exposed: `-K`/`-T` (documented in `usage()` but
+/// non-functional in the real tool - their `case`s are commented out and
+/// they're not even in the `crack()` accept string, so there is no way
+/// to set them at all - see `pvc-core::tools::spectrummapper`'s doc
+/// comment), and the dead `crack()` letters `G`/`I`/`J` plus lowercase
+/// `d`/`h`/`i`/`k`/`l`/`s`/`t` (accepted, no live `case`).
+#[derive(clap::Args, Debug)]
+pub struct SpectrummapperArgs {
+    /// `-S`: path to write the binary formant-track file. Required - the
+    /// real C would otherwise `fwrite` through a null `FILE*` from a
+    /// failed `fopen("", ...)`.
+    #[arg(long = "segments-file")]
+    pub segments_file: PathBuf,
+
+    /// `-f`: path to write an ASCII scatter plot of every raw per-frame
+    /// formant point (time, frequency). Omit to skip writing it.
+    #[arg(long = "scatter-file")]
+    pub scatter_file: Option<PathBuf>,
+
+    /// `-a`: path to write an ASCII listing of the final linked segments.
+    /// Omit to skip writing it.
+    #[arg(long = "ascii-segments-file")]
+    pub ascii_segments_file: Option<PathBuf>,
+
+    /// `-N`: FFT size.
+    #[arg(long = "fft", default_value_t = 1024)]
+    pub fft: usize,
+
+    /// `-M`: analysis window length. `0` means auto (`2 * fft`).
+    #[arg(long = "window-size", default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// `-D`: analysis frames per second (sets the hop size). Values
+    /// under `32` reset to `200`.
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// `-b`: begin time in seconds - real sample-accurate trimming.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-C`: which input channel to analyze (`0` = all channels, each
+    /// processed independently; `1..` = only that one, 1-based).
+    #[arg(long = "channel", default_value_t = 0)]
+    pub channel: usize,
+
+    /// `-B`: bypass the shelf EQ entirely (`0` = apply it, the default;
+    /// `1` = bypass).
+    #[arg(long = "eq-bypass")]
+    pub eq_bypass: bool,
+
+    /// `-H`: low shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-low-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_low_gain: f32,
+
+    /// `-X`: high shelf EQ gain in dB.
+    #[arg(
+        long = "shelf-high-gain",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub shelf_high_gain: f32,
+
+    /// `-m`: low shelf EQ frequency in Hz.
+    #[arg(long = "shelf-low-freq", default_value_t = 200.0)]
+    pub shelf_low_freq: f32,
+
+    /// `-R`: high shelf EQ frequency in Hz.
+    #[arg(long = "shelf-high-freq", default_value_t = 2000.0)]
+    pub shelf_high_freq: f32,
+
+    /// `-L`: low frequency limit in Hz for formant selection - a plain
+    /// number, or `@path`.
+    #[arg(long = "low-freq-limit", value_parser = parse_control_fn, default_value = "0")]
+    pub low_freq_limit: ControlFn,
+
+    /// `-j`: high frequency limit in Hz for formant selection (`<= 0`
+    /// means Nyquist) - a plain number, or `@path`.
+    #[arg(long = "high-freq-limit", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub high_freq_limit: ControlFn,
+
+    /// `-A`: minimum formant peak amplitude in dB.
+    #[arg(long = "min-formant-db", default_value_t = -96.0, allow_hyphen_values = true)]
+    pub minimum_formant_db: f32,
+
+    /// `-g`: formant selection/rejection threshold, `0`-`1`. Higher
+    /// values select fewer, stronger formants.
+    #[arg(long = "formant-threshold", default_value_t = 0.5)]
+    pub formant_selection_threshold: f32,
+
+    /// `-c`: minimum decibel level for a formant to remain eligible for
+    /// segment construction.
+    #[arg(long = "min-decibels", default_value_t = -200.0, allow_hyphen_values = true)]
+    pub minimum_decibels: f32,
+
+    /// `-E`: maximum decibel level for a formant to remain eligible.
+    #[arg(
+        long = "max-decibels",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub maximum_decibels: f32,
+
+    /// `-o`: minimum final segment length in frames.
+    #[arg(long = "min-segment-length", default_value_t = 1)]
+    pub minimum_segment_length: i64,
+
+    /// `-O`: maximum final segment length in frames (`<= 0` = unlimited).
+    #[arg(
+        long = "max-segment-length",
+        default_value_t = 0,
+        allow_hyphen_values = true
+    )]
+    pub maximum_segment_length: i64,
+
+    /// `-q`: minimum final segment duration in seconds.
+    #[arg(long = "min-segment-duration", default_value_t = 0.0)]
+    pub minimum_segment_duration: f32,
+
+    /// `-Q`: maximum final segment duration in seconds (`<= 0` means
+    /// twice the analysis duration).
+    #[arg(
+        long = "max-segment-duration",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub maximum_segment_duration: f32,
+
+    /// `-p`: maximum frequency change per millisecond allowed while
+    /// growing a segment.
+    #[arg(long = "max-freq-change", default_value_t = 12.0)]
+    pub max_frequency_change_per_ms: f32,
+
+    /// `-V`: maximum decibel rise per millisecond allowed while growing
+    /// a segment.
+    #[arg(long = "max-db-rise", default_value_t = 90.0)]
+    pub max_decibel_rise_per_ms: f32,
+
+    /// `-v`: maximum decibel fall per millisecond allowed while growing
+    /// a segment.
+    #[arg(long = "max-db-fall", default_value_t = 90.0)]
+    pub max_decibel_fall_per_ms: f32,
+
+    /// `-r`: maximum time gap in seconds allowed when linking two
+    /// segments together.
+    #[arg(long = "linkage-time", default_value_t = 0.02)]
+    pub linkage_time: f32,
+
+    /// `-W`: maximum frequency difference in Hz allowed when linking two
+    /// segments together.
+    #[arg(long = "max-freq-linkage", default_value_t = 100.0)]
+    pub maximum_frequency_linkage: f32,
+
+    /// `-F`: how onset/release points are added to a segment.
+    #[arg(long = "onset-release-mode", value_parser = parse_onset_release_mode, default_value = "none")]
+    pub onset_release_mode: pvc_core::tools::spectrummapper::OnsetReleaseMode,
+
+    /// `-u`: onset duration in seconds (only used when
+    /// `--onset-release-mode` isn't `none`).
+    #[arg(long = "onset-duration", default_value_t = 0.0)]
+    pub onset_duration: f32,
+
+    /// `-U`: release duration in seconds (only used when
+    /// `--onset-release-mode` isn't `none`).
+    #[arg(long = "release-duration", default_value_t = 0.0)]
+    pub release_duration: f32,
+
+    /// `-n`: constant time shift in seconds applied to every written
+    /// point's own timestamp.
+    #[arg(long = "time-shift", default_value_t = 0.0, allow_hyphen_values = true)]
+    pub time_shift: f32,
+
+    pub input: PathBuf,
+}
+
+fn parse_onset_release_mode(
+    s: &str,
+) -> Result<pvc_core::tools::spectrummapper::OnsetReleaseMode, String> {
+    use pvc_core::tools::spectrummapper::OnsetReleaseMode;
+    match s {
+        "none" => Ok(OnsetReleaseMode::None),
+        "append" => Ok(OnsetReleaseMode::Append),
+        "impose" => Ok(OnsetReleaseMode::Impose),
+        _ => Err(format!(
+            "expected \"none\", \"append\", or \"impose\", got {s:?}"
+        )),
+    }
 }
 
 fn parse_spectral_type(
