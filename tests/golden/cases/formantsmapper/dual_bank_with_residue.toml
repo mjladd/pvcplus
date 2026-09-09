@@ -1,0 +1,10 @@
+tool = "formantsmapper"
+input = "sine440_2s_faded_44k.wav"
+description = "formantsmapper: dual-bank mode (A+B) together with residue bins - exercises the real C bug where bank B is silently dropped whenever residue bins are on, regardless of dual-bank mode"
+legacy_steps = [
+    "cp {input} {output}",
+    "formantsmapper -E{fixtures}/formantsmapper_source.formants -g{fixtures}/formantsmapper_target.formants -/1 -F-6 -x1 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "See basic_mapping.toml's own notes on the faded fixture. -/1 turns on bank B (given a real, distinct -F-6 gain so it would be audibly different from bank A if it were ever resynthesized) alongside -x1 (residue bins) - see pvc-core::tools::formantsmapper's own doc comment on why main()'s own dispatch calls noscbank2(..., outputNumBins, ...) (bank A's own bin count only) whenever residue bins are on, regardless of the dual-bank flag, so bank B's own distinct gain never actually reaches the output here. This case's own real value is confirming the port reproduces that silent drop bit-for-bit, not just that it doesn't crash. Verified directly: max absolute sample error is 9.2e-5, matching residue_bins.toml's own figure almost exactly - as expected, since bank B's contribution is dropped identically on both sides."

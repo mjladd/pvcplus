@@ -1,0 +1,10 @@
+tool = "formantsmapper"
+input = "sine440_2s_faded_44k.wav"
+description = "formantsmapper: same single-formant mapping, with residue bins (unclaimed spectrum) passed through as a separate oscillator bank"
+legacy_steps = [
+    "cp {input} {output}",
+    "formantsmapper -E{fixtures}/formantsmapper_source.formants -g{fixtures}/formantsmapper_target.formants -x1 {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "See basic_mapping.toml's own notes on the faded fixture. -x1 turns on residue bins - every analysis bin outside the single formant's own band resynthesizes through a second, independent oscillator bank at unity gain. Verified directly: max absolute sample error is 9.2e-5."

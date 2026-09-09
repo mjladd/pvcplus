@@ -1,0 +1,10 @@
+tool = "formantsmapper"
+input = "sine440_2s_faded_44k.wav"
+description = "formantsmapper: single source formant (440Hz) mapped to a single target formant (880Hz, one octave up), bank A only, no residue"
+legacy_steps = [
+    "cp {input} {output}",
+    "formantsmapper -E{fixtures}/formantsmapper_source.formants -g{fixtures}/formantsmapper_target.formants {input} {output}",
+]
+output_ext = "wav"
+tolerance = { kind = "sample", max_abs_error = 0.0005 }
+notes = "Uses the faded fixture (sine440_2s_faded_44k.wav), matching the lesson from pvc inharmonator's own golden cases (see tests/golden/cases/inharmonator/three_partials.toml's own notes): this tool is always oscillator-bank resynthesis, and an abruptly-truncated input can drive the real oracle's own resynthesis into a floating-point-path-sensitive tail transient unrelated to port correctness. Verified directly: max absolute sample error against a freshly-recorded oracle is 6.1e-5, roughly two 16-bit quantization steps - well inside this project's usual 0.0005 tolerance, no widening needed here. -E/-g point at binary formant-list files this project's own gen.sh synthesizes directly (see pvc_io::formants's doc comment on why - no C tool in this codebase produces this format, it's normally written externally by a SuperCollider script)."

@@ -19,6 +19,7 @@ target/
 tests/golden/expected/
 tests/golden/fixtures/*.wav
 tests/golden/fixtures/*.flac
+tests/golden/fixtures/*.formants
 
 # Ignore common audio assets
 *.wav

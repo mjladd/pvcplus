@@ -445,6 +445,21 @@ pub enum Command {
     /// instead), and a real finding that "master gain" only ever affects
     /// the source signal, never the resynthesized partials.
     Inharmonator(Box<InharmonatorArgs>),
+
+    /// Formant mapper: reads source and target formant lists (binary
+    /// files produced externally, not by any tool in this project),
+    /// pairs each formant with its nearest counterpart in the other
+    /// list, and remaps each source formant's own bin band onto the
+    /// paired target's frequency and amplitude via one or two
+    /// independently-controllable oscillator banks, optionally passing
+    /// unclaimed bins through as a separate residue bank.
+    ///
+    /// Ports `formantsmapper` (`legacy/pvc_src/formantsmapper.c`); see
+    /// `pvc-core::tools::formantsmapper`'s doc comment for what's in and
+    /// out of scope, including an entirely dead "duplicate formant
+    /// amplitude" correction subsystem and a real bug where enabling
+    /// residue bins together with dual-bank mode silently drops bank B.
+    Formantsmapper(Box<FormantsmapperArgs>),
 }
 
 /// `pvc pv`'s full flag surface. Long names follow
@@ -4968,6 +4983,267 @@ fn parse_partial_band_window(
             "expected \"rectangle\", \"hann\", or \"welch\", got {s:?}"
         )),
     }
+}
+
+/// `pvc formantsmapper`'s flag surface. Flags deliberately not exposed:
+/// dead `crack()` letters `q`/`Q`, the dead `warpshape` (`-u`'s own
+/// `interpolationPathDiffusion` uses `randf()` and is not ported, matching
+/// `tools::ring`'s established precedent), and the diagnostics/print/play
+/// flags this project's CLI layer never exposes (`-p`/`-i`/`-_`/`-=`).
+#[derive(clap::Args, Debug)]
+pub struct FormantsmapperArgs {
+    /// `-E`: path to the source formants file. Required. Note: `usage()`
+    /// mislabels this "Target Formants File" - it is the source file
+    /// (see `pvc-core::tools::formantsmapper`'s doc comment).
+    #[arg(long)]
+    pub source_formants: PathBuf,
+
+    /// `-g`: path to the target formants file. Required.
+    #[arg(long)]
+    pub target_formants: PathBuf,
+
+    /// `-N`: FFT size.
+    #[arg(long = "fft", default_value_t = 1024)]
+    pub fft: usize,
+
+    /// `-M`: analysis/resynthesis window length. `0` means auto (`2 * fft`).
+    #[arg(long = "window-size", default_value_t = 2048)]
+    pub window_size: usize,
+
+    #[arg(long, value_parser = parse_window, default_value = "hamming")]
+    pub window: Window,
+
+    /// `-D`: analysis frames per second (sets the hop size). Values
+    /// under `32` reset to `200`.
+    #[arg(long, default_value_t = 200.0)]
+    pub frames_per_sec: f32,
+
+    /// `-I`: time expansion/contraction factor. Values `<= 0` reset to `1.0`.
+    #[arg(long = "time-factor", default_value_t = 1.0)]
+    pub time_factor: f32,
+
+    /// `-b`: begin time in seconds - real sample-accurate trimming.
+    #[arg(long = "begin", default_value_t = 0.0)]
+    pub begin: f32,
+
+    /// `-e`: end time in seconds (`0` = end of file).
+    #[arg(long = "end", default_value_t = 0.0)]
+    pub end: f32,
+
+    /// `-C`: which input channel to resynthesize (`0` = all channels,
+    /// each processed independently; `1..` = only that one, 1-based).
+    #[arg(long = "channel", default_value_t = 0)]
+    pub channel: usize,
+
+    /// `-A`: gain in decibels - a plain number, or `@path`.
+    #[arg(long = "gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub gain: ControlFn,
+
+    /// `-P`: pitch transposition in semitones - a plain number, or `@path`.
+    #[arg(long = "pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub pitch: ControlFn,
+
+    /// `-a`: frequency shift in Hz, applied before `-P` - a plain
+    /// number, or `@path`.
+    #[arg(long = "freq-shift", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub freq_shift: ControlFn,
+
+    /// `-l`: envelope attack time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub attack: ControlFn,
+
+    /// `-L`: envelope release time in seconds - a plain number, or `@path`.
+    #[arg(long, value_parser = parse_control_fn, default_value = "0")]
+    pub release: ControlFn,
+
+    /// `-H`: low shelf EQ gain in dB (post transpose/shift) - a plain
+    /// number, or `@path`.
+    #[arg(long = "shelf-low-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_low_gain: ControlFn,
+
+    /// `-X`: high shelf EQ gain in dB - a plain number, or `@path`.
+    #[arg(long = "shelf-high-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub shelf_high_gain: ControlFn,
+
+    /// `-m`: low shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-low-freq", value_parser = parse_control_fn, default_value = "200")]
+    pub shelf_low_freq: ControlFn,
+
+    /// `-R`: high shelf EQ frequency in Hz - a plain number, or `@path`.
+    #[arg(long = "shelf-high-freq", value_parser = parse_control_fn, default_value = "2000")]
+    pub shelf_high_freq: ControlFn,
+
+    /// `-z`: source formants low frequency boundary in Hz.
+    #[arg(long = "source-low-freq", default_value_t = 20.0)]
+    pub source_low_freq: f32,
+
+    /// `-Z`: source formants high frequency boundary in Hz (`0` = Nyquist).
+    #[arg(long = "source-high-freq", default_value_t = 0.0)]
+    pub source_high_freq: f32,
+
+    /// `-@`: source formants amplitude threshold in dB.
+    #[arg(
+        long = "source-db-threshold",
+        default_value_t = -200.0,
+        allow_hyphen_values = true
+    )]
+    pub source_db_threshold: f32,
+
+    /// `-S`: pre-synthesis formant bandwidth extension factor (source
+    /// formants only). `0` reduces every formant to a single bin, `1`
+    /// (the default) bypasses this step.
+    #[arg(long = "bandwidth-extension-factor", default_value_t = 1.0)]
+    pub bandwidth_extension_factor: f32,
+
+    /// `-n`: extend source formants with synthetic harmonic-partial formants.
+    #[arg(long = "extend-source")]
+    pub extend_source: bool,
+
+    /// `-U`: source formant extension amplitude threshold in dB.
+    #[arg(
+        long = "source-extend-db-threshold",
+        default_value_t = -96.0,
+        allow_hyphen_values = true
+    )]
+    pub source_extend_db_threshold: f32,
+
+    /// `-V`: highest partial to extend source formants to (`0` = all
+    /// below Nyquist).
+    #[arg(long = "source-extend-peak-partial", default_value_t = 0.0)]
+    pub source_extend_peak_partial: f32,
+
+    /// `-y`: also add upper octaves of each extended source partial.
+    #[arg(long = "source-extend-octaves")]
+    pub source_extend_octaves: bool,
+
+    /// `-T`: target formants transposition in semitones, applied before
+    /// filtering/extension.
+    #[arg(
+        long = "target-transpose",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub target_transpose: f32,
+
+    /// `-K`: target formants amplitude threshold in dB.
+    #[arg(
+        long = "target-db-threshold",
+        default_value_t = -96.0,
+        allow_hyphen_values = true
+    )]
+    pub target_db_threshold: f32,
+
+    /// `-o`: target formants low frequency boundary in Hz.
+    #[arg(long = "target-low-freq", default_value_t = 0.0)]
+    pub target_low_freq: f32,
+
+    /// `-O`: target formants high frequency boundary in Hz (`0` = Nyquist).
+    #[arg(long = "target-high-freq", default_value_t = 0.0)]
+    pub target_high_freq: f32,
+
+    /// `-c`: extend target formants with synthetic harmonic-partial formants.
+    #[arg(long = "extend-target")]
+    pub extend_target: bool,
+
+    /// `-d`: target formant extension amplitude threshold in dB.
+    #[arg(
+        long = "target-extend-db-threshold",
+        default_value_t = -96.0,
+        allow_hyphen_values = true
+    )]
+    pub target_extend_db_threshold: f32,
+
+    /// `-j`: highest partial to extend target formants to (`0` = all
+    /// below Nyquist).
+    #[arg(long = "target-extend-peak-partial", default_value_t = 0.0)]
+    pub target_extend_peak_partial: f32,
+
+    /// `-k`: also add upper octaves of each extended target partial.
+    #[arg(long = "target-extend-octaves")]
+    pub target_extend_octaves: bool,
+
+    /// `-Y`: added-formant-partial decibel rolloff per partial (shared
+    /// between source and target extension).
+    #[arg(
+        long = "extend-partial-rolloff",
+        default_value_t = 0.0,
+        allow_hyphen_values = true
+    )]
+    pub extend_partial_rolloff: f32,
+
+    /// `-~`: amplitude-scaler clamp limit. Real unit-mismatch bug in the
+    /// C, reproduced exactly - see `pvc-core::tools::formantsmapper`'s
+    /// doc comment.
+    #[arg(long = "amp-gain-limit", default_value_t = 200.0)]
+    pub amp_gain_limit: f32,
+
+    /// `-h`: bank A decibel rolloff per octave (distance from a mapped
+    /// formant's own center bin) - a plain number, or `@path`.
+    #[arg(long = "bank-a-rolloff", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub bank_a_rolloff: ControlFn,
+
+    /// `-r`: bank A frequency interpolation control (`0`-`1`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "bank-a-freq-interp", value_parser = parse_control_fn, default_value = "0")]
+    pub bank_a_freq_interp: ControlFn,
+
+    /// `-v`: bank A amplitude interpolation control (`0`-`1`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "bank-a-amp-interp", value_parser = parse_control_fn, default_value = "0")]
+    pub bank_a_amp_interp: ControlFn,
+
+    /// `-G`: bank A gain in dB - a plain number, or `@path`.
+    #[arg(long = "bank-a-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub bank_a_gain: ControlFn,
+
+    /// `-f`: bank A pitch transposition in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "bank-a-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub bank_a_pitch: ControlFn,
+
+    /// `-/`: also resynthesize bank B (a second, independently-controlled
+    /// mapping of the same formant pairing).
+    #[arg(long = "dual-bank")]
+    pub dual_bank: bool,
+
+    /// `-B`: bank B decibel rolloff per octave - a plain number, or `@path`.
+    #[arg(long = "bank-b-rolloff", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub bank_b_rolloff: ControlFn,
+
+    /// `-:`: bank B frequency interpolation control (`0`-`1`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "bank-b-freq-interp", value_parser = parse_control_fn, default_value = "0")]
+    pub bank_b_freq_interp: ControlFn,
+
+    /// `-J`: bank B amplitude interpolation control (`0`-`1`) - a plain
+    /// number, or `@path`.
+    #[arg(long = "bank-b-amp-interp", value_parser = parse_control_fn, default_value = "0")]
+    pub bank_b_amp_interp: ControlFn,
+
+    /// `-F`: bank B gain in dB - a plain number, or `@path`.
+    #[arg(long = "bank-b-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub bank_b_gain: ControlFn,
+
+    /// `-W`: bank B pitch transposition in semitones - a plain number,
+    /// or `@path`.
+    #[arg(long = "bank-b-pitch", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub bank_b_pitch: ControlFn,
+
+    /// `-x`: pass bins outside every formant's own band through as a
+    /// separate residue oscillator bank.
+    #[arg(long = "residue-bins")]
+    pub residue_bins: bool,
+
+    /// `-s`: residue bins gain in dB - a plain number, or `@path`.
+    #[arg(long = "residue-gain", value_parser = parse_control_fn, default_value = "0", allow_hyphen_values = true)]
+    pub residue_gain: ControlFn,
+
+    /// `-t`: oscillator resynthesis threshold in dB.
+    #[arg(long, default_value_t = -96.0, allow_hyphen_values = true)]
+    pub threshold: f32,
+
+    pub input: PathBuf,
+    pub output: PathBuf,
 }
 
 fn parse_spectral_type(
