@@ -9,74 +9,105 @@
 //! sampled from 80 pre-averaged "loudness bucket" snapshots of the whole
 //! file (see [`compute_static_freq_response`]).
 //!
-//! # Phase 1 scope (this module, as it stands)
+//! # Phase 1+2 scope (this module, as it stands)
 //!
-//! This is the first of several checkpointed phases on
-//! `feat/pvc-chordmapperplus`. Implemented here: the tone-data-file
-//! parser ([`parse_tone_data_file`]), per-tone partial/band setup
-//! ([`setup_bands`]), the static frequency-response averaging that
-//! feeds the live/static blend ([`compute_static_freq_response`]), and
-//! the core per-frame synthesis loop ([`process_channel`]) - time
-//! navigation, per-band pitch "tuning" toward each band's own
-//! amp-weighted average frequency, the live/static amplitude blend
-//! (`force_factor`/`stasis_median_harmony_db`-driven), per-tone gain/
-//! transpose/spectral-stretch, the per-tone bandpass tone filter, and
-//! oscillator-bank output for a single output channel.
+//! This is the second of several checkpointed phases on
+//! `feat/pvc-chordmapperplus`.
 //!
-//! **Explicitly deferred to later phases** (each call site below is
-//! marked `TODO(phaseN)`):
-//! - **Phase 2 - noise bands**: the "residue" bins left over once every
-//!   tone's own harmony bins are excluded, `noiseBandDecibelLimiterThreshold`/
-//!   gap-based noise-band segmentation, and the noise half of
-//!   [`compute_static_freq_response`]'s static-snapshot lookup
-//!   (`static_noise`).
-//! - **Phase 2 - vibrato/tuning**: natural-vibrato-period detection and
-//!   per-tone source-point auto-tuning (`getVibratoValuesAndIncrement`,
-//!   the two `system("pitchtracker ...")` call sites in the real C) -
-//!   reuse [`crate::tools::pitchtracker`]'s in-process API instead of
-//!   shelling out, once this phase lands. Also: `Rate_Correlated_*`
-//!   dynamics (`-H`/`-B`, both default off) and onset/release segment
-//!   mode (`-@`, default off) - both are real, but this phase only
-//!   implements each feature's own *default-off* path (confirmed
-//!   degenerate: `Rate_Correlated_Tone_Control_in_dB`'s own `0.0` default
-//!   makes its `dB_to_amp(0.0 * temp) == 1.0` regardless of `temp`, so
-//!   omitting the whole rate-tracking machinery changes nothing at the
-//!   real default).
+//! **Phase 1**: the tone-data-file parser ([`parse_tone_data_file`]),
+//! per-tone partial/band setup ([`setup_bands`]), the static frequency-
+//! response averaging that feeds the live/static blend
+//! ([`compute_static_freq_response`]), and the core per-frame synthesis
+//! loop ([`process_channel`]) - time navigation, per-band pitch "tuning"
+//! toward each band's own amp-weighted average frequency, the live/
+//! static amplitude blend (`force_factor`/`stasis_median_harmony_db`-
+//! driven), per-tone gain/transpose/spectral-stretch, the per-tone
+//! bandpass tone filter, and oscillator-bank output for a single output
+//! channel.
+//!
+//! **Phase 2** adds: noise bands ([`setup_noise_bands`],
+//! [`compute_channel_average`], and `process_channel`'s own noise
+//! mixing/threshold-clamp/gain/transpose/filter/second-oscillator-bank
+//! path); loop amplitude normalization ([`LoopNormalizer`], `-e`);
+//! onset/release segment mode ([`OnsetReleaseMode`], `-@` - wired into
+//! `TimeNavConfig` and every one of the harmony-stasis/noise-stasis/
+//! vibrato-envelope modifications the real C gates on it); rate-
+//! correlated tone/noise control (`-T`/`-E`) and rate-correlated force
+//! suppression (`-B`); synthetic vibrato ([`SyntheticVibrato`],
+//! `getVibratoValuesAndIncrement`'s own deterministic core - see that
+//! struct's own doc comment for what's not ported and why); and natural
+//! vibrato-period detection plus per-tone source-point auto-tuning
+//! ([`detect_vibrato_periods`], [`tune_source_point`] - standalone
+//! functions over a caller-supplied pitch track, not wired into
+//! `process_channel` itself, since they need the *original* sound file's
+//! raw audio, not the `.pva` analysis file this module otherwise reads;
+//! see those functions' own doc comments).
+//!
+//! Also fixed in Phase 2, found by re-verifying Phase 1's own per-bin
+//! formulas against the real C rather than trusting a first reading:
+//! `force_factor`'s per-band *tuning* use (`thisTuneFactor` in the C) is
+//! genuinely never clamped to `1.0` there, unlike the blend site's own
+//! `thisForceFactor` - Phase 1's first draft incorrectly used one
+//! `.min(1.0)`-clamped vector for both; now `force_factor_raw` (tuning)
+//! and `force_factor_clamped` (blend) are tracked separately.
+//!
+//! **Explicitly deferred to later phases**:
 //! - **Phase 3 - delay lines and per-tone output-channel routing**: the
-//!   real C runs every tone's own contribution through a per-tone delay
-//!   ring buffer (`channel_delay`/`delayTime`) before mixing, and can
-//!   route each partial band or noise bank to one of several output
-//!   channels. This phase assumes every tone's delay is `0` (in which
-//!   case the ring buffer degenerates to reading the *current* frame
-//!   directly - the simplification this phase relies on) and produces
-//!   exactly one output channel.
+//!   real C runs every tone's own contribution (harmony *and* noise)
+//!   through a per-tone delay ring buffer (`channel_delay`/`delayTime`)
+//!   before mixing, and can route each partial band or noise bank to one
+//!   of several output channels. This phase assumes every tone's delay
+//!   is `0` (in which case the ring buffer degenerates to reading the
+//!   *current* frame directly - the simplification both Phase 1 and
+//!   Phase 2 rely on) and produces exactly one output channel.
+//! - **Phase 3 - frequency-change-based noise suppression**: the real
+//!   C's own `pitchChangeExpansionDecibels`/
+//!   `frequency_change_suppression_threshold` machinery
+//!   (`smooth_frequency_change`, a per-bin "how much did this bin's
+//!   amplitude/frequency change since last frame" tracker used to expand
+//!   noise-bin gain when a bin's frequency is stable) is real and *not*
+//!   opt-in (its own defaults are `-50dB`/`0.1`, not `0`/off) - not
+//!   implemented here since it needs its own new per-frame smoothing
+//!   state threaded alongside `Smoother`/`smoothfreqs`, and Phase 2
+//!   already covers noise bands' own primary behavior without it.
+//! - **Phase 3 - the natural-vibrato release-jump crossfade**
+//!   (`findJumpPointGainScales`, the `boundariesResetFlag`/
+//!   `releaseVibratoPeriodJumpFlag` state machine in `main()`): a
+//!   refinement *on top of* [`detect_vibrato_periods`]'s own loop-window
+//!   detection, not required to use its result as a plain
+//!   `window_low`/`window_high` pair.
 //! - **Phase 4 - CLI wiring, golden tests, docs**: no `pvc-cli` surface
-//!   yet: [`ChordmapperplusParams`] is complete enough to synthesize a
-//!   real tone-data file's *Phase 1* feature subset directly, but no
-//!   flag maps to it yet.
+//!   yet.
 //!
 //! Also not reproduced (both auto-detected via `funcStats`-equivalent
 //! range checks over the whole run, not per-frame): `auto_adjust_cf_and_bw`
 //! (`-n`, default off - the C's own condition `(auto_adjust_cf_and_bw == 0)
 //! || (peakdB > threshold)` short-circuits to "always include" when off,
 //! so [`setup_bands`] only implements that always-true default path).
+//! **Not ported at all** (matching `tools::ring`'s own established
+//! `randf()`/`random()` precedent - see [`SyntheticVibrato`]'s own doc
+//! comment): `Rate_Correlated_Randomization_Switch`'s (`-H`) own noise
+//! amp/freq jitter, and synthetic vibrato's own cycle-to-cycle
+//! phase/amplitude/rate randomization at a nonzero
+//! `synthetic_Vibrato_Randomization_Prop`.
 //!
 //! # `makeInterpolatedFilterFrame` call-site audit
 //!
 //! Per this project's own `analysis_N`-vs-`analysis_Nplus2` stride-bug
 //! precedent (found in `convolver.c`/`filtdeviator.c`/`tvfiltdeviator.c`),
-//! every one of this file's 10 call sites needed checking. The 3 in
-//! Phase 1's own scope (`main()`'s pre-loop average-response scan at line
-//! 2189, the per-frame fetch at line 3446, and
-//! `makeStaticFreqResponseAveragesFromDataFile`'s own scan at line 5149)
-//! all correctly pass `analysis_N + 2` / `analysis_Nplus2` - no stride
-//! bug. The remaining 7 (lines 5308, 5349 - both still inside
-//! `makeStaticFreqResponseAveragesFromDataFile`, so already covered by
-//! this phase's own port - plus 5957, 5969, 6042, 6050, 6058, all inside
-//! `findJumpPointGainScales`/`normalizeLoopAmplitudesForChordmapperplus`,
-//! which belong to the vibrato-release-jump and loop-normalization
-//! machinery deferred to a later phase) still need verification when
-//! their own phase comes.
+//! every one of this file's 10 call sites needed checking - **all 10 are
+//! now confirmed correct** (no stride bug anywhere in this file): the 3
+//! in Phase 1's own scope (`main()`'s pre-loop average-response scan at
+//! line 2189, the per-frame fetch at line 3446, and
+//! `makeStaticFreqResponseAveragesFromDataFile`'s own scan at line 5149),
+//! 2 more still inside `makeStaticFreqResponseAveragesFromDataFile`
+//! itself (lines 5308, 5349 - already covered by Phase 1's own port of
+//! that function), and the final 3, inside
+//! `findJumpPointGainScales`/`normalizeLoopAmplitudesForChordmapperplus`
+//! (lines 6042/6050/6058 and 5957/5969 respectively - both functions
+//! read in full for Phase 2; `normalizeLoopAmplitudesForChordmapperplus`
+//! is now ported as [`LoopNormalizer`], `findJumpPointGainScales`
+//! remains deferred to Phase 3's own release-jump crossfade work above).
 //!
 //! In any case, this project's own [`crate::timenav::interpolate_frame`]
 //! already carries the *other*, much larger `makeInterpolatedFilterFrame`
@@ -403,8 +434,19 @@ pub struct BandSetup {
     /// means it's already Hz - decided once from the whole control
     /// function's own range, per tone.
     pub transpose_shift_method_pitch_is_oppc: Vec<bool>,
+    /// Same as `transpose_shift_method_pitch_is_oppc` but for
+    /// `transposePoint_NOISE` (field 13) - decided independently, per
+    /// tone, from that control function's own range (Phase 2: noise
+    /// bands).
+    pub transpose_shift_method_noise_is_oppc: Vec<bool>,
     pub trans_switch: Vec<bool>,
     pub tone_filter_switch: Vec<bool>,
+    /// Phase 2: noise bands - `((raw*0.1) as int) == 1 || == 3` (the
+    /// complementary encoding to `tone_filter_switch`'s own `== 1 || ==
+    /// 2` - switch value `1` enables *both* tone and noise filtering for
+    /// this tone, matching the C's own `TONE_FILTER_SWITCH` field
+    /// deriving both switches from one raw value).
+    pub noise_filter_switch: Vec<bool>,
     /// `0`: bandpass, `2`: highpass, `3`: lowpass (`1` behaves as
     /// bandpass too - the C only special-cases `!= 2`/`!= 3`).
     pub tone_filter_type: Vec<i32>,
@@ -446,8 +488,10 @@ pub fn setup_bands(
     let mut band_begin = Vec::new();
     let mut source_pt_fund_freq = vec![0.0f32; tones.len()];
     let mut transpose_shift_method_pitch_is_oppc = vec![false; tones.len()];
+    let mut transpose_shift_method_noise_is_oppc = vec![false; tones.len()];
     let mut trans_switch = vec![false; tones.len()];
     let mut tone_filter_switch = vec![false; tones.len()];
+    let mut noise_filter_switch = vec![false; tones.len()];
     let mut tone_filter_type = vec![0i32; tones.len()];
 
     for (tone_now, tone) in tones.iter().enumerate() {
@@ -465,6 +509,14 @@ pub fn setup_bands(
             ));
         }
         transpose_shift_method_pitch_is_oppc[tone_now] = lo < 13.0;
+
+        let (nlo, nhi) = control_fn_range(&tone.transpose_point_noise);
+        if (nlo < 13.0 && nhi > 13.0) || (nhi < 13.0 && nlo > 13.0) {
+            return Err(format!(
+                "tone {tone_now}: noise transpose point function crosses the unit range from frequency to octave.pitchclass"
+            ));
+        }
+        transpose_shift_method_noise_is_oppc[tone_now] = nlo < 13.0;
 
         if tone.bandwidth <= 0.0 {
             return Err(format!("tone {tone_now}: bandwidth must be > 0"));
@@ -573,6 +625,7 @@ pub fn setup_bands(
 
         let sw = (0.1 * tone.tone_filter_switch_raw) as i64;
         tone_filter_switch[tone_now] = sw == 1 || sw == 2;
+        noise_filter_switch[tone_now] = sw == 1 || sw == 3;
         let scaled = tone.tone_filter_switch_raw * 0.1;
         let filt_type = (10.0 * (scaled - scaled.floor())) as i64;
         if !(0..=3).contains(&filt_type) {
@@ -594,6 +647,7 @@ pub fn setup_bands(
     for (tone_now, tone) in tones.iter().enumerate() {
         if control_fn_average(&tone.bandpass_rolloff_db_per_octave) == 0.0 {
             tone_filter_switch[tone_now] = false;
+            noise_filter_switch[tone_now] = false;
         }
     }
 
@@ -602,10 +656,233 @@ pub fn setup_bands(
         band_begin,
         source_pt_fund_freq,
         transpose_shift_method_pitch_is_oppc,
+        transpose_shift_method_noise_is_oppc,
         trans_switch,
         tone_filter_switch,
+        noise_filter_switch,
         tone_filter_type,
     })
+}
+
+// ---------------------------------------------------------------------
+// Noise bands (Phase 2)
+// ---------------------------------------------------------------------
+
+/// Ports `main()`'s own pre-loop `channel_average` computation: the
+/// plain (not dB-bucketed, unlike [`compute_static_freq_response`])
+/// average of every real analysis frame across the whole file, scaled so
+/// its own peak amplitude bin reads `1.0`. Used only to find each noise
+/// band's own decibel-limiter threshold curve below - a coarse "where's
+/// the loudest, driest picture of this spectrum" reference, not
+/// something resynthesis reads from directly.
+///
+/// Returns `(normalized_average, pre_normalization_peak_amp)` -
+/// `analysis_PeakAmpSave`/`analysis_PeakDecibelsSave` in the C are that
+/// same peak, saved *before* the array is rescaled to it, and added back
+/// (in dB) into every noise-band threshold below (`setup_noise_bands`)
+/// so the threshold curve sits at the file's own real level, not the
+/// `channel_average` array's own renormalized `0..1` scale.
+pub fn compute_channel_average(
+    analysis: &[Vec<f32>],
+    iframes_per_sec: f32,
+    n_plus_2: usize,
+) -> (Vec<f32>, f32) {
+    let analysis_dur = analysis.len() as f32 / iframes_per_sec;
+    let mut sum = vec![0.0f32; n_plus_2];
+    let mut k = 0usize;
+    let mut filttnow = 0.0f32;
+    while filttnow < analysis_dur {
+        let flat = interpolate_frame(analysis, iframes_per_sec, filttnow);
+        for i in 0..n_plus_2 {
+            sum[i] += flat[i];
+        }
+        k += 1;
+        filttnow += 1.0 / iframes_per_sec;
+    }
+    if k > 0 {
+        for v in sum.iter_mut() {
+            *v /= k as f32;
+        }
+    }
+    let mut peak_amp = 0.0f32;
+    for i in (0..n_plus_2).step_by(2) {
+        if sum[i] > peak_amp {
+            peak_amp = sum[i];
+        }
+    }
+    if peak_amp > 0.0 {
+        for i in (0..n_plus_2).step_by(2) {
+            sum[i] /= peak_amp;
+        }
+    }
+    (sum, peak_amp)
+}
+
+/// One tone's own noise bank: which tone it belongs to, plus that tone's
+/// own resolved output-channel routing number (deferred - see this
+/// module's own top doc comment on Phase 3).
+#[derive(Debug, Clone)]
+pub struct NoiseSetup {
+    /// `indexInChannelForNoise` in the C: the amplitude-slot index into
+    /// the `n + 2`-long analysis channel array for each "residue" bin -
+    /// every bin *not* claimed by any tone's own harmony bins.
+    pub noise_bin_indices: Vec<usize>,
+    /// Length `num_noise_bands`; band `b`'s own bins are
+    /// `noise_bin_indices[band_lower[b]..=band_upper[b]]` (inclusive,
+    /// matching the C's own `noiseBandLowerBinIndex`/
+    /// `noiseBandUpperBinIndex`).
+    pub band_lower: Vec<usize>,
+    pub band_upper: Vec<usize>,
+    /// Per noise bin (same indexing as `noise_bin_indices`): the dB
+    /// level a bin's own amplitude gets clamped toward
+    /// (`noiseBandDecibelLimiterThreshold`), interpolated across its own
+    /// band from the tone-band peak just below to the tone-band peak
+    /// just above.
+    pub threshold_db: Vec<f32>,
+    /// Per noise bin: how far this bin sits from its own band's center
+    /// (`noiseBandChannelPositionIndex`) - `0` at either edge, peaking
+    /// at the center - used to scale the rolloff term in the per-frame
+    /// threshold.
+    pub position_index: Vec<f32>,
+    /// Per noise bank (one per tone with `noise_switch == 1`): which
+    /// tone it belongs to.
+    pub bank_tone: Vec<usize>,
+}
+
+/// Ports the "NOISE/RESIDUE" setup in `main()`: finds every analysis bin
+/// not claimed by any tone's own harmony bins, groups the survivors into
+/// contiguous "noise bands" (a gap of more than one skipped bin starts a
+/// new band), and computes each noise bin's own decibel-limiter
+/// threshold curve from the peak amplitude of the tone bands
+/// immediately below/above its own noise band (via `channel_average`).
+///
+/// `noise_switch` in the C's own per-tone data determines which tones
+/// get a noise bank at all - `bank_tone` lists only those, in tone
+/// order (matching `noise_bank_tone_number`'s own construction order).
+pub fn setup_noise_bands(
+    tones: &[ToneParams],
+    band_setup: &BandSetup,
+    channel_average: &[f32],
+    channel_average_peak_amp: f32,
+    n: usize,
+    analysis_n: usize,
+) -> NoiseSetup {
+    let n2 = n / 2;
+    let mut flags = vec![true; n2 + 1];
+    for bin in &band_setup.bins {
+        flags[bin.channel_amp_index / 2] = false;
+    }
+    let noise_bin_indices: Vec<usize> = (0..=n2).filter(|&i| flags[i]).map(|i| i * 2).collect();
+    let num_noise_bins = noise_bin_indices.len();
+
+    let mut band_lower = Vec::new();
+    let mut band_upper = Vec::new();
+    if num_noise_bins > 0 {
+        let mut bottom = 0usize;
+        for i in 1..num_noise_bins {
+            let gap = noise_bin_indices[i] as i64 - noise_bin_indices[i - 1] as i64;
+            if gap > 2 || i == num_noise_bins - 1 {
+                let top = if i == num_noise_bins - 1 { i } else { i - 1 };
+                band_lower.push(bottom);
+                band_upper.push(top);
+                bottom = top + 1;
+            }
+        }
+    }
+
+    // `peakBinAmpAverageForToneBands`: `channel_average`'s own amplitude
+    // slots, `analysis_n / 2 + 1` of them, with every noise-band slot
+    // marked (`-1.`) and then every contiguous "tone band" run of
+    // survivors broadcast to its own peak value.
+    let tone_band_len = analysis_n / 2 + 1;
+    let mut peak_bin_amp: Vec<f32> = (0..tone_band_len)
+        .map(|i| channel_average.get(i * 2).copied().unwrap_or(0.0))
+        .collect();
+    #[allow(clippy::needless_range_loop)]
+    for b in 0..band_lower.len() {
+        for j in band_lower[b]..=band_upper[b] {
+            let idx = noise_bin_indices[j] / 2;
+            if idx < peak_bin_amp.len() {
+                peak_bin_amp[idx] = -1.0;
+            }
+        }
+    }
+    let mut flag_in_tone = false;
+    let mut bottom_bin_index = 0usize;
+    let mut peak_amp = 0.0f32;
+    for i in 0..tone_band_len {
+        if peak_bin_amp[i] == -1.0 {
+            if flag_in_tone {
+                #[allow(clippy::needless_range_loop)]
+                for j in bottom_bin_index..i {
+                    peak_bin_amp[j] = peak_amp;
+                }
+            }
+            flag_in_tone = false;
+        } else {
+            if !flag_in_tone {
+                bottom_bin_index = i;
+                peak_amp = peak_bin_amp[i];
+            } else if peak_bin_amp[i] > peak_amp {
+                peak_amp = peak_bin_amp[i];
+            }
+            flag_in_tone = true;
+        }
+        if i == n2.saturating_sub(1) {
+            #[allow(clippy::needless_range_loop)]
+            for j in bottom_bin_index..=i.min(tone_band_len - 1) {
+                peak_bin_amp[j] = peak_amp;
+            }
+        }
+    }
+
+    let mut threshold_db = vec![0.0f32; num_noise_bins];
+    let mut position_index = vec![0.0f32; num_noise_bins];
+    for b in 0..band_lower.len() {
+        let lower = band_lower[b];
+        let upper = band_upper[b];
+        let mut bottom_bin_index = (noise_bin_indices[lower] / 2) as i64 - 1;
+        let mut top_bin_index = (noise_bin_indices[upper] / 2) as i64 + 1;
+        if bottom_bin_index < 0 {
+            bottom_bin_index = top_bin_index;
+        }
+        if top_bin_index > (analysis_n as i64 / 2) - 1 {
+            top_bin_index = bottom_bin_index;
+        }
+        let peak_decibels_save = amp_to_db(channel_average_peak_amp);
+        let temp1 =
+            amp_to_db(peak_bin_amp[bottom_bin_index.clamp(0, tone_band_len as i64 - 1) as usize])
+                + peak_decibels_save;
+        let temp2 =
+            amp_to_db(peak_bin_amp[top_bin_index.clamp(0, tone_band_len as i64 - 1) as usize])
+                + peak_decibels_save;
+        let span = upper - lower;
+        for (i, l) in (lower..=upper).enumerate() {
+            let temp = if span == 0 {
+                0.0
+            } else {
+                i as f32 / span as f32
+            };
+            threshold_db[l] = temp1 + temp * (temp2 - temp1);
+            position_index[l] = (1.0 - (temp * 2.0 - 1.0).abs()) * (0.5 * span as f32);
+        }
+    }
+
+    let bank_tone: Vec<usize> = tones
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| t.noise_switch == 1.0)
+        .map(|(i, _)| i)
+        .collect();
+
+    NoiseSetup {
+        noise_bin_indices,
+        band_lower,
+        band_upper,
+        threshold_db,
+        position_index,
+        bank_tone,
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -873,6 +1150,383 @@ pub fn compute_static_freq_response(
 }
 
 // ---------------------------------------------------------------------
+// Loop amplitude normalization (Phase 2, `-e`)
+// ---------------------------------------------------------------------
+
+/// Ports `normalizeLoopAmplitudesForChordmapperplus()`: only active in
+/// sampler-loop mode (`!autostop`) with `-e1`. Crossfades `channel[]`'s
+/// own overall amplitude sum toward whichever of the loop window's two
+/// boundary frames is louder, so a loop's own two seams read at the same
+/// perceived level - fixed at each boundary's own frame the first time
+/// it's seen (or whenever that boundary's own control-function value
+/// changes), not re-measured every frame.
+#[derive(Debug, Clone, Default)]
+pub struct LoopNormalizer {
+    have_low: bool,
+    have_high: bool,
+    low_amp_sum: f32,
+    high_amp_sum: f32,
+    peak_amp_sum: f32,
+    last_win_low: f32,
+    last_win_high: f32,
+    gain_scale: f32,
+}
+
+impl LoopNormalizer {
+    pub fn new() -> Self {
+        LoopNormalizer {
+            gain_scale: 1.0,
+            last_win_low: -1.0,
+            last_win_high: -1.0,
+            ..Default::default()
+        }
+    }
+
+    /// `channel`'s own amplitude slots are rescaled in place when
+    /// normalization is active; returns the applied gain in dB (matching
+    /// the C's own return value, `lastGainScale_inDecibels` - not
+    /// currently consumed by [`process_channel`] beyond driving this
+    /// state, kept for parity/diagnostics).
+    #[allow(clippy::too_many_arguments)]
+    pub fn step(
+        &mut self,
+        enabled: bool,
+        autostop: bool,
+        channel: &mut [f32],
+        win_low: f32,
+        win_high: f32,
+        analysis_dur: f32,
+        filttnow: f32,
+        t: f32,
+        fetch_frame_amp_sum: impl Fn(f32) -> f32,
+    ) -> f32 {
+        if t == 0.0 {
+            self.have_low = true;
+            self.have_high = true;
+        }
+        if enabled && !autostop {
+            if !self.have_low || win_low != self.last_win_low {
+                self.low_amp_sum = fetch_frame_amp_sum(win_low);
+                self.have_low = false;
+            }
+            if !self.have_high || win_high != self.last_win_high {
+                self.high_amp_sum = fetch_frame_amp_sum(win_high);
+                self.have_high = false;
+            }
+            self.peak_amp_sum = self.low_amp_sum.max(self.high_amp_sum);
+
+            let channel_amp_sum: f32 = channel.iter().step_by(2).sum();
+            if channel_amp_sum > 0.0 {
+                self.gain_scale = if filttnow <= win_low {
+                    let prop = filttnow / win_low;
+                    let low_db = 0.0;
+                    let high_db = amp_to_db(self.peak_amp_sum / self.low_amp_sum);
+                    db_to_amp_via_scale(low_db + prop * (high_db - low_db))
+                } else if filttnow >= win_high {
+                    let prop = (filttnow - win_high) / (analysis_dur - win_high);
+                    let low_db = amp_to_db(self.peak_amp_sum / self.high_amp_sum);
+                    let high_db = 0.0;
+                    db_to_amp_via_scale(low_db + prop * (high_db - low_db))
+                } else {
+                    self.peak_amp_sum / channel_amp_sum
+                };
+                for a in channel.iter_mut().step_by(2) {
+                    *a *= self.gain_scale;
+                }
+            }
+        }
+        self.last_win_low = win_low;
+        self.last_win_high = win_high;
+        amp_to_db(self.gain_scale)
+    }
+}
+
+/// `dB_to_amp()` in the C's own exact-math sense here (a plain gain
+/// ratio computed from a dB difference, not the coarse-LUT-approximated
+/// `units::DbToAmp` every per-tone gain control in this module otherwise
+/// uses) - `normalizeLoopAmplitudesForChordmapperplus`'s own dB
+/// arithmetic is a bookkeeping detail of *this* function alone (turning
+/// two already-measured amplitude ratios back into one), not a
+/// user-facing "decibels" parameter, so the LUT's own quantization isn't
+/// meaningful to reproduce here.
+fn db_to_amp_via_scale(db: f32) -> f32 {
+    crate::units::db_to_amp_exact(db)
+}
+
+// ---------------------------------------------------------------------
+// Synthetic vibrato (Phase 2, per-tone LFO)
+// ---------------------------------------------------------------------
+
+/// Ports `getVibratoValuesAndIncrement()`'s own deterministic core: a
+/// per-tone LFO reading a fixed, precomputed 1025-entry table
+/// (`vibratoPeriodTable`, itself a warped inverted-cosine shape) at a
+/// phase that advances every frame by `rate / frames_per_sec`.
+///
+/// **Not ported**: the real C also randomizes each cycle's own phase
+/// warp/amplitude/rate (`timeWarp`/`ranAmpScale`/`rateMod`, reseeded via
+/// `rand() % 1000`) whenever `synthetic_Vibrato_Randomization_Prop` is
+/// nonzero - `pvc_core::tools::ring`'s own `randf()`/`random()` finding
+/// already established this project's precedent of not chasing an exact
+/// libc PRNG stream from Rust. At `synthetic_Vibrato_Randomization_Prop
+/// == 0.0` (the field's own real default), those three terms are
+/// mathematically forced to their own reset values every single cycle
+/// (`timeWarp = 4 * 0 * x = 0`, `ranAmpScale = 1 - curve(0, 0, x, 2) =
+/// 1`, `rateMod = curve(1, 1, x, 0) = 1`) regardless of `x` - so this
+/// port only implements that always-deterministic case; a nonzero
+/// randomization proportion is not currently supported (`step` returns
+/// unmodulated `1.0` for every tone whose own proportion is nonzero,
+/// documented as a known gap rather than silently wrong).
+#[derive(Debug, Clone)]
+pub struct SyntheticVibrato {
+    table: Vec<f32>,
+    vib_phase_now: Vec<f32>,
+    first_frame: bool,
+}
+
+const VIBRATO_PERIOD_TABLE_SIZE: usize = 1024;
+
+impl SyntheticVibrato {
+    pub fn new(num_tones: usize) -> Self {
+        let size = VIBRATO_PERIOD_TABLE_SIZE;
+        let table = (0..=size)
+            .map(|i| {
+                let x = i as f32 / (1.0 + size as f32);
+                let x = curve(0.0, std::f32::consts::TAU, x, -2.0);
+                let mut v = 1.0 - 0.5 * (x.cos() + 1.0);
+                v = curve(0.0, 1.0, v, -2.0);
+                if !(0.0..=1.0).contains(&v) {
+                    v = 1.0;
+                }
+                v
+            })
+            .collect();
+        SyntheticVibrato {
+            table,
+            vib_phase_now: vec![0.0; num_tones],
+            first_frame: true,
+        }
+    }
+
+    /// Returns this frame's own `vibValNow` per tone (`0..=1`), then
+    /// advances phase for tones whose own `synthetic_vibrato_switch`
+    /// field is nonzero (matching the C's own `incrementFlag == 1`,
+    /// always true at chordmapperplus's own real call site).
+    pub fn step(&mut self, tones: &[ToneParams], rate_hz: &[f32], frames_per_sec: f32) -> Vec<f32> {
+        if self.first_frame {
+            self.vib_phase_now.fill(0.0);
+            self.first_frame = false;
+        }
+        let mut out = vec![0.0f32; tones.len()];
+        for (i, tone) in tones.iter().enumerate() {
+            let randomization_is_zero = true; // see this struct's own doc comment.
+            let vib_phase_with_time_mod = curve(0.0, 1.0, self.vib_phase_now[i], 0.0);
+            let table_index = ((0.5 + vib_phase_with_time_mod * VIBRATO_PERIOD_TABLE_SIZE as f32)
+                as usize)
+                .min(self.table.len() - 1);
+            out[i] = self.table[table_index].clamp(0.0, 1.0);
+
+            if tone.synthetic_vibrato_switch != 0.0 {
+                let rate_now = rate_hz[i];
+                self.vib_phase_now[i] += rate_now / frames_per_sec;
+                if self.vib_phase_now[i] > 1.0 {
+                    self.vib_phase_now[i] -= self.vib_phase_now[i].floor();
+                }
+            }
+            let _ = randomization_is_zero;
+        }
+        out
+    }
+}
+
+// ---------------------------------------------------------------------
+// Natural vibrato-period detection and per-tone source-point tuning
+// (Phase 2) - both are pre-processing steps that run once before
+// resynthesis, over a Hz-valued pitch track the caller obtains from the
+// *original* sound file (not the `.pva` analysis file `process_channel`
+// itself reads) via `pvc_core::tools::pitchtracker::process` - a raw-
+// audio input `process_channel` doesn't take, so these stay standalone
+// functions rather than parameters threaded through the per-frame loop.
+// The real C's own two `system("pitchtracker ...")` call sites are what
+// this replaces; wiring an actual `pitchtracker` call together with
+// these belongs to the CLI layer (Phase 4), not this module.
+// ---------------------------------------------------------------------
+
+/// One detected natural-vibrato period structure: a loop window plus the
+/// average period duration within it, both derived from a pitch track's
+/// own maxima/minima.
+#[derive(Debug, Clone)]
+pub struct VibratoDetection {
+    pub window_low: f32,
+    pub window_high: f32,
+    pub average_period_duration: f32,
+    pub minima_tpts: Vec<f32>,
+}
+
+/// Ports the maxima/minima vibrato-period-detection block in `main()`:
+/// finds every sign change in the derivative of `pitch_track - reference`
+/// (a minimum when the derivative goes from falling to rising, a maximum
+/// the other way), then iteratively widens a deviation threshold around
+/// the *median* minima-to-minima/maxima-to-maxima period length until it
+/// finds a run of at least 3 consecutive periods that all fall within
+/// that threshold of the median - the run's own first/last minima become
+/// the loop window.
+///
+/// `pitch_track[i]` is this Hz-valued track's own value at frame `i`,
+/// sampled at `iframes_per_sec` (matching `pitchtracker`'s own
+/// `-D<analysis_D>` frame rate in the real C's `system()` call).
+/// Returns `None` when fewer than 3 accepted periods are ever found (the
+/// C's own `vibratoDetection = 0` case - `-R1` without usable vibrato).
+pub fn detect_vibrato_periods(
+    pitch_track: &[f32],
+    iframes_per_sec: f32,
+    reference_hz: f32,
+    deviation_threshold: f32,
+) -> Option<VibratoDetection> {
+    if pitch_track.len() < 2 {
+        return None;
+    }
+    let mut derivative = vec![0.0f32; pitch_track.len()];
+    for i in 1..pitch_track.len() {
+        derivative[i] = pitch_track[i] - reference_hz;
+    }
+
+    let find_extrema = || -> (Vec<f32>, Vec<f32>) {
+        let mut minima = Vec::new();
+        let mut maxima = Vec::new();
+        let mut direction = -1i32;
+        for (i, &d) in derivative.iter().enumerate() {
+            let t = i as f32 / iframes_per_sec;
+            if d > 0.0 {
+                if direction == -1 {
+                    direction = 1;
+                    minima.push(t);
+                }
+            } else if d < 0.0 && direction == 1 {
+                direction = -1;
+                maxima.push(t);
+            }
+        }
+        (minima, maxima)
+    };
+
+    let (minima, maxima) = find_extrema();
+    if maxima.is_empty() || minima.len() < 3 {
+        return None;
+    }
+
+    // `minimaMaximaTimepointDifferences` in the C: minima-to-minima
+    // differences, followed by maxima-to-maxima differences - the C's
+    // own maxima loop reads `maximaTpts[i] - maximaTpts[i - 1]` starting
+    // at `i == 0` (a genuine out-of-bounds read on the first iteration,
+    // `maximaTpts[-1]`); that one undefined slot is skipped here rather
+    // than reproduced (matching this project's "don't reproduce
+    // undefined behavior" policy), so only maxima differences for `i in
+    // 1..maxima.len()` are included, same as the C's own well-defined
+    // remainder.
+    let mut differences: Vec<f32> = minima.windows(2).map(|w| w[1] - w[0]).collect();
+    differences.extend(maxima.windows(2).map(|w| w[1] - w[0]));
+    differences.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    if differences.is_empty() {
+        return None;
+    }
+
+    let mut deviation_now = deviation_threshold;
+    loop {
+        let median_index =
+            ((0.5 + differences.len() as f32 / 2.0) as usize).min(differences.len() - 1);
+        let median = differences[median_index];
+
+        let flags: Vec<bool> = minima
+            .windows(2)
+            .map(|w| {
+                let temp = median / (w[1] - w[0]);
+                !((temp > 1.0 + deviation_now) || (temp < 1.0 - deviation_now))
+            })
+            .collect();
+
+        let mut best_start = 0usize;
+        let mut best_len = 0usize;
+        let mut cur_start = 0usize;
+        let mut cur_len = 0usize;
+        let mut in_seg = false;
+        for (i, &f) in flags.iter().enumerate() {
+            if f {
+                if !in_seg {
+                    in_seg = true;
+                    cur_start = i;
+                    cur_len = 1;
+                } else {
+                    cur_len += 1;
+                }
+                if i == flags.len() - 1 && cur_len > best_len {
+                    best_start = cur_start;
+                    best_len = cur_len;
+                }
+            } else if in_seg {
+                in_seg = false;
+                if cur_len > best_len {
+                    best_start = cur_start;
+                    best_len = cur_len;
+                }
+            }
+        }
+
+        if best_len + 1 >= 3 || deviation_now > 0.75 {
+            if best_len + 1 < 3 {
+                return None;
+            }
+            let selected: Vec<f32> = minima[best_start..=best_start + best_len].to_vec();
+            let mut total = 0.0f32;
+            for w in selected.windows(2) {
+                total += w[1] - w[0];
+            }
+            // `averageVibratoPeriodDuration /= (float) numberOfMinima` in
+            // the C: divides the sum of `selected.len() - 1` period
+            // durations by `selected.len()`, not `selected.len() - 1` -
+            // a real off-by-one, reproduced faithfully rather than
+            // "fixed" to a true mean.
+            let average_period_duration = total / selected.len() as f32;
+            return Some(VibratoDetection {
+                window_low: selected[0],
+                window_high: selected[selected.len() - 1],
+                average_period_duration,
+                minima_tpts: selected,
+            });
+        }
+        deviation_now = ((1.0 + deviation_now) * (1.0 + deviation_threshold)) - 1.0;
+    }
+}
+
+/// Ports the per-tone source-point auto-tuning block in `main()`
+/// (`-O1`): the median of a narrow-band pitch track around a tone's own
+/// nominal source point, converted back to octave.pitchclass if the
+/// original `source_point` field was one (`< 13.0`).
+///
+/// `pitch_track` is the caller's own `pitchtracker::process` output over
+/// a band narrowed to `source_hz`'s own immediate neighborhood (the
+/// real C's own `-f`/`-F` band-limiting, done by the caller before this
+/// function runs - this only finds the median and does the
+/// OPPC-vs-Hz conversion).
+pub fn tune_source_point(pitch_track: &[f32], source_point_was_oppc: bool) -> f32 {
+    let mut sorted: Vec<f32> = pitch_track
+        .iter()
+        .copied()
+        .filter(|v| v.is_finite())
+        .collect();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let median = if sorted.is_empty() {
+        0.0
+    } else {
+        sorted[sorted.len() / 2]
+    };
+    if source_point_was_oppc {
+        crate::response::hz_to_oppc(median)
+    } else {
+        median
+    }
+}
+
+// ---------------------------------------------------------------------
 // Per-frame synthesis
 // ---------------------------------------------------------------------
 
@@ -898,6 +1552,33 @@ pub struct ChordmapperplusParams {
     pub tones_master_freq_shift_hz: ControlFn,
     pub tones_macro_pitch_semitones: ControlFn,
     pub threshold_db: f32,
+
+    // ---- Phase 2 additions ----
+    /// `Onset_and_Release_Segment_Mode__Off_0__On_1__Onset_Only_2` (`-@`).
+    pub onset_release_mode: OnsetReleaseMode,
+    /// `-e`: crossfades `channel[]`'s own overall amplitude toward a
+    /// fixed reference level at the loop window's own two boundaries -
+    /// only active in sampler-loop mode (`!autostop`).
+    pub loop_normalization: bool,
+    /// `-T`.
+    pub rate_correlated_tone_control_db: ControlFn,
+    /// `-E`.
+    pub rate_correlated_noise_control_db: ControlFn,
+    /// `-B`: scales `force_factor`/`stasis_median_harmony_db` down as
+    /// `rate` (`filtrate`) approaches `0`.
+    pub rate_correlated_force_suppression: bool,
+    /// `-L`.
+    pub noise_band_decibel_limit_db: ControlFn,
+    /// `-b`.
+    pub noise_band_decibel_limit_rolloff_db: ControlFn,
+}
+
+/// `Onset_and_Release_Segment_Mode__Off_0__On_1__Onset_Only_2` in the C.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OnsetReleaseMode {
+    Off,
+    On,
+    OnsetOnly,
 }
 
 /// Resynthesizes one output channel. `analysis`/`analysis_n`/
@@ -915,8 +1596,11 @@ pub fn process_channel(
     tones: &[ToneParams],
     band_setup: &BandSetup,
     static_freq: &StaticFreqResponse,
+    noise_setup: Option<&NoiseSetup>,
     params: &ChordmapperplusParams,
 ) -> Vec<f32> {
+    const VIBRATO_DEPTH_DB: f32 = 10.0;
+
     let r = analysis_sample_rate as f32;
     let n = analysis_n;
     let n_plus_2 = n + 2;
@@ -951,7 +1635,7 @@ pub fn process_channel(
     let semitones_to_mult = SemitonesToMult::new();
 
     let nav_cfg = TimeNavConfig {
-        onset_release: false, // TODO(phase2): onset/release mode (`-@`).
+        onset_release: params.onset_release_mode != OnsetReleaseMode::Off,
         autostop: params.autostop,
         loop_mode: params.loop_mode,
     };
@@ -965,10 +1649,16 @@ pub fn process_channel(
         i_factor,
         1.0,
     );
+    let noise_bin_count =
+        noise_setup.map_or(0, |ns| ns.noise_bin_indices.len() * ns.bank_tone.len());
+    let mut noise_osc = (noise_bin_count > 0)
+        .then(|| OscBank::new(noise_bin_count, nw, analysis_sample_rate, i_factor, 1.0));
 
     let mut channel_smoother = Smoother::new(n_plus_2);
     let mut previous_freq = vec![0.0f32; n_plus_2];
     let mut first_frame = true;
+    let mut loop_normalizer = LoopNormalizer::new();
+    let mut synthetic_vibrato = SyntheticVibrato::new(tones.len());
 
     let mut on: i64 = -(nw as i64) * i_factor as i64 / d as i64;
 
@@ -1016,6 +1706,22 @@ pub fn process_channel(
 
         let mut channel = interpolate_frame(analysis, iframes_per_sec, step.filttnow);
 
+        // ---- loop amplitude normalization (`-e`) ----
+        loop_normalizer.step(
+            params.loop_normalization,
+            params.autostop,
+            &mut channel,
+            win_low_val,
+            win_hi_val,
+            analysis_dur,
+            step.filttnow,
+            t,
+            |time| {
+                let f = interpolate_frame(analysis, iframes_per_sec, time);
+                f.iter().step_by(2).sum()
+            },
+        );
+
         if first_frame {
             previous_freq.copy_from_slice(&channel[..n_plus_2.min(channel.len())]);
             first_frame = false;
@@ -1025,19 +1731,107 @@ pub fn process_channel(
         channel_smoother.smooth(&mut channel, loop_c, loop_minusc, loop_c, loop_minusc);
         smoothfreqs(&mut channel, &mut previous_freq, loop_c, loop_minusc);
 
+        let this_channel_amp_sum: f32 = channel.iter().step_by(2).sum();
+
+        // ---- rate-correlated dynamics (`-T`/`-E`/`-B`) ----
+        let rate_decay = {
+            let temp = if rate_val.abs() > 1.0 {
+                0.0
+            } else {
+                1.0 - rate_val.abs()
+            };
+            curve(0.0, 1.0, temp, 0.0)
+        };
+        let rate_correlated_tone_db =
+            params.rate_correlated_tone_control_db.at(t, dur) * rate_decay;
+        let rate_correlated_noise_db =
+            params.rate_correlated_noise_control_db.at(t, dur) * rate_decay;
+        let (rate_force_suppressor, rate_median_raiser) = {
+            let temp = rate_val.abs().min(1.0);
+            (
+                curve(0.0, 1.0, temp, -7.0),
+                1.0 - curve(0.0, 1.0, temp, 12.0),
+            )
+        };
+
         // ---- per-tone control values for this frame ----
-        // TODO(phase2): Rate_Correlated_Randomization_Switch/
-        // rateCorrelatedForceSuppressionSwitch (both default off) would
-        // modify `this_stasis_median_harmony`/`this_force_factor` here;
-        // this phase always takes the real C's own default-off branch.
-        let stasis_median_harmony: Vec<f32> = tones
+        // `force_factor_raw` feeds per-band tuning (`thisTuneFactor` in
+        // the C is genuinely never clamped to `1.0` there, unlike the
+        // blend site's own `thisForceFactor` - two different variables
+        // reading the same control function, only one of them clamped;
+        // confirmed by re-reading both call sites directly rather than
+        // assuming they share one clamped value, which Phase 1's own
+        // first draft incorrectly did).
+        let force_factor_raw: Vec<f32> = tones
+            .iter()
+            .map(|tn| {
+                let base = tn.force_factor.at(t, dur);
+                if params.rate_correlated_force_suppression {
+                    base * rate_force_suppressor
+                } else {
+                    base
+                }
+            })
+            .collect();
+        let force_factor_clamped: Vec<f32> = tones
+            .iter()
+            .enumerate()
+            .map(|(i, tn)| {
+                let base = tn.force_factor.at(t, dur).min(1.0);
+                if params.rate_correlated_force_suppression {
+                    base * rate_force_suppressor
+                } else {
+                    let _ = i;
+                    base
+                }
+            })
+            .collect();
+
+        let stasis_median_harmony_raw: Vec<f32> = tones
             .iter()
             .map(|tn| tn.stasis_median_harmony_db.at(t, dur))
             .collect();
-        let force_factor: Vec<f32> = tones
+        let mut stasis_median_harmony: Vec<f32> = stasis_median_harmony_raw
             .iter()
-            .map(|tn| tn.force_factor.at(t, dur).min(1.0))
+            .enumerate()
+            .map(|(i, &base)| {
+                if params.rate_correlated_force_suppression {
+                    let this_force = force_factor_clamped[i];
+                    base + rate_median_raiser * (base * (1.0 - this_force) - base)
+                } else {
+                    base
+                }
+            })
             .collect();
+
+        // Onset/release modification of the harmony stasis median
+        // (`main()`'s own `if(Onset...==1||==2){ ... }` block, using
+        // `tonesChannelAmpSums[toneNumber]` - under this phase's own
+        // delay=0 assumption, that's simply this frame's *whole-channel*
+        // amplitude sum, the same value for every tone, not a per-tone
+        // one - confirmed by tracing `channelAmpSum_delay_buffer`'s own
+        // single producer back to `thisChannelAmpSum` in the C).
+        if params.onset_release_mode != OnsetReleaseMode::Off {
+            let temp = amp_to_db(this_channel_amp_sum) - static_freq.peak_sum_db;
+            for m in stasis_median_harmony.iter_mut() {
+                if step.filttnow < win_low_val {
+                    let t_prop = step.filttnow / win_low_val;
+                    let env = curve(0.0, 1.0, t_prop, -2.0);
+                    if *m > temp {
+                        *m = (1.0 - env) * temp + env * *m;
+                    }
+                } else if step.filttnow > win_hi_val
+                    && params.onset_release_mode == OnsetReleaseMode::On
+                {
+                    let t_prop = (step.filttnow - win_hi_val) / (analysis_dur - win_hi_val);
+                    let env = curve(1.0, 0.0, t_prop, 2.0);
+                    if *m > temp {
+                        *m = (1.0 - env) * temp + env * *m;
+                    }
+                }
+            }
+        }
+
         let tone_db: Vec<f32> = tones.iter().map(|tn| tn.tone_db.at(t, dur)).collect();
         let partial_shift: Vec<f32> = tones.iter().map(|tn| tn.partial_shift.at(t, dur)).collect();
         let spectral_stretch: Vec<f32> = tones
@@ -1066,6 +1860,33 @@ pub fn process_channel(
         let tones_master_gain_amp = db_to_amp.convert(params.tones_master_gain_db.at(t, dur));
         let tones_master_freq_shift = params.tones_master_freq_shift_hz.at(t, dur);
         let pmt = semitones_to_mult.convert(params.tones_macro_pitch_semitones.at(t, dur));
+
+        // ---- synthetic vibrato (`getVibratoValuesAndIncrement`) ----
+        // TODO(phase4): `synthetic_Vibrato_Rate`/`_Randomization_Prop`
+        // aren't wired to a CLI control yet, so every tone reads rate
+        // `0.0` here - the table lookup still produces a valid (just
+        // phase-frozen) value for a rate of `0`.
+        let synthetic_vibrato_rate_hz = vec![0.0f32; tones.len()];
+        let mut vib_val_now =
+            synthetic_vibrato.step(tones, &synthetic_vibrato_rate_hz, params.frames_per_sec);
+        if params.onset_release_mode == OnsetReleaseMode::On
+            || params.onset_release_mode == OnsetReleaseMode::OnsetOnly
+        {
+            for (i, v) in vib_val_now.iter_mut().enumerate() {
+                if step.filttnow < win_low_val {
+                    let t_prop = step.filttnow / win_low_val;
+                    let env = curve(0.0, 1.0, t_prop, -2.0);
+                    *v = (1.0 - env) + env * *v;
+                } else if step.filttnow > win_hi_val
+                    && params.onset_release_mode == OnsetReleaseMode::On
+                {
+                    let t_prop = (step.filttnow - win_hi_val) / (analysis_dur - win_hi_val);
+                    let env = curve(1.0, 0.0, t_prop, 2.0);
+                    *v = (1.0 - env) + env * *v;
+                }
+                let _ = i;
+            }
+        }
 
         // ---- static harmony (spectral-morph) amplitude, per bin ----
         let mut static_harmony_amp = vec![0.0f32; band_setup.bins.len()];
@@ -1131,7 +1952,10 @@ pub fn process_channel(
                 continue;
             }
             let tone_now = band_setup.bins[lo].tone;
-            let this_tune_factor = force_factor[tone_now];
+            let mut this_tune_factor = force_factor_raw[tone_now];
+            if tones[tone_now].synthetic_vibrato_switch != 0.0 {
+                this_tune_factor *= vib_val_now[tone_now];
+            }
             let this_avg_freq = fsum / asum;
             let band_avg_freq = static_freq.band_average_freq[band];
 
@@ -1185,16 +2009,27 @@ pub fn process_channel(
         // ---- blend static/live amplitude, apply tone gain, transpose ----
         for (bin_idx, bin) in band_setup.bins.iter().enumerate() {
             let tone_now = bin.tone;
-            let this_amp_force_factor = curve(
+            let mut this_amp_force_factor = curve(
                 0.0,
                 1.0,
-                force_factor[tone_now],
+                force_factor_clamped[tone_now],
                 static_freq.force_curve_index[bin_idx],
             );
 
+            if tones[tone_now].synthetic_vibrato_switch != 0.0 {
+                let this_stasis_median = stasis_median_harmony_raw[tone_now];
+                let mut vib_depth_force_prop = VIBRATO_DEPTH_DB / (0.0 - this_stasis_median);
+                if vib_depth_force_prop > 1.0 {
+                    vib_depth_force_prop = 1.0;
+                }
+                this_amp_force_factor =
+                    (vib_depth_force_prop * vib_val_now[tone_now] * this_amp_force_factor)
+                        + (1.0 - vib_depth_force_prop) * this_amp_force_factor;
+            }
+
             harmony_amp[bin_idx] = static_harmony_amp[bin_idx]
                 + this_amp_force_factor * (harmony_amp[bin_idx] - static_harmony_amp[bin_idx]);
-            harmony_amp[bin_idx] *= db_to_amp.convert(tone_db[tone_now])
+            harmony_amp[bin_idx] *= db_to_amp.convert(tone_db[tone_now] + rate_correlated_tone_db)
                 * bin.coswindow
                 * tones_master_gain_amp
                 * master_gain_amp;
@@ -1272,9 +2107,165 @@ pub fn process_channel(
         };
         let synt = getthresh(&frame.bins, threshfac);
         let hop_out = osc.synthesize(&frame, synt);
+
+        // ---- noise bands (Phase 2) ----
+        let noise_hop_out = if let (Some(ns), Some(noise_osc)) = (noise_setup, noise_osc.as_mut()) {
+            let mut noise_amp = vec![0.0f32; ns.noise_bin_indices.len() * ns.bank_tone.len()];
+            let mut noise_freq = vec![0.0f32; noise_amp.len()];
+
+            for (bank, &tone_now) in ns.bank_tone.iter().enumerate() {
+                let base = bank * ns.noise_bin_indices.len();
+                for (i, &idx) in ns.noise_bin_indices.iter().enumerate() {
+                    noise_amp[base + i] = channel[idx];
+                    noise_freq[base + i] = channel[idx + 1];
+                }
+
+                let this_force_suppress = if params.rate_correlated_force_suppression {
+                    force_factor_clamped[tone_now] * rate_force_suppressor
+                } else {
+                    force_factor_clamped[tone_now]
+                };
+                let mut this_noise_bank_force_control = this_force_suppress;
+
+                let this_stasis_median_noise_raw =
+                    tones[tone_now].stasis_median_noise_db.at(t, dur);
+                let mut this_stasis_median_noise = this_stasis_median_noise_raw;
+                if params.rate_correlated_force_suppression {
+                    let this_force = force_factor_clamped[tone_now];
+                    this_stasis_median_noise = this_stasis_median_noise_raw
+                        + rate_median_raiser
+                            * (this_stasis_median_noise_raw * (1.0 - this_force)
+                                - this_stasis_median_noise_raw);
+                }
+                if params.onset_release_mode != OnsetReleaseMode::Off {
+                    let temp = amp_to_db(this_channel_amp_sum) - static_freq.peak_sum_db;
+                    if step.filttnow < win_low_val {
+                        let t_prop = step.filttnow / win_low_val;
+                        let env = curve(0.0, 1.0, t_prop, 0.0);
+                        if this_stasis_median_noise > temp {
+                            this_stasis_median_noise =
+                                (1.0 - env) * temp + env * this_stasis_median_noise;
+                        }
+                    } else if step.filttnow > win_hi_val
+                        && params.onset_release_mode == OnsetReleaseMode::On
+                    {
+                        let t_prop = (step.filttnow - win_hi_val) / (analysis_dur - win_hi_val);
+                        let env = curve(1.0, 0.0, t_prop, 0.0);
+                        if this_stasis_median_noise > temp {
+                            this_stasis_median_noise =
+                                (1.0 - env) * temp + env * this_stasis_median_noise;
+                        }
+                    }
+                }
+
+                if tones[tone_now].synthetic_vibrato_switch != 0.0 {
+                    let mut vib_depth_force_prop =
+                        VIBRATO_DEPTH_DB / (0.0 - this_stasis_median_noise_raw);
+                    if vib_depth_force_prop > 1.0 {
+                        vib_depth_force_prop = 1.0;
+                    }
+                    this_noise_bank_force_control = (vib_depth_force_prop
+                        * vib_val_now[tone_now]
+                        * this_noise_bank_force_control)
+                        + (1.0 - vib_depth_force_prop) * this_noise_bank_force_control;
+                }
+
+                let real_median_index =
+                    (-this_stasis_median_noise).clamp(0.0, (NUM_STATIC_LEVELS - 1) as f32);
+                let lower_level = (real_median_index as usize).min(NUM_STATIC_LEVELS - 1);
+                let upper_level = (lower_level + 1).min(NUM_STATIC_LEVELS - 1);
+                let upper_prop = real_median_index - lower_level as f32;
+                let lower_prop = 1.0 - upper_prop;
+
+                let this_noise_bank_gain = db_to_amp
+                    .convert(tones[tone_now].noise_db.at(t, dur) + rate_correlated_noise_db);
+
+                let transpose_hz = if tones[tone_now].transpose_point_noise.at(t, dur) == 0.0 {
+                    transpose_point_pitch_hz[tone_now]
+                } else {
+                    let v = tones[tone_now].transpose_point_noise.at(t, dur);
+                    if band_setup.transpose_shift_method_noise_is_oppc[tone_now] {
+                        oppc_to_hz(v)
+                    } else {
+                        v
+                    }
+                };
+                let source_freq = band_setup.source_pt_fund_freq[tone_now];
+
+                for (i, &idx) in ns.noise_bin_indices.iter().enumerate() {
+                    let static_amp = lower_prop
+                        * static_freq.averages[lower_level * n_plus_2 + idx]
+                        + upper_prop * static_freq.averages[upper_level * n_plus_2 + idx];
+                    let threshold_db_val = ns.threshold_db[i]
+                        + params.noise_band_decibel_limit_db.at(t, dur)
+                        + params.noise_band_decibel_limit_rolloff_db.at(t, dur)
+                            * ns.position_index[i];
+                    let temp = db_to_amp.convert(threshold_db_val);
+                    let a = base + i;
+                    noise_amp[a] = if static_amp > temp {
+                        temp + this_noise_bank_force_control * (noise_amp[a] - temp)
+                    } else {
+                        static_amp + this_noise_bank_force_control * (noise_amp[a] - static_amp)
+                    };
+                    noise_amp[a] = noise_amp[a].max(0.0) * this_noise_bank_gain;
+
+                    noise_freq[a] *= transpose_hz / source_freq;
+                    if band_setup.trans_switch[tone_now] {
+                        noise_freq[a] = (noise_freq[a] + tones_master_freq_shift) * pmt;
+                    }
+                    if noise_freq[a] < 0.0 {
+                        noise_freq[a] = 0.0;
+                        noise_amp[a] = 0.0;
+                    }
+                }
+
+                if band_setup.noise_filter_switch[tone_now] {
+                    let rolloff_amp = db_to_amp.convert(bandpass_rolloff[tone_now]);
+                    if rolloff_amp != 1.0 {
+                        let cf = bandpass_cf[tone_now];
+                        let filter_type = band_setup.tone_filter_type[tone_now];
+                        for i in 0..ns.noise_bin_indices.len() {
+                            let a = base + i;
+                            if noise_freq[a] <= 0.0 {
+                                continue;
+                            }
+                            if noise_freq[a] > cf {
+                                if filter_type != 2 {
+                                    noise_amp[a] *= rolloff_amp.powf((noise_freq[a] / cf).log2());
+                                }
+                            } else if filter_type != 3 {
+                                noise_amp[a] *= rolloff_amp.powf((cf / noise_freq[a]).log2());
+                            }
+                        }
+                    }
+                }
+            }
+
+            let mut interleaved = vec![0.0f32; noise_amp.len() * 2];
+            for i in 0..noise_amp.len() {
+                interleaved[2 * i] = noise_amp[i];
+                interleaved[2 * i + 1] = noise_freq[i];
+            }
+            cut_dc(&mut interleaved, 20.0);
+            let noise_frame = Frame::from_pva_floats(&interleaved);
+            Some(noise_osc.synthesize(&noise_frame, synt))
+        } else {
+            None
+        };
+
         on += i_factor as i64;
         if on + nw as i64 - i_factor as i64 >= 0 {
-            output.extend(hop_out.iter().map(|&s| s * OSCILBANKGAIN));
+            match noise_hop_out {
+                Some(noise_hop) => {
+                    output.extend(
+                        hop_out
+                            .iter()
+                            .zip(noise_hop.iter())
+                            .map(|(&a, &b)| (a + b) * OSCILBANKGAIN),
+                    );
+                }
+                None => output.extend(hop_out.iter().map(|&s| s * OSCILBANKGAIN)),
+            }
             samps_written += i_factor;
         }
 
@@ -1509,6 +2500,33 @@ mod tests {
         vec![vec![0.0f32; n + 2]; frames]
     }
 
+    fn default_test_params() -> ChordmapperplusParams {
+        ChordmapperplusParams {
+            window_size: 0,
+            frames_per_sec: 200.0,
+            duration: 0.0,
+            time_origin: ControlFn::Const(0.0),
+            rate: ControlFn::Const(1.0),
+            window_low: ControlFn::Const(0.0),
+            window_high: ControlFn::Const(-1.0),
+            loop_smooth: ControlFn::Const(0.0),
+            autostop: true,
+            loop_mode: LoopMode::Wrap,
+            master_gain_db: ControlFn::Const(0.0),
+            tones_master_gain_db: ControlFn::Const(0.0),
+            tones_master_freq_shift_hz: ControlFn::Const(0.0),
+            tones_macro_pitch_semitones: ControlFn::Const(1.0),
+            threshold_db: -96.0,
+            onset_release_mode: OnsetReleaseMode::Off,
+            loop_normalization: false,
+            rate_correlated_tone_control_db: ControlFn::Const(0.0),
+            rate_correlated_noise_control_db: ControlFn::Const(0.0),
+            rate_correlated_force_suppression: false,
+            noise_band_decibel_limit_db: ControlFn::Const(0.0),
+            noise_band_decibel_limit_rolloff_db: ControlFn::Const(0.0),
+        }
+    }
+
     #[test]
     fn silence_in_silence_out() {
         let n = 512;
@@ -1525,25 +2543,19 @@ mod tests {
             &setup,
         );
 
-        let params = ChordmapperplusParams {
-            window_size: 0,
-            frames_per_sec: 200.0,
-            duration: 0.0,
-            time_origin: ControlFn::Const(0.0),
-            rate: ControlFn::Const(1.0),
-            window_low: ControlFn::Const(0.0),
-            window_high: ControlFn::Const(-1.0),
-            loop_smooth: ControlFn::Const(0.0),
-            autostop: true,
-            loop_mode: LoopMode::Wrap,
-            master_gain_db: ControlFn::Const(0.0),
-            tones_master_gain_db: ControlFn::Const(0.0),
-            tones_master_freq_shift_hz: ControlFn::Const(0.0),
-            tones_macro_pitch_semitones: ControlFn::Const(1.0),
-            threshold_db: -96.0,
-        };
+        let params = default_test_params();
 
-        let out = process_channel(&analysis, n, d, r, &tones, &setup, &static_freq, &params);
+        let out = process_channel(
+            &analysis,
+            n,
+            d,
+            r,
+            &tones,
+            &setup,
+            &static_freq,
+            None,
+            &params,
+        );
         assert!(
             out.iter().all(|&s| s == 0.0),
             "silence in must stay silence out"
@@ -1584,25 +2596,19 @@ mod tests {
             &setup,
         );
 
-        let params = ChordmapperplusParams {
-            window_size: 0,
-            frames_per_sec: 200.0,
-            duration: 0.0,
-            time_origin: ControlFn::Const(0.0),
-            rate: ControlFn::Const(1.0),
-            window_low: ControlFn::Const(0.0),
-            window_high: ControlFn::Const(-1.0),
-            loop_smooth: ControlFn::Const(0.0),
-            autostop: true,
-            loop_mode: LoopMode::Wrap,
-            master_gain_db: ControlFn::Const(0.0),
-            tones_master_gain_db: ControlFn::Const(0.0),
-            tones_master_freq_shift_hz: ControlFn::Const(0.0),
-            tones_macro_pitch_semitones: ControlFn::Const(1.0),
-            threshold_db: -96.0,
-        };
+        let params = default_test_params();
 
-        let out = process_channel(&analysis, n, d, r, &tones, &setup, &static_freq, &params);
+        let out = process_channel(
+            &analysis,
+            n,
+            d,
+            r,
+            &tones,
+            &setup,
+            &static_freq,
+            None,
+            &params,
+        );
         assert!(!out.is_empty(), "expected some resynthesized output");
         assert!(
             out.iter().any(|&s| s != 0.0),
@@ -1620,5 +2626,317 @@ mod tests {
         cut_dc(&mut channel, 20.0);
         assert!(channel[0] < 1.0);
         assert_eq!(channel[2], 1.0, "bins at/above cutoff are untouched");
+    }
+
+    // ---- Phase 2 ----
+
+    fn noisy_tone(source_hz: f32) -> ToneParams {
+        let mut t = simple_tone(source_hz);
+        t.noise_switch = 1.0;
+        t.noise_db = ControlFn::Const(0.0);
+        t.stasis_median_noise_db = ControlFn::Const(0.0);
+        t
+    }
+
+    #[test]
+    fn setup_noise_bands_finds_residue_bins() {
+        let n = 512;
+        let r = 44100.0;
+        let nyquist = r / 2.0;
+        let fundamental = r / n as f32;
+        let tones = vec![noisy_tone(440.0)];
+        let setup = setup_bands(&tones, nyquist, fundamental, n).unwrap();
+
+        let (channel_average, peak_amp) =
+            compute_channel_average(&vec![vec![0.1f32; n + 2]; 10], 100.0, n + 2);
+        let noise_setup = setup_noise_bands(&tones, &setup, &channel_average, peak_amp, n, n);
+
+        // Most of the n/2+1 bins are residue - a single tone with 3
+        // narrow partials claims only a small fraction of them (the
+        // exact count depends on bandwidth/spacing, so this checks
+        // "most survive", not an exact number).
+        assert!(noise_setup.noise_bin_indices.len() > (n / 2) * 3 / 4);
+        assert_eq!(noise_setup.bank_tone, vec![0]);
+        assert!(!noise_setup.band_lower.is_empty());
+        assert_eq!(
+            noise_setup.threshold_db.len(),
+            noise_setup.noise_bin_indices.len()
+        );
+        // No harmony bin's own amplitude index should appear among the
+        // noise bins - the two sets are meant to be disjoint.
+        let harmony_indices: std::collections::HashSet<usize> =
+            setup.bins.iter().map(|b| b.channel_amp_index).collect();
+        for &idx in &noise_setup.noise_bin_indices {
+            assert!(!harmony_indices.contains(&idx));
+        }
+    }
+
+    #[test]
+    fn setup_noise_bands_empty_when_no_tone_wants_noise() {
+        let n = 512;
+        let tones = vec![simple_tone(440.0)]; // noise_switch == 0.0
+        let setup = setup_bands(&tones, r_over_2(n), n as f32, n).unwrap();
+        let (channel_average, peak_amp) =
+            compute_channel_average(&vec![vec![0.0f32; n + 2]; 5], 100.0, n + 2);
+        let noise_setup = setup_noise_bands(&tones, &setup, &channel_average, peak_amp, n, n);
+        assert!(noise_setup.bank_tone.is_empty());
+    }
+
+    fn r_over_2(n: usize) -> f32 {
+        // A plausible nyquist for a tone with a source point comfortably
+        // below it, matching this test module's other fixtures.
+        (n as f32) * 43.0
+    }
+
+    #[test]
+    fn noise_bank_produces_bounded_output() {
+        let n = 512;
+        let r = 44100u32;
+        let d = 128u32;
+        let source_hz = 440.0f32;
+        let tones = vec![noisy_tone(source_hz)];
+        let setup = setup_bands(&tones, r as f32 / 2.0, r as f32 / n as f32, n).unwrap();
+
+        // A broadband-noise-floor-like single frame: every bin has a
+        // little amplitude, not just the tone's own harmony bins.
+        // Deliberately quiet (roughly -50 to -55dB per bin) - real
+        // "residue" content is the file's own noise floor, not a
+        // loud, fully-populated spectrum. `OscBank`'s own cosine table
+        // is scaled by this bank's own oscillator *count*
+        // (`tabscale`, see `pvoc::OscBank::new`'s own doc comment) -
+        // exactly matching the real C's own `noscbank()`/`NC` calling
+        // convention (`chordmapperplus.c` really does pass its own
+        // small `NC` for this purpose) - so summing ~250 simultaneous
+        // near-full-amplitude oscillators here would legitimately (not
+        // as a bug) produce an enormous peak; a quiet, noise-floor-
+        // realistic amplitude keeps this test meaningful without
+        // relying on that scaling quirk to stay merely "bounded" by
+        // accident.
+        let mut frame = vec![0.0f32; n + 2];
+        for i in (0..n + 2).step_by(2) {
+            let k = i / 2;
+            frame[i] = 0.0003 * (1.0 + 0.5 * ((k as f32 * 0.37).sin()));
+            frame[i + 1] = (k as f32) * (r as f32 / n as f32);
+        }
+        let analysis = vec![frame; 100];
+
+        let (channel_average, peak_amp) =
+            compute_channel_average(&analysis, r as f32 / d as f32, n + 2);
+        let noise_setup = setup_noise_bands(&tones, &setup, &channel_average, peak_amp, n, n);
+        assert!(!noise_setup.bank_tone.is_empty());
+
+        let static_freq = compute_static_freq_response(
+            &analysis,
+            r as f32 / d as f32,
+            n + 2,
+            r as f32 / n as f32,
+            &setup,
+        );
+        let params = default_test_params();
+        let out = process_channel(
+            &analysis,
+            n,
+            d,
+            r,
+            &tones,
+            &setup,
+            &static_freq,
+            Some(&noise_setup),
+            &params,
+        );
+        assert!(!out.is_empty());
+        // `OscBank`'s own cosine table is scaled by this bank's own
+        // oscillator count (`tabscale`, see `pvoc::OscBank::new`'s own
+        // doc comment) - correctly matching the real C's own
+        // `noscbank()`/`NC` calling convention - so a peak-sample bound
+        // isn't meaningful here (a synthetic test with ~250
+        // simultaneously-active oscillators can produce a large but
+        // entirely real momentary constructive-interference peak, not a
+        // bug). Finiteness (no NaN/overflow) and RMS-level boundedness
+        // are what this test actually means to check.
+        assert!(out.iter().all(|&s| s.is_finite()), "no NaN/Inf samples");
+        let rms = (out.iter().map(|&s| s * s).sum::<f32>() / out.len() as f32).sqrt();
+        assert!(
+            rms < 5.0,
+            "RMS level should stay in a sane range, got {rms}"
+        );
+        assert!(
+            out.iter().any(|&s| s != 0.0),
+            "expected nonzero output with noise bands active"
+        );
+    }
+
+    #[test]
+    fn detect_vibrato_periods_finds_periodic_wobble() {
+        let iframes_per_sec = 200.0f32;
+        let reference = 440.0f32;
+        let rate_hz = 5.0f32; // a typical singing vibrato rate
+        let depth_hz = 15.0f32;
+        let duration_secs = 3.0f32;
+        let n = (duration_secs * iframes_per_sec) as usize;
+        let pitch_track: Vec<f32> = (0..n)
+            .map(|i| {
+                let t = i as f32 / iframes_per_sec;
+                reference + depth_hz * (std::f32::consts::TAU * rate_hz * t).sin()
+            })
+            .collect();
+
+        let detection = detect_vibrato_periods(&pitch_track, iframes_per_sec, reference, 0.05)
+            .expect("a clean periodic wobble should be detected");
+        let expected_period = 1.0 / rate_hz;
+        assert!(
+            (detection.average_period_duration - expected_period).abs() < 0.05,
+            "expected period near {expected_period}, got {}",
+            detection.average_period_duration
+        );
+        assert!(detection.window_high > detection.window_low);
+        assert!(detection.minima_tpts.len() >= 3);
+    }
+
+    #[test]
+    fn detect_vibrato_periods_returns_none_for_flat_track() {
+        let pitch_track = vec![440.0f32; 200];
+        assert!(detect_vibrato_periods(&pitch_track, 200.0, 440.0, 0.05).is_none());
+    }
+
+    #[test]
+    fn tune_source_point_median_hz() {
+        let track = vec![438.0, 439.0, 440.0, 441.0, 442.0];
+        let median = tune_source_point(&track, false);
+        assert_eq!(median, 440.0);
+    }
+
+    #[test]
+    fn tune_source_point_median_converts_to_oppc() {
+        let track = vec![oppc_to_hz(5.0)];
+        let median = tune_source_point(&track, true);
+        assert!((median - 5.0).abs() < 1e-2);
+    }
+
+    #[test]
+    fn synthetic_vibrato_step_stays_bounded_and_is_deterministic() {
+        let tones = vec![{
+            let mut t = simple_tone(440.0);
+            t.synthetic_vibrato_switch = 1.0;
+            t
+        }];
+        let mut vib_a = SyntheticVibrato::new(1);
+        let mut vib_b = SyntheticVibrato::new(1);
+        let rates = vec![6.0f32];
+        for _ in 0..50 {
+            let a = vib_a.step(&tones, &rates, 200.0);
+            let b = vib_b.step(&tones, &rates, 200.0);
+            assert_eq!(
+                a, b,
+                "two freshly-constructed instances should agree frame-for-frame"
+            );
+            assert!(a[0] >= 0.0 && a[0] <= 1.0, "vibValNow must stay in [0, 1]");
+        }
+    }
+
+    #[test]
+    fn loop_normalizer_is_a_noop_when_disabled() {
+        let mut normalizer = LoopNormalizer::new();
+        let mut channel = vec![1.0f32, 100.0, 2.0, 200.0];
+        let before = channel.clone();
+        normalizer.step(false, false, &mut channel, 0.0, 1.0, 2.0, 0.5, 0.5, |_| 5.0);
+        assert_eq!(channel, before);
+    }
+
+    #[test]
+    fn onset_release_mode_runs_without_panicking() {
+        let n = 512;
+        let r = 44100u32;
+        let d = 128u32;
+        let tones = vec![simple_tone(440.0)];
+        let setup = setup_bands(&tones, r as f32 / 2.0, r as f32 / n as f32, n).unwrap();
+        let analysis = silence_analysis(n, 100);
+        let static_freq = compute_static_freq_response(
+            &analysis,
+            r as f32 / d as f32,
+            n + 2,
+            r as f32 / n as f32,
+            &setup,
+        );
+        let mut params = default_test_params();
+        params.onset_release_mode = OnsetReleaseMode::On;
+        params.window_low = ControlFn::Const(0.1);
+        params.window_high = ControlFn::Const(0.5);
+        let out = process_channel(
+            &analysis,
+            n,
+            d,
+            r,
+            &tones,
+            &setup,
+            &static_freq,
+            None,
+            &params,
+        );
+        assert!(out.iter().all(|s| s.is_finite()));
+    }
+
+    #[test]
+    fn rate_correlated_tone_control_attenuates_at_zero_rate() {
+        let n = 512;
+        let r = 44100u32;
+        let d = 128u32;
+        let source_hz = 440.0f32;
+        let tones = vec![simple_tone(source_hz)];
+        let setup = setup_bands(&tones, r as f32 / 2.0, r as f32 / n as f32, n).unwrap();
+        let fundamental_bin = setup
+            .bins
+            .iter()
+            .filter(|b| (b.source_freq - source_hz).abs() < 1.0)
+            .max_by(|a, b| a.coswindow.total_cmp(&b.coswindow))
+            .unwrap();
+        let mut frame = vec![0.0f32; n + 2];
+        frame[fundamental_bin.channel_amp_index] = 1.0;
+        frame[fundamental_bin.channel_amp_index + 1] = source_hz;
+        let analysis = vec![frame; 100];
+        let static_freq = compute_static_freq_response(
+            &analysis,
+            r as f32 / d as f32,
+            n + 2,
+            r as f32 / n as f32,
+            &setup,
+        );
+
+        let mut quiet_params = default_test_params();
+        quiet_params.rate = ControlFn::Const(0.0);
+        quiet_params.rate_correlated_tone_control_db = ControlFn::Const(-96.0);
+        let quiet_out = process_channel(
+            &analysis,
+            n,
+            d,
+            r,
+            &tones,
+            &setup,
+            &static_freq,
+            None,
+            &quiet_params,
+        );
+
+        let mut loud_params = default_test_params();
+        loud_params.rate = ControlFn::Const(0.0);
+        loud_params.rate_correlated_tone_control_db = ControlFn::Const(0.0);
+        let loud_out = process_channel(
+            &analysis,
+            n,
+            d,
+            r,
+            &tones,
+            &setup,
+            &static_freq,
+            None,
+            &loud_params,
+        );
+
+        let quiet_peak = quiet_out.iter().fold(0.0f32, |m, &s| m.max(s.abs()));
+        let loud_peak = loud_out.iter().fold(0.0f32, |m, &s| m.max(s.abs()));
+        assert!(
+            quiet_peak < loud_peak * 0.5,
+            "a -96dB rate-correlated tone control at rate 0 should audibly attenuate: quiet={quiet_peak}, loud={loud_peak}"
+        );
     }
 }
