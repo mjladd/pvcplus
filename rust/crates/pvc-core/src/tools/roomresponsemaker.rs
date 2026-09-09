@@ -1,7 +1,7 @@
 //! Ports `roomresponsemaker.c` (9318 lines, the largest and most
 //! structurally distinct tool in this project): a recursive image-source
 //! polygonal-room acoustics engine, not a phase-vocoder filter/resynthesis
-//! tool like every other Phase 5 tool. **This module is now through Phase 2
+//! tool like every other Phase 5 tool. **This module is now through Phase 3
 //! of a multi-phase port.**
 //!
 //! **Phase 1** covered the room/speaker/listener geometry layer: room
@@ -9,31 +9,51 @@
 //! listener/source/speaker position resolution, and the small segment/angle
 //! utilities everything else builds on.
 //!
-//! **Phase 2** (this update) covers the recursive image-source
-//! reflection-path algorithm itself: [`mirror_point`]
-//! (`mirrorPointAroundLineSegment`), [`polygon_reflex_vertex_flags`]/
-//! [`point_to_line_position`] (the reflex-vertex-flagging half of
-//! `isPolygonConcave()` that Phase 1 deliberately left out), and
-//! [`find_reflection_paths`] (`mirrorPolygonCoordinatesAroundAllSides`),
-//! the recursive search itself, restructured around an explicit
-//! [`RoomAcousticsInput`]/internal search-trail pair instead of the C's own
-//! order-indexed global arrays, but reproducing the same recursion
-//! structure, angle-window prefilter, accept/reject tests, and (bugs
-//! included) formulas.
+//! **Phase 2** covered the recursive image-source reflection-path algorithm
+//! itself: [`mirror_point`] (`mirrorPointAroundLineSegment`),
+//! [`polygon_reflex_vertex_flags`]/[`point_to_line_position`] (the
+//! reflex-vertex-flagging half of `isPolygonConcave()` that Phase 1
+//! deliberately left out), and [`find_reflection_paths`]
+//! (`mirrorPolygonCoordinatesAroundAllSides`), the recursive search itself,
+//! restructured around an explicit [`RoomAcousticsInput`]/internal
+//! search-trail pair instead of the C's own order-indexed global arrays,
+//! but reproducing the same recursion structure, angle-window prefilter,
+//! accept/reject tests, and (bugs included) formulas.
 //!
-//! Still **not covered**: `writeReflectionPulsesIntoImpulseResponse`/
-//! `writeDirectSourcePulsesIntoImpulseResponse` (turning an accepted
-//! [`ReflectionPath`] into actual impulse-response pulses, which needs the
-//! wall/reflection-order impulse-response filtering infrastructure, a
-//! distinct and substantial later phase); the speaker-dispersion/source-
-//! threshold-proximity family (`makeSourceToSpeakerDistancesAndAngles`,
+//! **Phase 3** (this update) covers the *pulse-gain and delay-index* math
+//! inside `writeReflectionPulsesIntoImpulseResponse()` that turns one
+//! accepted [`ReflectionPath`] into a scalar amplitude and an output-sample
+//! delay index: [`source_orientation_to_reflection_angle_difference`],
+//! [`dispersion_pattern_amplitude`], [`air_absorption_multiplier`],
+//! [`wall_gainscale_amplitude`], [`reflection_order_gainscale_amplitude`],
+//! their combination in [`reflection_pulse_gain`],
+//! [`reflection_delay_sample_index`], and
+//! [`reflection_pulse_passes_inclusion_threshold`] - plus
+//! [`front_source_head_room_scalar`]/[`pre_echo_time_seconds`] from
+//! `makePreEchoValues()`, a small piece of setup math both the reflection
+//! and (out of scope here) direct-sound pulse paths depend on.
+//!
+//! **What Phase 3 deliberately does *not* cover, and why**: reading
+//! `writeReflectionPulsesIntoImpulseResponse()` in full (lines ~4404-5062)
+//! showed that the overwhelming majority of that function - everything
+//! feeding `impulseResponseNow` before the gain computed here ever gets
+//! multiplied onto it - is a wall/reflection-order impulse-response *file*
+//! cache-and-convolve engine (`testSequence`/`recallIR`/`addToIRfileCodes`/
+//! `convolveTwoArrays`/`makeReflectionOrderImpulseResponseNow`/the
+//! `filterAndNormalize*` family), not distance-driven synthetic pulse
+//! placement as the function's own name suggests. That engine reads actual
+//! wall/reflection-order impulse-response audio files, is a substantial and
+//! distinct later phase on its own, and is not started here.
+//! `writeDirectSourcePulsesIntoImpulseResponse()` and its whole
+//! speaker-dispersion/source-threshold-proximity dependency chain
+//! (`makeSourceToSpeakerDistancesAndAngles`,
 //! `findSourceToSpeakerAngleDifferencesFromSourceToListenerAngle`,
 //! `makeSourceToThresholdProximityProportion`/`Distance`,
-//! `isSourceBehindOrInFrontOfSpeakerThreshold`, all direct-sound-only
-//! concerns unrelated to the reflection recursion this phase covers); or
-//! any impulse-response audio/convolution/filtering code. No CLI wiring
-//! yet either, so `crack()` flag cross-referencing is deferred to that
-//! phase, same as Phase 1.
+//! `isSourceBehindOrInFrontOfSpeakerThreshold`) remains fully deferred, same
+//! as Phase 2 left it - direct-sound pulses are a distinct concern from the
+//! reflection math this phase covers. Plotting-file output and CLI wiring
+//! are also still not started, so `crack()` flag cross-referencing is still
+//! deferred to that later phase, same as Phases 1-2.
 //!
 //! **`pvc-core` does no I/O of its own** (matching `tools::chordmapperplus`'s
 //! established convention) - every function here takes already-read file
@@ -168,6 +188,36 @@
 //!     reproduces the real (always +/-1) behavior via `f64::copysign`
 //!     rather than `.signum()` (which *would* introduce a real `0` case for
 //!     an exact-zero input, diverging from the C).
+//!
+//! 11. **The "wall gainscale" mode-select in `writeReflectionPulsesIntoImpulseResponse()`
+//!     (lines ~4919-4932) has a dead `mode < 0` branch, so the tool's own
+//!     *default* silently uses every wall instead of just the last one.**
+//!     The C writes the "FROM LAST" branch as
+//!     `else if( wall_impulse_and_gainscale_response_mode > 0 )` - an exact
+//!     duplicate of the `if` condition immediately above it, making it
+//!     permanently unreachable. A second, correct copy of this same
+//!     `> 0`/`< 0` branch pair exists elsewhere in the file (lines
+//!     ~7408-7417), confirming this isn't "the pattern always works this
+//!     way" but a one-off copy-paste error at this call site. Since
+//!     `usage()`'s own documented default is `-1` ("last wall"), every real
+//!     run that doesn't pass `-t` explicitly falls through to the harmless-
+//!     looking final `else` and multiplies gainscale across the *entire*
+//!     wall sequence for that reflection, not just its last bounce.
+//!     [`wall_gainscale_amplitude`] reproduces this exactly.
+//!
+//! 12. **One gain term in that same function's amplitude accumulation
+//!     bypasses the shared `dB_to_amp()` lookup table.** Every other term
+//!     (wall gainscale, reflection-order gainscale, the flat `-k`
+//!     reflected-sound gain) converts its own dB value via `dB_to_amp()` -
+//!     this project's [`crate::units::DbToAmp`], itself a deliberately
+//!     approximate 1990s lookup table (see `units.rs`). The
+//!     source-dispersion-pattern term alone (line ~4894) computes
+//!     `pow(10.0, dB/20.)` directly instead - a commented-out earlier
+//!     version of that same line (`thisProportionOfDispersionDecibelsAsAmp
+//!     = dB_to_amp(...)`, lines ~4892-4893) shows the table-based form was
+//!     the original intent, later replaced. [`dispersion_pattern_amplitude`]
+//!     reproduces the real (exact-formula) live line, not the commented-out
+//!     alternative.
 //!
 //! **Worth the next phase double-checking** (found while reading `main()`'s
 //! control flow around this phase's own setup calls, but not itself part
@@ -1299,9 +1349,276 @@ fn reflection_path_is_unobstructed(
     true
 }
 
+/// Ports `makePreEchoValues()`'s `frontSourceHeadRoomScalar` computation
+/// (lines ~9249-9256): a headroom multiplier applied to every reflection's
+/// (and every direct-sound pulse's, out of this phase's scope) amplitude,
+/// derived from how far the *farthest* forward source position could be
+/// from the listener versus a minimum reference distance. Returns `1.0`
+/// unclamped whenever that farthest-distance limit doesn't exceed the
+/// reference distance (the C's own guard against a negative or
+/// zero/negative-exponent-blowup ratio), matching the C's own `float`
+/// storage (the `pow()` result narrows to `float` immediately on
+/// assignment, not carried in `double` any further - see the module's
+/// established precision-cascade convention in `units.rs`).
+pub fn front_source_head_room_scalar(
+    max_speaker_to_listener_distance: f32,
+    source_minimum_distance_from_listener: f32,
+    minimum_reference_distance_feet: f32,
+    air_absorption_exponent_for_real_space_source: f32,
+) -> f32 {
+    let limit = max_speaker_to_listener_distance - source_minimum_distance_from_listener;
+    if limit <= minimum_reference_distance_feet {
+        1.0
+    } else {
+        let ratio = minimum_reference_distance_feet / limit; // float division, as in the C
+        (ratio as f64).powf(air_absorption_exponent_for_real_space_source as f64) as f32
+    }
+}
+
+/// Ports `preEchoTime`'s computation in `makePreEchoValues()` (lines
+/// ~9235-9236): the larger of the two worst-case delay times (speaker-to-
+/// speaker and speaker-to-listener), used as a fixed head-start offset so
+/// no pulse's delay index ever goes negative. Computing the two delay-time
+/// inputs themselves (maximum pairwise distances across every resolved
+/// speaker/listener position) is plain geometry over [`Point`]s already
+/// available from Phase 1 - left to the caller rather than re-derived here,
+/// to avoid duplicating that iteration ahead of the phase that actually
+/// wires multi-speaker output-channel setup together.
+pub fn pre_echo_time_seconds(
+    max_speaker_to_speaker_distance_delay_time: f32,
+    max_speaker_to_listener_distance_delay_time: f32,
+) -> f32 {
+    max_speaker_to_speaker_distance_delay_time.max(max_speaker_to_listener_distance_delay_time)
+}
+
+/// Ports the per-viable-reflection angle-difference computation at lines
+/// ~3099-3105 of `mirrorPolygonCoordinatesAroundAllSides()`: how far
+/// (absolute, wrapped into `[0, PI]`) the *source's own facing angle*
+/// diverges from the direction of the segment connecting the source to
+/// where its sound path first crosses the order-1 mirror segment - i.e.
+/// [`ReflectionPath::source_to_first_mirror_segment_intersection`], which
+/// Phase 2 stored specifically to feed this later computation.
+/// `rotated_source_angle` is the C's own `rotatedSource` - computed by
+/// `main()`'s CLI/source-orientation control flow, out of this phase's
+/// scope (see Phase 1's "worth the next phase double-checking" note: that
+/// control flow has its own suspected bug making `-q1` behave like `-q0`,
+/// still unverified).
+pub fn source_orientation_to_reflection_angle_difference(
+    rotated_source_angle: f32,
+    source: Point,
+    source_to_first_mirror_segment_intersection: Point,
+) -> f32 {
+    let intersection_angle = segment_angle(Segment::new(
+        source,
+        source_to_first_mirror_segment_intersection,
+    ));
+    let mut angle_diff = rotated_source_angle - intersection_angle;
+    while angle_diff > std::f32::consts::PI {
+        angle_diff -= std::f32::consts::TAU;
+    }
+    while angle_diff < -std::f32::consts::PI {
+        angle_diff += std::f32::consts::TAU;
+    }
+    angle_diff.abs()
+}
+
+/// Ports the source-dispersion-pattern amplitude term (lines ~4883-4894):
+/// how much a reflection's amplitude rolls off as the source's own facing
+/// angle diverges from the reflection's direction (see
+/// [`source_orientation_to_reflection_angle_difference`]). **A real, minor
+/// quirk found while reading (finding 12)**: every *other* gain term in
+/// this same accumulation (see [`reflection_pulse_gain`]) converts its own
+/// dB value via the shared `dB_to_amp()` lookup table (this project's
+/// [`crate::units::DbToAmp`], with its own deliberate table-interpolation
+/// error, see `units.rs`); a commented-out earlier version of *this* line
+/// did too (`thisProportionOfDispersionDecibelsAsAmp = dB_to_amp(...)`), but
+/// the real, live C computes this one term via the *exact*
+/// `pow(10.0, dB/20.)` formula directly instead, bypassing the table
+/// entirely. Confirmed by reading both the live line and the commented-out
+/// alternative immediately above it. Reproduced as the exact formula, not
+/// the table, to match the real (live) C.
+pub fn dispersion_pattern_amplitude(
+    angle_difference: f32,
+    source_dispersion_pattern_rolloff_decibels: f32,
+) -> f32 {
+    let proportion = angle_difference / std::f32::consts::PI;
+    let db = proportion * source_dispersion_pattern_rolloff_decibels;
+    10.0f64.powf(db as f64 / 20.0) as f32
+}
+
+/// Ports the air-absorption amplitude term (lines ~4908-4915), shared in
+/// form with [`front_source_head_room_scalar`] (a `pow` of a
+/// distance-based ratio clamped to at most `1.0`) but over a *reflection's*
+/// own path distance rather than the farthest forward-source limit.
+pub fn air_absorption_multiplier(
+    reflection_distance: f32,
+    minimum_reference_distance_feet: f32,
+    air_absorption_exponent_for_reflections: f32,
+) -> f32 {
+    let ratio = minimum_reference_distance_feet / reflection_distance; // float division, as in the C
+    let clamped = (ratio as f64).min(1.0);
+    clamped.powf(air_absorption_exponent_for_reflections as f64) as f32
+}
+
+/// Ports the "wall gainscale" product loop (lines ~4919-4942): one
+/// `dB_to_amp` factor per wall in `wall_reflection_sequence` (in the same
+/// last-to-first order as [`ReflectionPath::mirror_wall_sequence`] - index
+/// `0` is the most recent bounce), selected by `mode` (`usage()`'s `-t`,
+/// default `-1`, "last wall").
+///
+/// **A real, confirmed bug (finding 11)**: the C's own `mode < 0` ("FROM
+/// LAST") branch is written as `else if( wall_impulse_and_gainscale_response_mode > 0 )`,
+/// an exact duplicate of the *first* branch's condition a few lines above,
+/// making it permanently unreachable (confirmed by reading; a second,
+/// correct copy of this same `> 0`/`< 0` branch pair exists elsewhere in
+/// the file, at lines ~7408-7417, ruling out "the whole pattern is meant to
+/// work this way"). Every negative-or-zero `mode`, including the tool's own
+/// **default** of `-1`, therefore falls through to the final catch-all
+/// `else` and multiplies gainscale across *every* wall in the sequence, not
+/// just the last `|mode|`. Reproduced exactly: only `mode > 0` ("first
+/// `mode` walls") behaves as documented; anything else uses the whole
+/// sequence. A `mode` whose magnitude reaches or exceeds the sequence's own
+/// length reads past the end of the C's fixed-size array (undefined
+/// behavior, not a reproducible value, per the already-established
+/// `tools::ratechanger` precedent for undefined C behavior), so this port
+/// clamps to the sequence's own last index instead of reading out of
+/// bounds.
+pub fn wall_gainscale_amplitude(
+    wall_reflection_sequence: &[usize],
+    mode: i32,
+    wall_decibel_gainscale_levels: &[f32],
+    db_to_amp: &crate::units::DbToAmp,
+) -> f32 {
+    let order = wall_reflection_sequence.len();
+    debug_assert!(order > 0, "a reflection path always has order >= 1");
+    debug_assert!(
+        !wall_decibel_gainscale_levels.is_empty(),
+        "wall gainscale levels must not be empty"
+    );
+    let last_n = if mode > 0 {
+        ((mode as usize).saturating_sub(1)).min(order - 1)
+    } else {
+        order - 1
+    };
+    wall_reflection_sequence[0..=last_n]
+        .iter()
+        .map(|&wall| {
+            db_to_amp
+                .convert(wall_decibel_gainscale_levels[wall % wall_decibel_gainscale_levels.len()])
+        })
+        .product()
+}
+
+/// Ports the reflection-order gainscale term (lines ~4947-4951): a single
+/// `dB_to_amp` factor selected by this reflection's own order, clamped to
+/// the gainscale-level table's own length (the C's `fmin`).
+pub fn reflection_order_gainscale_amplitude(
+    order: usize,
+    reflection_order_decibel_gainscale_levels: &[f32],
+    db_to_amp: &crate::units::DbToAmp,
+) -> f32 {
+    debug_assert!(order > 0, "a reflection path always has order >= 1");
+    debug_assert!(
+        !reflection_order_decibel_gainscale_levels.is_empty(),
+        "reflection-order gainscale levels must not be empty"
+    );
+    let k = order.min(reflection_order_decibel_gainscale_levels.len());
+    db_to_amp.convert(reflection_order_decibel_gainscale_levels[k - 1])
+}
+
+/// Every input [`reflection_pulse_gain`] needs to compute one reflection's
+/// final pulse amplitude - groups the per-reflection values (from a
+/// [`ReflectionPath`] and [`source_orientation_to_reflection_angle_difference`])
+/// alongside the scalar tool parameters the C reads from its own globals.
+pub struct ReflectionPulseGainInput<'a> {
+    pub angle_difference: f32,
+    pub source_dispersion_pattern_rolloff_decibels: f32,
+    pub reflection_distance: f32,
+    pub minimum_reference_distance_feet: f32,
+    pub air_absorption_exponent_for_reflections: f32,
+    pub wall_reflection_sequence: &'a [usize],
+    pub wall_impulse_and_gainscale_response_mode: i32,
+    pub wall_decibel_gainscale_levels: &'a [f32],
+    pub reflection_order_decibel_gainscale_levels: &'a [f32],
+    pub reflected_sound_gain_decibels: f32,
+    pub front_source_head_room_scalar: f32,
+}
+
+/// Ports the full per-reflection amplitude accumulation (lines ~4886-4956):
+/// dispersion-pattern rolloff, then air absorption, then wall gainscale,
+/// then reflection-order gainscale, then the flat `-k` reflected-sound gain
+/// and [`front_source_head_room_scalar`] - each term multiplied on in the
+/// same order the C does, since `dB_to_amp`'s table interpolation makes
+/// this genuinely not associativity-free to more than float rounding noise.
+/// See finding 12 for why the *first* term alone bypasses the shared
+/// `dB_to_amp` table.
+pub fn reflection_pulse_gain(
+    input: &ReflectionPulseGainInput,
+    db_to_amp: &crate::units::DbToAmp,
+) -> f32 {
+    let mut amp = dispersion_pattern_amplitude(
+        input.angle_difference,
+        input.source_dispersion_pattern_rolloff_decibels,
+    );
+    amp *= air_absorption_multiplier(
+        input.reflection_distance,
+        input.minimum_reference_distance_feet,
+        input.air_absorption_exponent_for_reflections,
+    );
+    amp *= wall_gainscale_amplitude(
+        input.wall_reflection_sequence,
+        input.wall_impulse_and_gainscale_response_mode,
+        input.wall_decibel_gainscale_levels,
+        db_to_amp,
+    );
+    amp *= reflection_order_gainscale_amplitude(
+        input.wall_reflection_sequence.len(),
+        input.reflection_order_decibel_gainscale_levels,
+        db_to_amp,
+    );
+    amp *= db_to_amp.convert(input.reflected_sound_gain_decibels);
+    amp *= input.front_source_head_room_scalar;
+    amp
+}
+
+/// Ports the reflection pulse's own output-sample delay index (lines
+/// ~4863-4867): `j = (int)(preEchoTime + (reflectionTime *
+/// reflections_time_scaler * osr) + 0.5)`. Every term up through the
+/// product is plain `f32` arithmetic, but the `+ 0.5` is a bare (double)
+/// literal in the C, promoting the whole sum to `double` one step before
+/// the final truncating `(int)` cast - reproduced by adding it in `f64`,
+/// matching this project's established precision-cascade convention (see
+/// `units.rs`'s module doc comment). Callers must ensure the sum is
+/// non-negative (always true for real room/speed-of-sound inputs) since
+/// C's truncating `(int)` cast and Rust's `as i64` only agree for
+/// non-negative values.
+pub fn reflection_delay_sample_index(
+    pre_echo_time_seconds: f32,
+    reflection_time_seconds: f32,
+    reflections_time_scaler: f32,
+    output_sample_rate: f32,
+) -> i64 {
+    let sum = pre_echo_time_seconds
+        + (reflection_time_seconds * reflections_time_scaler * output_sample_rate);
+    (sum as f64 + 0.5) as i64
+}
+
+/// Ports the reflection pulse's write-vs-skip test (line ~4962): a
+/// reflection whose final [`reflection_pulse_gain`] falls below this
+/// threshold (`usage()`'s `-3`, default `-96` dB) is never mixed into the
+/// output impulse response at all.
+pub fn reflection_pulse_passes_inclusion_threshold(
+    amp: f32,
+    impulse_inclusion_threshold_decibels: f32,
+    db_to_amp: &crate::units::DbToAmp,
+) -> bool {
+    amp >= db_to_amp.convert(impulse_inclusion_threshold_decibels)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::units::DbToAmp;
 
     fn square(side: f32) -> Vec<Point> {
         vec![
@@ -1746,5 +2063,172 @@ mod tests {
             paths.iter().any(|p| p.order == 2),
             "expected at least one second-order reflection"
         );
+    }
+
+    #[test]
+    fn front_source_head_room_scalar_is_unity_within_reference_distance() {
+        assert_eq!(front_source_head_room_scalar(10., 9., 1., 2.), 1.0);
+        assert_eq!(front_source_head_room_scalar(10., 9., 5., 2.), 1.0);
+    }
+
+    #[test]
+    fn front_source_head_room_scalar_rolls_off_past_reference_distance() {
+        // limit = 10 - 0 = 10, ratio = 1/10, ^2 = 0.01
+        let got = front_source_head_room_scalar(10., 0., 1., 2.);
+        assert!((got - 0.01).abs() < 1e-6, "got {got}");
+    }
+
+    #[test]
+    fn pre_echo_time_seconds_picks_the_larger_delay() {
+        assert_eq!(pre_echo_time_seconds(0.05, 0.08), 0.08);
+        assert_eq!(pre_echo_time_seconds(0.08, 0.05), 0.08);
+    }
+
+    #[test]
+    fn source_orientation_angle_difference_is_zero_when_facing_the_reflection() {
+        // Source at origin facing due east (angle 0); the reflection path's
+        // first intersection is also due east - no divergence.
+        let diff = source_orientation_to_reflection_angle_difference(
+            0.0,
+            Point::ORIGIN,
+            Point::new(10., 0.),
+        );
+        assert!(diff.abs() < 1e-6, "diff {diff}");
+    }
+
+    #[test]
+    fn source_orientation_angle_difference_wraps_to_at_most_pi() {
+        // Source facing due west (PI); intersection due east (angle 0) -
+        // the raw difference is PI either way, never more.
+        let diff = source_orientation_to_reflection_angle_difference(
+            std::f32::consts::PI,
+            Point::ORIGIN,
+            Point::new(10., 0.),
+        );
+        assert!((diff - std::f32::consts::PI).abs() < 1e-5, "diff {diff}");
+    }
+
+    #[test]
+    fn dispersion_pattern_amplitude_is_unity_when_facing_the_reflection() {
+        assert_eq!(dispersion_pattern_amplitude(0.0, -20.0), 1.0);
+    }
+
+    #[test]
+    fn dispersion_pattern_amplitude_matches_exact_formula_not_the_table() {
+        // Finding 12: this one term uses pow(10, dB/20) directly, not the
+        // DbToAmp lookup table - at full rolloff (angle_difference == PI,
+        // proportion 1.0) the dB value passed through is exactly
+        // `source_dispersion_pattern_rolloff_decibels` itself.
+        let got = dispersion_pattern_amplitude(std::f32::consts::PI, -6.0);
+        let want = 10.0f64.powf(-6.0 / 20.0) as f32;
+        assert!((got - want).abs() < 1e-6, "got {got}, want {want}");
+    }
+
+    #[test]
+    fn air_absorption_multiplier_is_unity_within_reference_distance() {
+        assert_eq!(air_absorption_multiplier(1.0, 1.0, 2.0), 1.0);
+        assert_eq!(air_absorption_multiplier(0.5, 1.0, 2.0), 1.0);
+    }
+
+    #[test]
+    fn air_absorption_multiplier_rolls_off_past_reference_distance() {
+        // ratio = 1/10, ^2 = 0.01
+        let got = air_absorption_multiplier(10.0, 1.0, 2.0);
+        assert!((got - 0.01).abs() < 1e-6, "got {got}");
+    }
+
+    #[test]
+    fn wall_gainscale_default_mode_uses_every_wall_not_just_the_last() {
+        // Finding 11: mode -1 (the tool's own default, documented "last
+        // wall") actually falls through to using the WHOLE sequence.
+        let db_to_amp = DbToAmp::new();
+        let sequence = [0usize, 1, 2];
+        let levels = [-6.0f32];
+        let got = wall_gainscale_amplitude(&sequence, -1, &levels, &db_to_amp);
+        let want = db_to_amp.convert(-6.0).powi(3);
+        assert!((got - want).abs() < 1e-5, "got {got}, want {want}");
+    }
+
+    #[test]
+    fn wall_gainscale_positive_mode_uses_only_the_first_n_walls() {
+        let db_to_amp = DbToAmp::new();
+        let sequence = [0usize, 1, 2];
+        let levels = [-6.0f32, 0.0, 0.0];
+        // mode 1: only wall index 0 (level -6dB) contributes.
+        let got = wall_gainscale_amplitude(&sequence, 1, &levels, &db_to_amp);
+        let want = db_to_amp.convert(-6.0);
+        assert!((got - want).abs() < 1e-6, "got {got}, want {want}");
+    }
+
+    #[test]
+    fn wall_gainscale_mode_past_sequence_length_clamps_instead_of_panicking() {
+        let db_to_amp = DbToAmp::new();
+        let sequence = [0usize, 1];
+        let levels = [0.0f32, 0.0];
+        let got = wall_gainscale_amplitude(&sequence, 10, &levels, &db_to_amp);
+        let want = db_to_amp.convert(0.0).powi(2);
+        assert!((got - want).abs() < 1e-5, "got {got}, want {want}");
+    }
+
+    #[test]
+    fn reflection_order_gainscale_clamps_to_table_length() {
+        let db_to_amp = DbToAmp::new();
+        let levels = [-3.0f32, -6.0];
+        // order 5 exceeds the table's own length (2) - clamps to the last entry.
+        let got = reflection_order_gainscale_amplitude(5, &levels, &db_to_amp);
+        let want = db_to_amp.convert(-6.0);
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn reflection_delay_sample_index_rounds_half_up() {
+        // 1.0 + (0.01 * 1.0 * 100.0) = 2.0 exactly -> +0.5 -> 2 (truncated)
+        assert_eq!(reflection_delay_sample_index(1.0, 0.01, 1.0, 100.0), 2);
+        // 0.004 * 1.0 * 100.0 = 0.4 -> +0.5 = 0.9 -> truncates to 0
+        assert_eq!(reflection_delay_sample_index(0.0, 0.004, 1.0, 100.0), 0);
+        // 0.006 * 1.0 * 100.0 = 0.6 -> +0.5 = 1.1 -> truncates to 1
+        assert_eq!(reflection_delay_sample_index(0.0, 0.006, 1.0, 100.0), 1);
+    }
+
+    #[test]
+    fn reflection_pulse_inclusion_threshold_boundary() {
+        let db_to_amp = DbToAmp::new();
+        let threshold_amp = db_to_amp.convert(-96.0);
+        assert!(reflection_pulse_passes_inclusion_threshold(
+            threshold_amp,
+            -96.0,
+            &db_to_amp
+        ));
+        assert!(!reflection_pulse_passes_inclusion_threshold(
+            threshold_amp * 0.5,
+            -96.0,
+            &db_to_amp
+        ));
+    }
+
+    #[test]
+    fn reflection_pulse_gain_combines_every_term_in_order() {
+        let db_to_amp = DbToAmp::new();
+        let sequence = [0usize];
+        let input = ReflectionPulseGainInput {
+            angle_difference: 0.0, // dispersion amplitude forced to 1.0
+            source_dispersion_pattern_rolloff_decibels: -20.0,
+            reflection_distance: 1.0,
+            minimum_reference_distance_feet: 1.0, // air absorption forced to 1.0
+            air_absorption_exponent_for_reflections: 2.0,
+            wall_reflection_sequence: &sequence,
+            wall_impulse_and_gainscale_response_mode: -1,
+            wall_decibel_gainscale_levels: &[0.0],
+            reflection_order_decibel_gainscale_levels: &[0.0],
+            reflected_sound_gain_decibels: 0.0,
+            front_source_head_room_scalar: 1.0,
+        };
+        let got = reflection_pulse_gain(&input, &db_to_amp);
+        // Every 0dB term still passes through DbToAmp's own table
+        // approximation (0.997791529, not exactly 1.0 - see units.rs) three
+        // times: wall gainscale, reflection-order gainscale, reflected-
+        // sound gain.
+        let want = db_to_amp.convert(0.0).powi(3);
+        assert!((got - want).abs() < 1e-5, "got {got}, want {want}");
     }
 }
