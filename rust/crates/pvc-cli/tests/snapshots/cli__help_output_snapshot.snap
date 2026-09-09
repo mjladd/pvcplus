@@ -45,6 +45,7 @@ Commands:
   ratechanger          Varispeed resampler: reads raw audio directly (no `.pva` analysis file first) and resynthesizes it at a possibly time-varying playback rate and/or semitone shift, via windowed-sinc summation, sample-and-hold/decimation, or linear interpolation
   inharmonator         Inharmonic partials remapper: builds a per-bin filter from a data table of discrete target partials (windowed bands around each partial's own bin), resynthesizes the residual spectrum separately, and feeds both through a spectral feedback delay line, optionally mixed with a delayed copy of the source
   formantsmapper       Formant mapper: reads source and target formant lists (binary files produced externally, not by any tool in this project), pairs each formant with its nearest counterpart in the other list, and remaps each source formant's own bin band onto the paired target's frequency and amplitude via one or two independently-controllable oscillator banks, optionally passing unclaimed bins through as a separate residue bank
+  spectrummapper       Formant-*tracking* analysis tool: extracts formant peaks frame by frame from raw audio, greedily assembles them into time-continuous segments (tracks), links separate segments into longer chains, and writes the result to ASCII/binary formant-track files. Writes no audio output at all
   help                 Print this message or the help of the given subcommand(s)
 
 Options:

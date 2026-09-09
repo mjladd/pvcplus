@@ -31,7 +31,7 @@ jobs:
         run: |
           count=$(find "${{ runner.temp }}/pvc-legacy/bin" -maxdepth 1 -type f | wc -l)
           echo "Installed $count binaries"
-          test "$count" -eq 53
+          test "$count" -eq 54
 
   docker:
     name: docker buildx
@@ -203,6 +203,10 @@ jobs:
 
       - name: Compare pvc formantsmapper output against the C oracle (Phase 5)
         run: cargo test --release -p pvc-cli --test golden_formantsmapper -- --nocapture
+        working-directory: rust
+
+      - name: Compare pvc spectrummapper output against the C oracle (Phase 5)
+        run: cargo test --release -p pvc-cli --test golden_spectrummapper -- --nocapture
         working-directory: rust
 
   rust:

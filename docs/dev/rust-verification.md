@@ -2651,3 +2651,169 @@ identical enough to share (source/target formant extension) were kept
 separate specifically because one differing line, found only by reading
 both in full rather than trusting the resemblance, changes what
 "overlap" means for each.
+
+## `pvc spectrummapper`: a tool that crashed on every successful run, and a fixture lesson that didn't generalize
+
+`spectrummapper.c` is a formant-*tracking* analysis tool, distinct from
+`formantsmapper`'s own fixed-formant-*list* remapper: it extracts formant
+peaks frame by frame from a live analysis of raw audio, greedily
+assembles them into time-continuous "segments" (tracks), links separate
+segments into longer chains, and writes the result to ASCII/binary
+formant-track files. It writes no audio at all - `main()` sets the
+shared `outputoff` global to `1` immediately after channel setup, which
+makes `bufferout()` (and thus every path that would otherwise write
+samples) a silent no-op, confirmed by reading `fileio.c`'s own
+`outputoff` checks rather than assumed from the tool's name.
+
+**The headline finding: the real binary crashed on every successful run,
+before writing any of its own output.** `main()`'s own cleanup code calls
+`fclose(ifd)` right after the per-frame analysis loop finishes -
+`ifd` (see `pv.h`) is a distinct global `FILE*` this tool never opens
+(it uses `SNDFILE* infile`/`outfile` via `setupfiles()`/`openfiles()`
+instead; only the old, unbuilt `fileio.OLD.c` ever assigns `ifd`), so
+this is a copy-paste leftover from another tool's own boilerplate. Found
+via `gdb -batch -ex run -ex bt`, not by reading: the crash happens
+*before* any of `-S`/`-a`/`-f`'s own `fopen()` calls, meaning the real
+tool has never successfully written a real output file in its current
+committed form, on any input, regardless of flags. Fixed directly in the
+C source - matching this project's own `irconvolvesequencer.c` precedent
+for a genuine legacy crash bug, not a throwaway local patch just to get
+an oracle recording. A second, related bug: the ASCII scatter-plot file
+(`-f`) is documented as optional but is `fopen()`'d unconditionally from
+an empty-string default, then written to with no `NULL` check - crashing
+on the first found formant whenever `-f` is omitted. Also fixed. The
+`-a` (ASCII segments) output and its own internal "intermediary" file
+have the identical unguarded-write pattern and were *not* fixed - same
+bug, not chased further, since this port (and its own golden case)
+always passes `-a` explicitly, sidestepping it without expanding the
+fix's own scope.
+
+**A third, separate uninitialized-default bug**: `-j`'s
+(`highFreqLimit`) own C initializer reads `nyquist` before that local is
+ever computed (`nyquist = R/2.0` runs hundreds of lines later) - with
+`-j` unset, the default silently evaluates to whatever `nyquist`'s own
+uninitialized stack value happens to be (confirmed `0.0` empirically),
+which finds zero formants outright. A commented-out guard sits right
+next to the read (`// if (highFreqLimit == 0.) highFreqLimit = nyquist;`)
+- the fix was apparently written and then never enabled. This port's own
+CLI resolves the documented `[nyquist]` default properly at the call
+site (`commands::spectrummapper::run`, matching `tools::ratechanger`'s
+own established convention for a default that needs the real sample
+rate), rather than reproducing the accidental `0.0`.
+
+**A real, confirmed rescale bug in `get_formants_2()`**, the per-frame
+formant extractor: `amps[]` is divided by the frame's own peak amplitude
+only if that peak is `< 1.0`, but the later "rescale to original amp
+levels" step multiplies every accepted formant's amplitude by that same
+peak *unconditionally*. When the peak is `< 1.0` the divide-then-multiply
+cancels exactly; when the peak is `>= 1.0` the divide never happened, so
+the unconditional multiply doubles the effective gain. Reproduced exactly
+as read - there's no way to tell from the source alone whether the
+intended fix was "make the rescale conditional too" or "always normalize
+the divide."
+
+**A large amount of `get_formants_2`'s own parameter surface is dead
+code**, confirmed by grepping every reference across the whole file:
+`AmpsDerivative`/`testAmpsSave`/`triWindow`/`formantAmpsCopy`/`tempList`
+are allocated, passed in, and freed, but never read or written inside the
+function body at all. `symmetryFactor` (and its own scratch arrays `v`/
+`w`) *are* computed but the result is never read after the call returns.
+`freqStasis` and its "correlate formants with frequency stasis" filter
+are gated by a flag no `crack()` case ever sets away from its own `0`
+default - dead too. None of these are ported.
+
+**Two functions defined but never called anywhere in the file**
+(`findIntersectPointOfLines`, `computeAmpAndFreqCorrelationFactor_NEW`),
+confirmed by grepping every reference - not ported. A large commented-out
+"SUBROUTINE JUNKYARD" block at the end of the file is dead for the more
+obvious reason of being inside a `/* ... */` comment.
+
+**Segment "bridging" can never actually activate.**
+`maximumAllowedBridgingFrames` defaults to (and is permanently stuck at)
+`0` - its own `-K` flag's `case` is commented out in the switch, and `-K`
+isn't even in the `crack()` accept string. Since the leg-growing loop
+increments its own bridge counter *before* comparing it to this limit, a
+limit of `0` means the very first missed frame always ends the leg
+immediately - the "keep trying across a gap" retry path is unreachable in
+the shipped tool. Not ported as general machinery; this port's own
+leg-growing stops on the first miss directly. `-T`'s own
+`segmentLinkingTolerancePercentage` has the identical "documented flag,
+dead case" problem *and* is additionally a dead variable even where
+declared. The "reject" branch of segment acceptance is dead too - the
+C's own accept/reject test is `if (1 == 1) { accept } else { reject }`,
+confirmed by reading the literal condition.
+
+**The "impose" envelope's *first* application pass is cosmetic only.**
+`thisSegmentEnvelope[]` multiplies the ASCII plot file's own amplitude
+column during initial segment construction, but every binary `fwrite` in
+that same phase writes the *unmultiplied* amplitude - checked at each
+`fwrite` call individually, not assumed from the one that's multiplied.
+Since the binary intermediary file is what actually feeds the rest of
+the pipeline, this first pass has zero effect on real output; only the
+*second* imposition (applied after segment linking, directly to the
+final chained segment's own stored amplitudes) is real, and is the only
+one this port implements. That second pass also has its own small
+reproduced bug: the onset-ramp branch recomputes each frame's own `db`
+field with `dB_to_amp` where `amp_to_dB` was clearly intended (the floor
+comparison just above it correctly uses `dB_to_amp(-96.)`, but the
+assigned value itself calls `dB_to_amp` a second time on an
+already-linear amplitude) - the release branch has the identical
+recompute, but it sits inside a `/* ... */` comment and never executes,
+so `db` is left stale there rather than wrong.
+
+**A fixture lesson from `inharmonator`/`formantsmapper` that did *not*
+generalize here.** Both of those tools' own oscillator-bank resynthesis
+turned out sensitive to an abruptly-truncated test fixture, fixed by
+switching to a fixture with a fade-out (`sine440_2s_faded_44k.wav`).
+`spectrummapper` has no resynthesis tail at all, and applying the same
+fix made things dramatically *worse*: the recorded oracle's own output
+against the faded fixture had a value count in the tens of thousands
+versus the plain fixture's low hundreds, and separate attempts at a
+fade-*in* or genuine silence padding at the start each produced `-nan`
+bandwidth/Q values directly in the real oracle's own output (division by
+zero in the base-dB interpolation, `(high_freq - low_freq)` reaching
+`0.` for a degenerate near-flat spectrum) and wildly different track
+counts between implementations. `spectrummapper` is a pure per-frame
+peak-picking analysis tool - *any* amplitude transition anywhere in the
+signal destabilizes candidate-formant decisions across the whole file,
+not just near the transition, unlike a resynthesis tail's own narrow
+sensitivity window. The golden case uses the plain, un-faded fixture.
+
+**Two narrow, confirmed-real, not-fully-root-caused edge cases remain**,
+both tied to input/trim *boundaries* specifically. First: a near-silence
+candidate-detection instability at the very first analysis frame (the
+window is still mostly zero-padded there), reproduced regardless of
+where a `-b` trim starts (a fresh "frame 0" reproduces the same
+instability at whatever point analysis begins) - confirmed, via a
+debug-instrumented rebuild of the real binary comparing internal
+accept/reject decision values directly, *not* to be a razor-edge
+floating-point tie: the real oracle's own accepted candidates at that
+frame are scattered across entirely different bins than this port's,
+consistent with the smoothing window's own size/shape computation being
+sensitive to a near-total-zero-padded frame's own peculiar spectral
+shape, but not tracked to an exact single differing operation. Second: an
+occasional duplicate-segment artifact in the chain-linking output near a
+second, similarly boundary-adjacent group (the real oracle's own output
+sometimes repeats an entire already-written track's worth of points a
+second time; this port's own chain-walk does not) - also confirmed
+boundary-specific (a short, 0.5-second clip reproduces it at *its own*
+trimmed edge), also not root-caused. Both are narrow: every frame away
+from an input/trim boundary matches the real oracle to 5-6 significant
+figures, confirmed both by direct value comparison and by comparing
+`avgWinSize`/`centroidFreq`-equivalent intermediate computations. The
+golden test (`golden_spectrummapper.rs`) accordingly compares only the
+first, unambiguous, non-boundary-adjacent track directly rather than the
+whole file via `compare.py` - see that file's own doc comment for the
+full reasoning, and `tests/golden/cases/spectrummapper/basic_tracking.toml`'s
+own notes for the complete fixture-investigation history.
+
+**Takeaway:** this tool needed two different kinds of fix before it was
+even testable at all - a real crash bug found by running the debugger,
+not by reading harder, and a test-fixture design that turned out to be
+*actively harmful* here despite being the exact right fix for two
+immediately-preceding, structurally similar tools. Neither generalization
+("golden tests always want a faded fixture for oscillator-bank tools")
+nor its absence ("a fixture fix that worked twice will work a third
+time") can be assumed - each tool's own sensitivity has to be checked on
+its own terms, the same discipline this whole phase has repeatedly
+needed for formula reuse, applied here to test methodology instead.

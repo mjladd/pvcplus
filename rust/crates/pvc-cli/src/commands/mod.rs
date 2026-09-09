@@ -32,6 +32,7 @@ pub mod ringtvfilter;
 pub mod run;
 pub mod specflattracker;
 pub mod spectralextractor;
+pub mod spectrummapper;
 pub mod spectwarp;
 pub mod tvfiltdeviator;
 pub mod tvfilter;

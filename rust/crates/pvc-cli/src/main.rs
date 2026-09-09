@@ -102,5 +102,7 @@ fn main() -> anyhow::Result<()> {
         Command::Inharmonator(args) => commands::inharmonator::run(&args),
 
         Command::Formantsmapper(args) => commands::formantsmapper::run(&args),
+
+        Command::Spectrummapper(args) => commands::spectrummapper::run(&args),
     }
 }
