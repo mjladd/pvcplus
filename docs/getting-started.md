@@ -74,6 +74,9 @@ for a 440 Hz input, at close to the original duration.
 
 ## Where to go next
 
+- [Tutorial](tutorial.md) walks through a full session: chaining
+  tools, presets, `--set` overrides, `--json` scripting, and migrating
+  an old `S.*` script.
 - [Concepts](concepts.md) explains the phase-vocoder ideas most
   commands share (FFT size, window type, warp index, and more).
 - If you are coming from the original C toolkit, read
