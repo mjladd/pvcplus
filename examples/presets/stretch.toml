@@ -1,0 +1,9 @@
+# Time-stretch demo preset - see docs/presets.md.
+# `make demo` overrides input/output; run it directly with your own file:
+#   pvc run examples/presets/stretch.toml --set input=in.wav --set output=out.wav
+tool = "pv"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+stretch = 2.0   # twice as long, same pitch

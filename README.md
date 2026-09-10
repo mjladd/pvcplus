@@ -20,7 +20,9 @@ cargo build --release -p pvc-cli
 ```
 
 Full setup and a verified walkthrough live in
-[docs/getting-started.md](docs/getting-started.md).
+[docs/getting-started.md](docs/getting-started.md). Run `make demo`
+for a ready-to-hear tour of five transforms, described in
+[examples/README.md](examples/README.md).
 
 ## Documentation
 
