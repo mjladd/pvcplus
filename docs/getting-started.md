@@ -16,16 +16,22 @@ Put `./target/release/pvc` on your `PATH`, or run it by its full path.
 
 ## Docker
 
-The project's `Dockerfile` builds the legacy C toolkit into a runtime
-image today. It does not yet include the `pvc` binary itself. Until
-that lands, `docker build .` gives you a container with the original C
-tools only. Each one is reachable by its own name inside the
-container, for example `plainpv` or `noisefilter`. The devcontainer
-(`--target dev`) gives you the same legacy tools plus a shell, but no
-Rust toolchain yet either.
+```bash
+docker build -t pvcplus .
+mkdir -p ~/pvctest/input ~/pvctest/output
+docker run --rm -v ~/pvctest/input:/audio/input -v ~/pvctest/output:/audio/output \
+  pvcplus stretch --factor 2.0 /audio/input/input.wav /audio/output/stretched.wav
+```
 
-If you need `pvc` inside a container today, build it from source
-inside your own image or devcontainer, on top of a Rust base image.
+The image's entrypoint is `pvc` itself, so `docker run --rm pvcplus`
+with no arguments prints `pvc --help`. Legacy tools are still there,
+reached through `docker run --rm pvcplus legacy <tool> <flags>`
+instead of by their own name directly. See [Migration](migration.md).
+No image is published yet, so `docker build .` is the only way to get
+one today.
+
+The devcontainer (`--target dev`) has both the Rust and C toolchains,
+plus a shell, for working on `pvc` itself.
 
 ## Verify your build
 
