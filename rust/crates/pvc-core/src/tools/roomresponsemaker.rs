@@ -1,7 +1,7 @@
 //! Ports `roomresponsemaker.c` (9318 lines, the largest and most
 //! structurally distinct tool in this project): a recursive image-source
 //! polygonal-room acoustics engine, not a phase-vocoder filter/resynthesis
-//! tool like every other Phase 5 tool. **This module is now through Phase 4
+//! tool like every other Phase 5 tool. **This module is now through Phase 5
 //! of a multi-phase port.**
 //!
 //! **Phase 1** covered the room/speaker/listener geometry layer: room
@@ -47,30 +47,45 @@
 //! plain slices/`Vec`s and already-available [`ReflectionPath`] data - no
 //! file I/O.
 //!
-//! **What Phase 4 deliberately does *not* cover, and why**: the actual
-//! wall/reflection-order impulse-response *file* cache-and-convolve engine,
-//! namely `readInWallImpulseResponses`/`readInReflectionOrderImpulseResponses`,
+//! **Phase 5** (this update) covers the direct (unreflected) source-to-
+//! speaker pulse path: [`listener_to_speaker_angle_bounds`] (the min/max/
+//! straddle-flag half of `makeListenerToSpeakerAngles()` Phase 1 deferred -
+//! turns out the reflection recursion never needed it, only this phase
+//! does), [`find_crossfade_speaker_pair`]/[`make_source_to_threshold_proximity_distance`]
+//! (`makeSourceToThresholdProximityDistance()`),
+//! [`is_source_behind_or_in_front_of_speaker_threshold`],
+//! [`find_listener_to_source_segment_length_and_angle`],
+//! [`direct_sound_speaker_distances_for_delays`]
+//! (`makeDirectSoundSpeakerDelayTimes()`),
+//! [`direct_sound_delay_sample_index`] and [`make_direct_sound_speaker_amplitudes`]
+//! (`makeDirectSoundSpeakerAmplitudes()`, the "BETWEEN SPEAKERS"/"NOT IN
+//! CROSSFADE" branches of the real, live
+//! `writeDirectSourcePulsesIntoImpulseResponse()` - not its dead `OLD`
+//! twin, confirmed unused by grepping every call site). Two whole
+//! functions this dependency chain touches turned out to be entirely dead
+//! and are not ported at all - see findings 21-22.
+//!
+//! **What's still not covered, and why**: the actual wall/reflection-order
+//! impulse-response *file* cache-and-convolve engine, namely
+//! `readInWallImpulseResponses`/`readInReflectionOrderImpulseResponses`,
 //! `recallIR`/`addToIRfileCodes` (the file-based memoization these
 //! functions' own callers use `compare_wall_sequences`'s sort order to
 //! drive), `filterAndNormalizeImpulseResponseNow`/`filterAndNormalize*`
-//! (the very code this phase's finding 14 says needs to renormalize
+//! (the very code Phase 4's finding 14 says needs to renormalize
 //! [`convolve_two_arrays`]'s `1/N`-scaled output), and `getWallImpulseResponseChannelAssignments`/
 //! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`
 //! (all three genuinely file-driven, `fopen`/`fscanf` in the C, unlike
-//! everything else read for this phase), is still not started; it's real
-//! file I/O and belongs with `pvc-cli`/`pvc-io`. `makeSpaceReflectionCoordinates`
-//! is pure geometry with no I/O, but its only consumer
+//! everything else read so far), is still not started; it's real file I/O
+//! and belongs with `pvc-cli`/`pvc-io`. `makeSpaceReflectionCoordinates` is
+//! pure geometry with no I/O, but its only consumer
 //! (`reflectionSoundPathCoordinates`, confirmed via its single call site at
 //! line ~3119 inside `mirrorPolygonCoordinatesAroundAllSides()`) is
 //! plot-file output, not audio math - deferred to whichever later phase
-//! handles plotting, alongside `writeDirectSourcePulsesIntoImpulseResponse()`
-//! and its speaker-dispersion/source-threshold-proximity dependency chain
-//! (`makeSourceToSpeakerDistancesAndAngles`,
-//! `findSourceToSpeakerAngleDifferencesFromSourceToListenerAngle`,
-//! `makeSourceToThresholdProximityProportion`/`Distance`,
-//! `isSourceBehindOrInFrontOfSpeakerThreshold`), both still deferred exactly
-//! as Phases 2-3 left them. CLI wiring is also still not started, so
-//! `crack()` flag cross-referencing remains deferred to that later phase.
+//! handles plotting. CLI wiring (`main()`'s own control flow) is also
+//! still not started, so `crack()` flag cross-referencing remains deferred
+//! to that later phase - see finding 19 for a real bug in that control
+//! flow, confirmed this phase by finally reading `main()`'s actual
+//! statement order around it.
 //!
 //! **`pvc-core` does no I/O of its own** (matching `tools::chordmapperplus`'s
 //! established convention) - every function here takes already-read file
@@ -236,22 +251,50 @@
 //!     reproduces the real (exact-formula) live line, not the commented-out
 //!     alternative.
 //!
-//! **Worth the next phase double-checking** (found while reading `main()`'s
-//! control flow around this phase's own setup calls, but not itself part
-//! of this phase's scope): `rotatedSource` (the effective source rotation
-//! used later by the dispersion-pattern/reflection code) is computed in
-//! `main()` at lines 1209-1219, *before* `getSourceCoordinates()`/
-//! `getListenerCoordinates()` are ever called (lines 1322/1366) - and
-//! `sourceToListenerAngle` (which `-q1`, "orient source to listener,"
-//! reads at line 1214) is only ever assigned inside
-//! `findListenerToSourceSegmentLengthAndAngle()`, itself not called until
-//! much later. At the point `rotatedSource` is computed,
-//! `sourceToListenerAngle` still holds its zero-initialized default, so
-//! `-q1` mode appears to always behave identically to `-q0` ("orient to
-//! room") - `rotatedSource` is set once and never recomputed afterward.
-//! Confirmed by grepping every reference to both variables; needs
-//! re-verification once the phase that ports this control flow is
-//! underway, since it directly affects source-orientation semantics.
+//! 19. **Confirmed (Phase 1/2 only suspected this): `-q1` ("orient source
+//!     to listener") always behaves identically to `-q0` ("orient to
+//!     room").** `rotatedSource` is computed in `main()` at lines
+//!     1209-1219, *before* `getSourceCoordinates()`/`getListenerCoordinates()`
+//!     are ever called (lines 1322/1366) - and `sourceToListenerAngle`
+//!     (which `-q1` reads at line 1214) is only ever assigned inside
+//!     `findListenerToSourceSegmentLengthAndAngle()`, itself not called
+//!     until much later. Reading `main()`'s actual statement order (not
+//!     just grepping references, as Phase 1/2 had) confirms
+//!     `sourceToListenerAngle` still holds its zero-initialized default
+//!     (`0.0`) at the point `rotatedSource` is computed, and `rotatedSource`
+//!     is set once and never recomputed afterward - so `-q1` and `-q0`
+//!     are unconditionally the same real behavior. This port does not
+//!     invent a "fixed" `-q1`; a future CLI-wiring phase should pass
+//!     `orient_source_to_listener` through as documented anyway (matching
+//!     the C's own observable behavior, bug included) rather than silently
+//!     "correcting" it.
+//!
+//! 20. See [`DirectSoundAmplitudeInput::source_to_listener_angle_plus_rotation`]'s
+//!     own doc comment: `sourceToListenerAnglePlusRotation` is declared but
+//!     never assigned anywhere in the file, an incomplete rename left
+//!     behind by a comment that says as much.
+//!
+//! 21. **`makeSourceToSpeakerDistancesAndAngles()` and
+//!     `findSourceToSpeakerAngleDifferencesFromSourceToListenerAngle()` are
+//!     both entirely dead with respect to program behavior.** Every
+//!     value they write - `sourceToSpeakerDistances[]`,
+//!     `sourceToSpeakerAngles[]`, `minSourceToSpeakerDistance`,
+//!     `maxSourceToSpeakerDistance`, `sourceToSpeakerAngleDifferences[]` -
+//!     is read only by their own `fprintf`/`prf` debug output, never by
+//!     any other function (confirmed by grepping every reference). Their
+//!     min/max bookkeeping (lines 5700-5708) also repeats finding 4's
+//!     exact "wrong comparison direction" bug (`findMinMaxValues()`): the
+//!     max-tracking `if` uses `<` - the *min* condition - instead of `>`,
+//!     so it converges toward the true minimum instead of the maximum.
+//!     Since both functions are dead, neither is ported at all, matching
+//!     `findMinMaxValues()`'s own treatment in finding 4.
+//!
+//! 22. **`makeSourceToThresholdProximityProportion()` is also dead.** Its
+//!     only output, `sourceToThresholdProximityDistanceProportion`, is
+//!     read only inside `writeDirectSourcePulsesIntoImpulseResponseOLD()`
+//!     (confirmed dead itself - see the Phase 5 module-doc paragraph
+//!     above), never by the real, live
+//!     `writeDirectSourcePulsesIntoImpulseResponse()`. Not ported.
 
 /// A 2D point in feet (this tool's native unit - see `usage()`'s "All
 /// distances are expressed in feet").
@@ -2105,6 +2148,626 @@ pub fn average_reflection_order_delay_times(
         .collect()
 }
 
+// ---------------------------------------------------------------------
+// Phase 5: the direct-sound (unreflected) pulse path
+// ---------------------------------------------------------------------
+
+/// Ports the min/max/straddle-flag bookkeeping half of
+/// `makeListenerToSpeakerAngles()` (lines ~4009-4089) that Phase 1's
+/// [`listener_to_speaker_angles`] deliberately left for "downstream
+/// reflection-algorithm setup" - it turns out this bookkeeping is never
+/// actually used by the reflection recursion (Phase 2), only by this
+/// phase's own [`find_crossfade_speaker_pair`]/[`make_source_to_threshold_proximity_distance`].
+pub struct ListenerToSpeakerAngleBounds {
+    pub minimum: f32,
+    pub minimum_index: usize,
+    pub maximum: f32,
+    pub maximum_index: usize,
+    /// `true` at index `i` when the wrap segment from speaker `i` to
+    /// speaker `i + 1` (mod count) is the one whose two endpoint angles
+    /// straddle the +/-PI boundary - at most one `true` entry for a
+    /// well-formed speaker fan.
+    pub straddle_flags: Vec<bool>,
+}
+
+/// Ports the second half of `makeListenerToSpeakerAngles()`.
+/// `speaker_configuration_is_polygon` is `usage()`'s speaker-configuration
+/// flag (`sequence` = false, `polygon` = true): a 2-speaker "stereo pair"
+/// always uses the stereo-specific straddle test regardless of this flag
+/// (matching the C's own `numberOfSpeakerPositions == 2` special case);
+/// 3-or-more speakers scan one fewer wrap segment in `sequence` mode (the
+/// last speaker doesn't wrap back to the first).
+pub fn listener_to_speaker_angle_bounds(
+    angles: &[f32],
+    speaker_configuration_is_polygon: bool,
+) -> ListenerToSpeakerAngleBounds {
+    let n = angles.len();
+    debug_assert!(n > 0, "at least one speaker position is required");
+    let mut minimum = std::f32::consts::TAU;
+    let mut minimum_index = 0;
+    let mut maximum = -std::f32::consts::TAU;
+    let mut maximum_index = 0;
+    for (i, &a) in angles.iter().enumerate() {
+        if a < minimum {
+            minimum = a;
+            minimum_index = i;
+        }
+        if a > maximum {
+            maximum = a;
+            maximum_index = i;
+        }
+    }
+
+    let mut straddle_flags = vec![false; n];
+    if n == 2 {
+        if (maximum - minimum) > std::f32::consts::PI {
+            straddle_flags[0] = true;
+        }
+    } else {
+        let last = if speaker_configuration_is_polygon {
+            n
+        } else {
+            n - 1
+        };
+        for (position, flag) in straddle_flags.iter_mut().enumerate().take(last) {
+            let p1 = (position + 1) % n;
+            if (position == minimum_index && p1 == maximum_index)
+                || (position == maximum_index && p1 == minimum_index)
+            {
+                *flag = true;
+            }
+        }
+    }
+
+    ListenerToSpeakerAngleBounds {
+        minimum,
+        minimum_index,
+        maximum,
+        maximum_index,
+        straddle_flags,
+    }
+}
+
+/// Ports `valueIsBetweenTheseTwo()`: `true` if `v` falls within `[b0, b1]`
+/// regardless of which bound is numerically smaller.
+pub fn value_is_between_these_two(v: f32, b0: f32, b1: f32) -> bool {
+    (v >= b0 && v <= b1) || (v <= b0 && v >= b1)
+}
+
+/// Ports `rotatePointToAngle()`: keeps `point_to_rotate`'s own distance
+/// from `origin` but re-derives its position at `new_angle` instead. The
+/// C promotes `cos`/`sin`'s argument (and result) through `double` before
+/// narrowing back to `float`; reproduced the same way (this project's
+/// established precision-cascade convention, see `units.rs`).
+pub fn rotate_point_to_angle(point_to_rotate: Point, origin: Point, new_angle: f32) -> Point {
+    let length = segment_length(Segment::new(origin, point_to_rotate)) as f64;
+    let angle = new_angle as f64;
+    Point::new(
+        (length * angle.cos()) as f32 + origin.x,
+        (length * angle.sin()) as f32 + origin.y,
+    )
+}
+
+/// Ports `findIntersectionOfLinesContainingSegments()`.
+///
+/// **Finding 23**: unlike its sibling [`segments_intersect`]
+/// (`examineSegmentsForIntersection`), every bounding-box containment
+/// check here is commented out in the real C (three whole `if` blocks,
+/// each replaced by an unconditional `segmentsIntersect = true;`) - so
+/// despite taking the same `float[4]`-style segment arguments as
+/// `segments_intersect`, this function actually treats `w`/`p` as
+/// *infinite lines*, not segments: it reports an intersection for any two
+/// non-parallel lines, regardless of whether the computed point falls
+/// within either input segment's own extent. Reproduced exactly - `None`
+/// only for the parallel (including "both vertical") cases.
+pub fn find_intersection_of_lines_containing_segments(w: Segment, p: Segment) -> Option<Point> {
+    let (wx0, wy0, wx1, wy1) = (w.a.x, w.a.y, w.b.x, w.b.y);
+    let (px0, py0, px1, py1) = (p.a.x, p.a.y, p.b.x, p.b.y);
+
+    let w_vertical = (wx1 - wx0) == 0.0;
+    let p_vertical = (px1 - px0) == 0.0;
+
+    if w_vertical && p_vertical {
+        return None;
+    }
+    if w_vertical {
+        let mp = (py1 - py0) / (px1 - px0);
+        let bp = py0 - (mp * px0);
+        let x = wx0;
+        return Some(Point::new(x, (mp * x) + bp));
+    }
+    if p_vertical {
+        let mw = (wy1 - wy0) / (wx1 - wx0);
+        let bw = wy0 - (mw * wx0);
+        let x = px0;
+        return Some(Point::new(x, (mw * x) + bw));
+    }
+
+    let mw = (wy1 - wy0) / (wx1 - wx0);
+    let bw = wy0 - (mw * wx0);
+    let mp = (py1 - py0) / (px1 - px0);
+    let bp = py0 - (mp * px0);
+    if mp == mw {
+        return None;
+    }
+    let x = (bw - bp) / (mp - mw);
+    Some(Point::new(x, (mp * x) + bp))
+}
+
+/// Ports the crossfade-speaker-pair search shared (in effect, though
+/// duplicated rather than factored out in the C) by
+/// `makeSourceToThresholdProximityDistance()` (lines ~6147-6193) and the
+/// dead `writeDirectSourcePulsesIntoImpulseResponseOLD()`'s own copy of the
+/// same loop - this port implements only the live version. Returns the
+/// `(speaker0, speaker1)` pair the given angle falls between, or `None` if
+/// no such pair exists (matching the C's `sourceIsBetweenTwoSpeakers ==
+/// false` outcome).
+pub fn find_crossfade_speaker_pair(
+    listener_to_source_angle: f32,
+    listener_to_speaker_angles: &[f32],
+    bounds: &ListenerToSpeakerAngleBounds,
+    speaker_configuration_is_polygon: bool,
+) -> Option<(usize, usize)> {
+    let n = listener_to_speaker_angles.len();
+    let limit = (n - 1) + usize::from(speaker_configuration_is_polygon);
+    let mut speaker0 = 0usize;
+    while speaker0 < limit {
+        let speaker1 = (speaker0 + 1) % n;
+        let is_between = if bounds.straddle_flags[speaker0] {
+            listener_to_source_angle > bounds.maximum || listener_to_source_angle < bounds.minimum
+        } else {
+            value_is_between_these_two(
+                listener_to_source_angle,
+                listener_to_speaker_angles[speaker0],
+                listener_to_speaker_angles[speaker1],
+            )
+        };
+        if is_between {
+            return Some((speaker0, speaker1));
+        }
+        speaker0 += 1;
+    }
+    None
+}
+
+/// The distance/intersection-point result [`make_source_to_threshold_proximity_distance`]
+/// computes - ports `sourceToThresholdProximityDistance`/
+/// `thresholdAndListenerToSourceIntersection`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ThresholdProximityResult {
+    pub source_to_threshold_proximity_distance: f32,
+    pub threshold_and_listener_to_source_intersection: Point,
+}
+
+/// Ports `makeSourceToThresholdProximityDistance()`'s two live branches
+/// (lines ~6195-6287): when the source's own listener-relative angle falls
+/// between two speakers (`crossfade` is `Some`, from
+/// [`find_crossfade_speaker_pair`]), the threshold point is the real
+/// intersection of the listener-source segment with the speaker-to-speaker
+/// segment between them (reusing [`segments_intersect`] - the C calls the
+/// exact same `examineSegmentsForIntersection()` here as the reflection
+/// path's own accept tests do); otherwise, in `sequence` speaker
+/// configuration only, it extrapolates from whichever end of the speaker
+/// sequence is nearest the source, using the *unbounded* line intersection
+/// [`find_intersection_of_lines_containing_segments`] instead (matching the
+/// real C's own choice of function at this call site).
+///
+/// Returns `Ok(None)` for the remaining case the C itself leaves
+/// unhandled: `polygon` speaker configuration with no crossfade pair found.
+/// A well-formed polygon speaker fan gives
+/// [`find_crossfade_speaker_pair`] full 360-degree coverage, so this should
+/// not arise for valid room/speaker geometry - the C simply leaves
+/// `sourceToThresholdProximityDistance`/`thresholdAndListenerToSourceIntersection`
+/// at whatever value they last held (their own zero-initialized default on
+/// a fresh run) in this case, which this port surfaces as `None` rather
+/// than silently fabricating a stale value.
+///
+/// Returns `Err` only when the `sequence`-mode extrapolation's two nearest
+/// speakers are collinear with the listener-source line (parallel lines),
+/// matching the C's own `exit(EXIT_FAILURE)` at line ~6275 for this case.
+pub fn make_source_to_threshold_proximity_distance(
+    speakers: &[Point],
+    listener: Point,
+    source: Point,
+    crossfade: Option<(usize, usize)>,
+    speaker_configuration_is_polygon: bool,
+) -> Result<Option<ThresholdProximityResult>, String> {
+    if let Some((s0, s1)) = crossfade {
+        let threshold_segment = Segment::new(speakers[s0], speakers[s1]);
+        let listener_to_source = Segment::new(listener, source);
+        let Some(intersection) = segments_intersect(threshold_segment, listener_to_source) else {
+            return Err(
+                "listener-to-source segment does not cross the speaker threshold segment"
+                    .to_string(),
+            );
+        };
+        let distance = segment_length(Segment::new(intersection, source));
+        return Ok(Some(ThresholdProximityResult {
+            source_to_threshold_proximity_distance: distance,
+            threshold_and_listener_to_source_intersection: intersection,
+        }));
+    }
+
+    if speaker_configuration_is_polygon {
+        return Ok(None);
+    }
+
+    let n = speakers.len();
+    debug_assert!(n >= 2, "sequence mode needs at least two speakers");
+    let (near0, near1) = if segment_length(Segment::new(source, speakers[0]))
+        < segment_length(Segment::new(source, speakers[n - 1]))
+    {
+        (speakers[0], speakers[1])
+    } else {
+        (speakers[n - 1], speakers[n - 2])
+    };
+
+    let threshold_line = Segment::new(near0, near1);
+    let listener_to_source = Segment::new(listener, source);
+    let Some(intersection) =
+        find_intersection_of_lines_containing_segments(threshold_line, listener_to_source)
+    else {
+        return Err(
+            "PROBLEM WITH INTERSECTION WITH PROJECTED THRESHOLD BEYOND SPEAKER SEQUENCE."
+                .to_string(),
+        );
+    };
+    let distance = segment_length(Segment::new(intersection, source));
+    Ok(Some(ThresholdProximityResult {
+        source_to_threshold_proximity_distance: distance,
+        threshold_and_listener_to_source_intersection: intersection,
+    }))
+}
+
+/// Ports `isSourceBehindOrInFrontOfSpeakerThreshold()`: the source is
+/// "behind" the speaker threshold line when it's farther from the listener
+/// than the threshold crossing point is.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SourceThresholdOrientation {
+    pub source_is_behind_speakers: bool,
+    /// `1.0` when behind, `-1.0` when in front - ports
+    /// `sourceSpeakerOrientationSign`.
+    pub source_speaker_orientation_sign: f32,
+}
+
+pub fn is_source_behind_or_in_front_of_speaker_threshold(
+    listener: Point,
+    source: Point,
+    threshold_and_listener_to_source_intersection: Point,
+) -> SourceThresholdOrientation {
+    let listener_to_source = segment_length(Segment::new(listener, source));
+    let listener_to_threshold = segment_length(Segment::new(
+        listener,
+        threshold_and_listener_to_source_intersection,
+    ));
+    let source_is_behind_speakers = listener_to_source > listener_to_threshold;
+    SourceThresholdOrientation {
+        source_is_behind_speakers,
+        source_speaker_orientation_sign: if source_is_behind_speakers { 1.0 } else { -1.0 },
+    }
+}
+
+/// Ports `findListenerToSourceSegmentLengthAndAngle()`. The C corrects
+/// `sourceToListenerAngle` with a single `if` (not a `while` loop, unlike
+/// most other angle-wrap sites in this file) - safe here specifically
+/// because `listenerToSourceAngle` is an `atan2` result confined to `(-PI,
+/// PI]`, so adding PI can only ever push the sum into `(0, 2*PI]`, at most
+/// one `TWOPI` subtraction away from the target range; reproduced with the
+/// same single correction, not a loop.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ListenerToSourceGeometry {
+    pub length: f32,
+    pub listener_to_source_angle: f32,
+    pub source_to_listener_angle: f32,
+}
+
+pub fn find_listener_to_source_segment_length_and_angle(
+    listener: Point,
+    source: Point,
+) -> ListenerToSourceGeometry {
+    let seg = Segment::new(listener, source);
+    let listener_to_source_angle = segment_angle(seg);
+    let mut source_to_listener_angle = listener_to_source_angle + std::f32::consts::PI;
+    if source_to_listener_angle > std::f32::consts::PI {
+        source_to_listener_angle -= std::f32::consts::TAU;
+    }
+    ListenerToSourceGeometry {
+        length: segment_length(seg),
+        listener_to_source_angle,
+        source_to_listener_angle,
+    }
+}
+
+/// Ports `makeDirectSoundSpeakerDelayTimes()`. Since `getSourceCoordinates()`
+/// only ever resolves a single source position (Phase 1's finding 1), the
+/// C's own `sourceCoordinates[(channel % numberOfSourcePositions) * 2]`
+/// indexing is always the same point - this port takes a single `source:
+/// Point` rather than reproducing that dead modulo (same reasoning Phase 1
+/// already applied to [`listener_to_speaker_angles`]).
+pub fn direct_sound_speaker_distances_for_delays(speakers: &[Point], source: Point) -> Vec<f32> {
+    speakers
+        .iter()
+        .map(|&speaker| segment_length(Segment::new(source, speaker)))
+        .collect()
+}
+
+fn wrap_angle_to_pi_range(mut angle: f32) -> f32 {
+    while angle > std::f32::consts::PI {
+        angle -= std::f32::consts::TAU;
+    }
+    while angle < -std::f32::consts::PI {
+        angle += std::f32::consts::TAU;
+    }
+    angle
+}
+
+/// Ports the direct-sound pulse's own output-sample delay index (the live
+/// `writeDirectSourcePulsesIntoImpulseResponse()`, lines ~5081-5087).
+///
+/// **Finding 24**: this formula's own parenthesization multiplies
+/// `output_sample_rate` across the *entire* sum, including
+/// `pre_echo_time_seconds` - genuinely different from the structurally
+/// similar-looking reflection-pulse formula
+/// ([`reflection_delay_sample_index`], Phase 3), whose C source (line
+/// ~4863: `j = (int)( preEchoTime + (reflectionTimes[...] *
+/// reflections_time_scaler * (float) osr) + 0.5)`) multiplies `osr` only
+/// across the *reflection*-time term, leaving `preEchoTime` added in
+/// unscaled. Cross-checked against `makePreEchoValues()`'s own
+/// `preEchoDistance = preEchoTime * speedOfSoundInFeetPerSecond` (line
+/// 9240): this only makes sense if `preEchoTime` is in *seconds* (a
+/// distance requires seconds times feet-per-second) - meaning the
+/// reflection-pulse formula adds a small seconds-valued quantity directly
+/// into a samples-valued sum with no unit conversion, while this
+/// direct-sound formula (reproduced here) is the one that treats
+/// `preEchoTime` consistently, converting the whole seconds-valued sum to
+/// samples via one shared `* osr`. Both are reproduced exactly as each own
+/// real C computes them - Phase 3's [`reflection_delay_sample_index`] is
+/// not revisited by this phase (out of scope, per this project's
+/// established practice of not reopening already-shipped ports), but this
+/// finding is recorded here since it was only discoverable by reading both
+/// formulas side by side.
+pub fn direct_sound_delay_sample_index(
+    pre_echo_time_seconds: f32,
+    source_speaker_orientation_sign: f32,
+    source_to_speaker_distance_for_delay: f32,
+    speed_of_sound_feet_per_second: f32,
+    output_sample_rate: f32,
+) -> i64 {
+    let orientation_term = source_speaker_orientation_sign * source_to_speaker_distance_for_delay
+        / speed_of_sound_feet_per_second;
+    let sum = (pre_echo_time_seconds + orientation_term) * output_sample_rate;
+    (sum as f64 + 0.5) as i64
+}
+
+/// Ports the small air-absorption-exponent selector shared by
+/// `makeDirectSoundSpeakerAmplitudes()`/`writeDirectSourcePulsesIntoImpulseResponseOLD()`
+/// (e.g. line ~5817): the direct-sound path's own exponent choice depends
+/// on which side of the speaker threshold the source sits, unlike the
+/// reflection path's fixed `airAbsorptionExponentForReflections` (Phase 3).
+pub fn direct_sound_air_absorption_exponent(
+    source_is_behind_speakers: bool,
+    air_absorption_exponent_for_real_space_source: f32,
+    air_absorption_exponent_for_virtual_space_source: f32,
+) -> f32 {
+    if source_is_behind_speakers {
+        air_absorption_exponent_for_virtual_space_source
+    } else {
+        air_absorption_exponent_for_real_space_source
+    }
+}
+
+/// Ports the `sourceInFrontProximityGain` computation at the top of
+/// `makeDirectSoundSpeakerAmplitudes()` (lines ~5820-5824): a source in
+/// front of the speaker threshold gets boosted by the *inverse* of the air
+/// -absorption falloff it would otherwise suffer at the threshold distance
+/// (compensating for the threshold-proximity blending applied elsewhere);
+/// a source behind the threshold gets no such compensation (`1.0`).
+pub fn source_in_front_proximity_gain(
+    source_is_behind_speakers: bool,
+    minimum_reference_distance_feet: f32,
+    source_to_threshold_proximity_distance: f32,
+    this_air_absorption_exponent: f32,
+) -> f32 {
+    if source_is_behind_speakers {
+        1.0
+    } else {
+        let ratio =
+            (minimum_reference_distance_feet / source_to_threshold_proximity_distance) as f64;
+        let falloff = ratio.min(1.0).powf(this_air_absorption_exponent as f64);
+        (1.0 / falloff) as f32
+    }
+}
+
+/// Every input [`make_direct_sound_speaker_amplitudes`] needs - ports the
+/// scalar globals `makeDirectSoundSpeakerAmplitudes()` reads (lines
+/// ~5780-6133).
+pub struct DirectSoundAmplitudeInput<'a> {
+    pub speakers: &'a [Point],
+    pub source: Point,
+    pub listener: Point,
+    pub listener_to_speaker_angles: &'a [f32],
+    /// `Some((speaker0, speaker1))` when
+    /// [`find_crossfade_speaker_pair`] found a straddling pair
+    /// (`sourceIsBetweenTwoSpeakers`); `None` selects the C's own
+    /// "NON-CROSSFADE" branch.
+    pub crossfade: Option<(usize, usize)>,
+    pub listener_to_source_angle: f32,
+    pub source_to_listener_angle: f32,
+    /// Ports `sourceToListenerAnglePlusRotation`. **Finding 20**: this
+    /// global is declared (line 376) but *never assigned anywhere in the
+    /// file* - a comment immediately above its one read site (line 1210,
+    /// "CHANGE THIS sourceToListenerAnglePlusRotation to rotatedSource")
+    /// shows an intended rename/refactor that was only ever completed for
+    /// this function's *crossfade* branch (which correctly recomputes its
+    /// own `thisRotatedSource` locally), not its non-crossfade branch
+    /// (line 6072), which still reads this always-zero global. Every real
+    /// run should pass `0.0` here to reproduce the bug faithfully, not the
+    /// clearly-intended `rotated_source_angle`.
+    pub source_to_listener_angle_plus_rotation: f32,
+    pub source_is_behind_speakers: bool,
+    pub orient_source_to_listener: bool,
+    pub source_rotation: f32,
+    pub minimum_reference_distance_feet: f32,
+    pub air_absorption_exponent_for_real_space_source: f32,
+    pub air_absorption_exponent_for_virtual_space_source: f32,
+    pub source_dispersion_pattern_rolloff_decibels: f32,
+    pub threshold_proximity_scalar_switch: bool,
+    pub source_to_threshold_proximity_distance: f32,
+    pub front_source_head_room_scalar: f32,
+    pub direct_sound_gain_decibels: f32,
+}
+
+/// Ports `makeDirectSoundSpeakerAmplitudes()`'s two live branches in full
+/// (lines ~5832-6113): the "BETWEEN SPEAKERS" crossfade branch (rotating
+/// the source position to each of the two bracketing speaker angles and
+/// blending their independent amplitude terms by
+/// `crossFadeProportion`) and the "NOT IN CROSSFADE" branch (a single
+/// per-speaker computation using the source's real position directly).
+/// See [`DirectSoundAmplitudeInput::source_to_listener_angle_plus_rotation`]
+/// (finding 20) for a real bug reproduced in the non-crossfade branch.
+pub fn make_direct_sound_speaker_amplitudes(
+    input: &DirectSoundAmplitudeInput,
+    db_to_amp: &crate::units::DbToAmp,
+) -> Vec<f32> {
+    let n = input.speakers.len();
+    let this_air_absorption_exponent = direct_sound_air_absorption_exponent(
+        input.source_is_behind_speakers,
+        input.air_absorption_exponent_for_real_space_source,
+        input.air_absorption_exponent_for_virtual_space_source,
+    );
+    let source_in_front_gain = source_in_front_proximity_gain(
+        input.source_is_behind_speakers,
+        input.minimum_reference_distance_feet,
+        input.source_to_threshold_proximity_distance,
+        this_air_absorption_exponent,
+    );
+
+    if let Some((speaker0, speaker1)) = input.crossfade {
+        let mut temp_angles = [
+            input.listener_to_speaker_angles[speaker0],
+            input.listener_to_speaker_angles[speaker1],
+        ];
+        let mut listener_to_source_angle_temp = input.listener_to_source_angle;
+        if (temp_angles[1] - temp_angles[0]).abs() > std::f32::consts::PI {
+            if temp_angles[0] < 0.0 {
+                temp_angles[0] += std::f32::consts::TAU;
+            }
+            if temp_angles[1] < 0.0 {
+                temp_angles[1] += std::f32::consts::TAU;
+            }
+            if listener_to_source_angle_temp < 0.0 {
+                listener_to_source_angle_temp += std::f32::consts::TAU;
+            }
+        }
+
+        let cross_fade_proportion = 1.0
+            - ((listener_to_source_angle_temp - temp_angles[0])
+                / (temp_angles[1] - temp_angles[0]));
+
+        let branch =
+            |crossfade_speaker: usize, base_angle_raw: f32| -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+                let mut base_angle = base_angle_raw;
+                if input.source_is_behind_speakers {
+                    base_angle += std::f32::consts::PI;
+                    if base_angle > std::f32::consts::PI {
+                        base_angle -= std::f32::consts::TAU;
+                    }
+                }
+                let mut this_rotated_source = if input.orient_source_to_listener {
+                    base_angle + input.source_rotation
+                } else {
+                    input.source_rotation
+                };
+                this_rotated_source = wrap_angle_to_pi_range(this_rotated_source);
+
+                // Ports `rotatePointToAngle(sourceCoordinates, listenerCoordinates,
+                // tempAngles[k], ...)`: rotated around the *listener*, using the
+                // raw (pre-behind-speakers-adjustment) angle - not `base_angle`.
+                let rotated_source =
+                    rotate_point_to_angle(input.source, input.listener, base_angle_raw);
+
+                let mut angle_amp_scalars = vec![0.0f32; n];
+                let mut distance_amp_scalars = vec![0.0f32; n];
+                let mut rolloff_decibels = vec![0.0f32; n];
+                for speaker in 0..n {
+                    let segment = Segment::new(rotated_source, input.speakers[speaker]);
+                    let (angle, limited_diff_angle) = if speaker == crossfade_speaker {
+                        (base_angle, 0.0f32)
+                    } else {
+                        let a = segment_angle(segment);
+                        (a, (std::f32::consts::FRAC_PI_2).min((a - base_angle).abs()))
+                    };
+                    angle_amp_scalars[speaker] =
+                        1.0 - (limited_diff_angle / std::f32::consts::FRAC_PI_2);
+
+                    let distance = segment_length(segment);
+                    let ratio = (input.minimum_reference_distance_feet / distance) as f64;
+                    distance_amp_scalars[speaker] =
+                        (ratio.min(1.0).powf(this_air_absorption_exponent as f64)) as f32;
+
+                    let angle_diff = wrap_angle_to_pi_range(this_rotated_source - angle).abs();
+                    rolloff_decibels[speaker] = input.source_dispersion_pattern_rolloff_decibels
+                        * (angle_diff / std::f32::consts::PI);
+                }
+                (angle_amp_scalars, distance_amp_scalars, rolloff_decibels)
+            };
+
+        let (angle_amp0, distance_amp0, rolloff0) = branch(speaker0, temp_angles[0]);
+        let (angle_amp1, distance_amp1, rolloff1) = branch(speaker1, temp_angles[1]);
+
+        (0..n)
+            .map(|speaker| {
+                let threshold_proximity_scalar = if input.threshold_proximity_scalar_switch {
+                    (cross_fade_proportion * angle_amp0[speaker])
+                        + ((1.0 - cross_fade_proportion) * angle_amp1[speaker])
+                } else {
+                    1.0
+                };
+                threshold_proximity_scalar
+                    * ((cross_fade_proportion * distance_amp0[speaker])
+                        + ((1.0 - cross_fade_proportion) * distance_amp1[speaker]))
+                    * ((cross_fade_proportion * db_to_amp.convert(rolloff0[speaker]))
+                        + ((1.0 - cross_fade_proportion) * db_to_amp.convert(rolloff1[speaker])))
+                    * source_in_front_gain
+                    * input.front_source_head_room_scalar
+                    * db_to_amp.convert(input.direct_sound_gain_decibels)
+            })
+            .collect()
+    } else {
+        (0..n)
+            .map(|speaker| {
+                let segment = Segment::new(input.source, input.speakers[speaker]);
+                let angle = segment_angle(segment);
+                let distance = segment_length(segment);
+
+                let angle_diff =
+                    wrap_angle_to_pi_range(input.source_to_listener_angle_plus_rotation - angle)
+                        .abs();
+                let rolloff_decibels = input.source_dispersion_pattern_rolloff_decibels
+                    * (angle_diff / std::f32::consts::PI);
+
+                let threshold_proximity_scalar = if input.threshold_proximity_scalar_switch {
+                    let diff = (angle - input.source_to_listener_angle).abs();
+                    (diff.min(std::f32::consts::FRAC_PI_2) as f64).cos() as f32
+                } else {
+                    1.0
+                };
+
+                let ratio = (input.minimum_reference_distance_feet / distance) as f64;
+                let air_absorption =
+                    (ratio.min(1.0).powf(this_air_absorption_exponent as f64)) as f32;
+
+                threshold_proximity_scalar
+                    * air_absorption
+                    * source_in_front_gain
+                    * input.front_source_head_room_scalar
+                    * db_to_amp.convert(rolloff_decibels)
+                    * db_to_amp.convert(input.direct_sound_gain_decibels)
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3034,6 +3697,333 @@ mod tests {
         assert!(
             averages[1].is_nan(),
             "order 2 has no reflections: 0./0. = NaN, matching the C"
+        );
+    }
+
+    // -------------------------------------------------------------
+    // Phase 5: direct-sound pulse path
+    // -------------------------------------------------------------
+
+    #[test]
+    fn listener_to_speaker_angle_bounds_stereo_pair_straddles() {
+        // Two speakers whose angles are close to +/-PI - more than PI apart,
+        // so the stereo-specific straddle test (finding: only fires for
+        // exactly 2 speakers) should flag index 0.
+        let angles = [3.0, -3.0];
+        let bounds = listener_to_speaker_angle_bounds(&angles, false);
+        assert_eq!(bounds.minimum_index, 1);
+        assert_eq!(bounds.maximum_index, 0);
+        assert_eq!(bounds.straddle_flags, vec![true, false]);
+    }
+
+    #[test]
+    fn listener_to_speaker_angle_bounds_stereo_pair_no_straddle() {
+        let angles = [-0.5, 0.5];
+        let bounds = listener_to_speaker_angle_bounds(&angles, false);
+        assert_eq!(bounds.straddle_flags, vec![false, false]);
+    }
+
+    #[test]
+    fn listener_to_speaker_angle_bounds_fan_straddles_between_min_and_max() {
+        // Four speakers fanned from -2.0 to 2.0 radians in increasing order:
+        // min is index 0, max is index 3, and they're adjacent only via the
+        // wrap segment 3->0 - which sequence mode excludes (n - 1 = 3
+        // segments scanned, 0..3) so nothing straddles; polygon mode
+        // includes segment 3->0 and should flag it.
+        let angles = [-2.0, -0.6, 0.6, 2.0];
+        let sequence = listener_to_speaker_angle_bounds(&angles, false);
+        assert!(sequence.straddle_flags.iter().all(|&f| !f));
+
+        let polygon = listener_to_speaker_angle_bounds(&angles, true);
+        assert_eq!(polygon.straddle_flags, vec![false, false, false, true]);
+    }
+
+    #[test]
+    fn value_is_between_these_two_works_either_order() {
+        assert!(value_is_between_these_two(0.5, 0.0, 1.0));
+        assert!(value_is_between_these_two(0.5, 1.0, 0.0));
+        assert!(!value_is_between_these_two(1.5, 0.0, 1.0));
+    }
+
+    #[test]
+    fn find_crossfade_speaker_pair_finds_the_bracketing_pair() {
+        let angles = [-1.0, 0.0, 1.0];
+        let bounds = listener_to_speaker_angle_bounds(&angles, false);
+        let pair = find_crossfade_speaker_pair(0.5, &angles, &bounds, false);
+        assert_eq!(pair, Some((1, 2)));
+    }
+
+    #[test]
+    fn find_crossfade_speaker_pair_none_outside_sequence_range() {
+        let angles = [-1.0, 0.0, 1.0];
+        let bounds = listener_to_speaker_angle_bounds(&angles, false);
+        // Sequence mode never wraps past the last speaker.
+        let pair = find_crossfade_speaker_pair(-2.5, &angles, &bounds, false);
+        assert_eq!(pair, None);
+    }
+
+    #[test]
+    fn rotate_point_to_angle_preserves_distance() {
+        let origin = Point::new(0., 0.);
+        let point = Point::new(5., 0.);
+        let rotated = rotate_point_to_angle(point, origin, std::f32::consts::FRAC_PI_2);
+        assert!(
+            (rotated.x).abs() < 1e-4,
+            "x should be ~0, got {}",
+            rotated.x
+        );
+        assert!(
+            (rotated.y - 5.0).abs() < 1e-4,
+            "y should be ~5, got {}",
+            rotated.y
+        );
+    }
+
+    #[test]
+    fn rotate_point_to_angle_around_nonzero_origin() {
+        let origin = Point::new(10., 10.);
+        let point = Point::new(13., 10.); // distance 3 from origin
+        let rotated = rotate_point_to_angle(point, origin, 0.0);
+        assert!((rotated.x - 13.0).abs() < 1e-4);
+        assert!((rotated.y - 10.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn find_intersection_of_lines_containing_segments_is_unbounded() {
+        // Two short, non-overlapping segments whose *containing lines*
+        // cross far outside both segments' own extents - segments_intersect
+        // (bounded) reports no intersection, but this unbounded sibling
+        // (finding 23) must still find the line intersection.
+        let w = Segment::new(Point::new(0., 0.), Point::new(1., 0.));
+        let p = Segment::new(Point::new(5., 1.), Point::new(5., 2.));
+        assert!(segments_intersect(w, p).is_none());
+        let hit = find_intersection_of_lines_containing_segments(w, p)
+            .expect("infinite lines should intersect");
+        assert!((hit.x - 5.0).abs() < 1e-4);
+        assert!((hit.y).abs() < 1e-4);
+    }
+
+    #[test]
+    fn find_intersection_of_lines_containing_segments_parallel_is_none() {
+        let w = Segment::new(Point::new(0., 0.), Point::new(1., 0.));
+        let p = Segment::new(Point::new(0., 1.), Point::new(1., 1.));
+        assert!(find_intersection_of_lines_containing_segments(w, p).is_none());
+    }
+
+    #[test]
+    fn make_source_to_threshold_proximity_distance_between_speakers() {
+        let speakers = vec![Point::new(-5., 10.), Point::new(5., 10.)];
+        let listener = Point::new(0., 0.);
+        let source = Point::new(0., 20.);
+        let result = make_source_to_threshold_proximity_distance(
+            &speakers,
+            listener,
+            source,
+            Some((0, 1)),
+            false,
+        )
+        .expect("should not error")
+        .expect("crossfade case always produces a result");
+        assert!((result.threshold_and_listener_to_source_intersection.x).abs() < 1e-4);
+        assert!((result.threshold_and_listener_to_source_intersection.y - 10.0).abs() < 1e-4);
+        assert!((result.source_to_threshold_proximity_distance - 10.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn make_source_to_threshold_proximity_distance_sequence_extrapolation() {
+        // Source is beyond the near end of a 3-speaker sequence laid out
+        // along y=10; no crossfade pair found, sequence mode extrapolates
+        // from the two nearest (first two) speakers.
+        let speakers = vec![
+            Point::new(-10., 10.),
+            Point::new(0., 10.),
+            Point::new(10., 10.),
+        ];
+        let listener = Point::new(-20., 0.);
+        let source = Point::new(-20., 20.);
+        let result =
+            make_source_to_threshold_proximity_distance(&speakers, listener, source, None, false)
+                .expect("should not error")
+                .expect("sequence mode always produces a result when not between speakers");
+        assert!((result.threshold_and_listener_to_source_intersection.x - -20.0).abs() < 1e-3);
+        assert!((result.threshold_and_listener_to_source_intersection.y - 10.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn make_source_to_threshold_proximity_distance_polygon_no_pair_is_none() {
+        let speakers = vec![Point::new(-5., 10.), Point::new(5., 10.)];
+        let listener = Point::new(0., 0.);
+        let source = Point::new(0., 20.);
+        let result =
+            make_source_to_threshold_proximity_distance(&speakers, listener, source, None, true)
+                .expect("should not error");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn is_source_behind_or_in_front_of_speaker_threshold_behind() {
+        let listener = Point::new(0., 0.);
+        let threshold = Point::new(0., 10.);
+        let source = Point::new(0., 20.); // farther than the threshold
+        let orientation =
+            is_source_behind_or_in_front_of_speaker_threshold(listener, source, threshold);
+        assert!(orientation.source_is_behind_speakers);
+        assert_eq!(orientation.source_speaker_orientation_sign, 1.0);
+    }
+
+    #[test]
+    fn is_source_behind_or_in_front_of_speaker_threshold_in_front() {
+        let listener = Point::new(0., 0.);
+        let threshold = Point::new(0., 10.);
+        let source = Point::new(0., 5.); // nearer than the threshold
+        let orientation =
+            is_source_behind_or_in_front_of_speaker_threshold(listener, source, threshold);
+        assert!(!orientation.source_is_behind_speakers);
+        assert_eq!(orientation.source_speaker_orientation_sign, -1.0);
+    }
+
+    #[test]
+    fn find_listener_to_source_segment_length_and_angle_basic() {
+        let listener = Point::new(0., 0.);
+        let source = Point::new(10., 0.);
+        let geometry = find_listener_to_source_segment_length_and_angle(listener, source);
+        assert!((geometry.length - 10.0).abs() < 1e-4);
+        assert!(geometry.listener_to_source_angle.abs() < 1e-4);
+        assert!((geometry.source_to_listener_angle - std::f32::consts::PI).abs() < 1e-4);
+    }
+
+    #[test]
+    fn direct_sound_speaker_distances_for_delays_matches_segment_length() {
+        let source = Point::new(0., 0.);
+        let speakers = vec![Point::new(3., 4.), Point::new(0., 10.)];
+        let distances = direct_sound_speaker_distances_for_delays(&speakers, source);
+        assert!((distances[0] - 5.0).abs() < 1e-4);
+        assert!((distances[1] - 10.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn direct_sound_delay_sample_index_scales_pre_echo_by_sample_rate() {
+        // Finding 24: unlike reflection_delay_sample_index, pre-echo time
+        // IS scaled by the sample rate here.
+        let j = direct_sound_delay_sample_index(0.1, 1.0, 0.0, 1130.0, 44100.0);
+        // (0.1 + 0.0) * 44100 + 0.5 truncated = 4410
+        assert_eq!(j, 4410);
+    }
+
+    #[test]
+    fn direct_sound_delay_sample_index_includes_orientation_term() {
+        let j = direct_sound_delay_sample_index(0.0, -1.0, 1130.0, 1130.0, 44100.0);
+        // (0.0 + (-1.0 * 1130/1130)) * 44100 + 0.5 = -44099.5 -> truncates toward 0 in f64->i64 cast...
+        // but since the real formula only ever produces non-negative sums in practice,
+        // just check the magnitude/sign behavior directly here.
+        assert_eq!(j, -44099);
+    }
+
+    #[test]
+    fn direct_sound_air_absorption_exponent_selects_by_orientation() {
+        assert_eq!(
+            direct_sound_air_absorption_exponent(true, 1.0, 2.0),
+            2.0,
+            "behind speakers uses the virtual-space exponent"
+        );
+        assert_eq!(
+            direct_sound_air_absorption_exponent(false, 1.0, 2.0),
+            1.0,
+            "in front uses the real-space exponent"
+        );
+    }
+
+    #[test]
+    fn source_in_front_proximity_gain_is_one_when_behind() {
+        assert_eq!(source_in_front_proximity_gain(true, 10.0, 5.0, 1.0), 1.0);
+    }
+
+    #[test]
+    fn source_in_front_proximity_gain_boosts_when_in_front() {
+        // ratio = min(1, 10/20) = 0.5; falloff = 0.5^1 = 0.5; gain = 1/0.5 = 2.0
+        let gain = source_in_front_proximity_gain(false, 10.0, 20.0, 1.0);
+        assert!((gain - 2.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn make_direct_sound_speaker_amplitudes_non_crossfade_matches_hand_calc() {
+        let db_to_amp = crate::units::DbToAmp::new();
+        let speakers = vec![Point::new(10., 0.)];
+        let input = DirectSoundAmplitudeInput {
+            speakers: &speakers,
+            source: Point::new(0., 0.),
+            listener: Point::new(-10., 0.),
+            listener_to_speaker_angles: &[0.0],
+            crossfade: None,
+            listener_to_source_angle: 0.0,
+            source_to_listener_angle: 0.0,
+            source_to_listener_angle_plus_rotation: 0.0,
+            source_is_behind_speakers: false,
+            orient_source_to_listener: false,
+            source_rotation: 0.0,
+            minimum_reference_distance_feet: 10.0, // == distance, so air absorption term is 1.0
+            air_absorption_exponent_for_real_space_source: 1.0,
+            air_absorption_exponent_for_virtual_space_source: 1.0,
+            source_dispersion_pattern_rolloff_decibels: 0.0, // source aimed straight at the speaker: 0 angle diff regardless
+            threshold_proximity_scalar_switch: false,        // pin the cos() term to 1.0
+            source_to_threshold_proximity_distance: 10.0,
+            front_source_head_room_scalar: 1.0,
+            direct_sound_gain_decibels: 0.0,
+        };
+        let amps = make_direct_sound_speaker_amplitudes(&input, &db_to_amp);
+        assert_eq!(amps.len(), 1);
+        // threshold_proximity_scalar(1.0) * air_absorption(1.0) *
+        // source_in_front_gain(1.0, since not behind and ratio==1) *
+        // front_source_head_room_scalar(1.0) * dB_to_amp(0)^2 (rolloff + gain terms)
+        let want = db_to_amp.convert(0.0) * db_to_amp.convert(0.0);
+        assert!(
+            (amps[0] - want).abs() < 1e-4,
+            "got {}, want {}",
+            amps[0],
+            want
+        );
+    }
+
+    #[test]
+    fn make_direct_sound_speaker_amplitudes_crossfade_splits_between_two_speakers() {
+        let db_to_amp = crate::units::DbToAmp::new();
+        // Listener at origin, two speakers symmetric left/right, source
+        // straight ahead exactly between them (on-axis) - crossfade
+        // proportion should end up at the midpoint (0.5) and both speakers
+        // should get equal amplitude by symmetry.
+        let speakers = vec![Point::new(-5., 10.), Point::new(5., 10.)];
+        let listener = Point::new(0., 0.);
+        let source = Point::new(0., 20.);
+        let angles = listener_to_speaker_angles(listener, &speakers);
+        let listener_to_source = find_listener_to_source_segment_length_and_angle(listener, source);
+
+        let input = DirectSoundAmplitudeInput {
+            speakers: &speakers,
+            source,
+            listener,
+            listener_to_speaker_angles: &angles,
+            crossfade: Some((0, 1)),
+            listener_to_source_angle: listener_to_source.listener_to_source_angle,
+            source_to_listener_angle: listener_to_source.source_to_listener_angle,
+            source_to_listener_angle_plus_rotation: 0.0,
+            source_is_behind_speakers: false,
+            orient_source_to_listener: false,
+            source_rotation: 0.0,
+            minimum_reference_distance_feet: 1.0,
+            air_absorption_exponent_for_real_space_source: 1.0,
+            air_absorption_exponent_for_virtual_space_source: 1.0,
+            source_dispersion_pattern_rolloff_decibels: 0.0,
+            threshold_proximity_scalar_switch: false,
+            source_to_threshold_proximity_distance: 20.0,
+            front_source_head_room_scalar: 1.0,
+            direct_sound_gain_decibels: 0.0,
+        };
+        let amps = make_direct_sound_speaker_amplitudes(&input, &db_to_amp);
+        assert_eq!(amps.len(), 2);
+        assert!(
+            (amps[0] - amps[1]).abs() < 1e-4,
+            "symmetric setup should give equal amplitudes, got {:?}",
+            amps
         );
     }
 }
