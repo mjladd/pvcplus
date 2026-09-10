@@ -77,7 +77,7 @@ file. Read the module doc comment for the current findings.
 | 6 | Wall/reflection-order impulse-response cache bookkeeping (the longest-cached-prefix search a new reflection reuses instead of recomputing a shared convolution chain) | `c4859e3` |
 | 7 | Filter/normalize and truncate/envelope/normalize orchestration for wall and reflection-order impulse responses | `94fe45a` |
 | 8 | Reflection-order convolution-sequence bookkeeping, presence-level balance math, and maximum speaker-to-listener/speaker-to-speaker distance search | `dd3ef9f` |
-| 9 | Channel-assignment selection for wall/reflection-order impulse response reads, and the wall pulse-mode default | pending |
+| 9 | Channel-assignment selection for wall/reflection-order impulse response reads, and the wall pulse-mode default | `31f9571` |
 
 Phase 6 also settled an open question from Phase 4: the wall
 channel-assignment and gainscale-level readers turned out to hold no pure
