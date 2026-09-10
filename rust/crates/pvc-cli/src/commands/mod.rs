@@ -21,6 +21,7 @@ pub mod inharmonator;
 pub mod irconvolver;
 pub mod irconvolvesequencer;
 pub mod legacy;
+pub mod migrate_script;
 pub mod peakformant;
 pub mod pitchtrack;
 pub mod plot;
