@@ -113,23 +113,49 @@
 //! phase's own analysis turned up in all three filter/normalize functions
 //! alike.
 //!
+//! **Phase 8** (this update) reads the remaining ~750 lines near the end
+//! of the file and ports every piece that turned out to be pure math:
+//! [`find_reflection_order_cv_order_sequences`]
+//! (`findreflectionOrderCVOrderSequences`, finding 28's own write-only
+//! duplicate output array aside), [`truncate_cv_order_sequences`]
+//! (`truncateCVOrderSequences` - confirmed, by reading `main()`'s own call
+//! order at lines 1523-1527, to run *after*
+//! `filterAndNormalizeReflectionOrderImpulseResponsesPostConvolution()`,
+//! not before it, so it does not affect that function's own per-channel
+//! rolloff scaler - it instead prepares the size-1 sequences a later,
+//! still-unported cache-key-building step reads at line ~4521),
+//! [`balance_wall_impulse_responses_against_pulse_using_presence`]/
+//! [`balance_reflection_order_impulse_responses_against_pulse_using_presence`]
+//! (`balanceWallImpulseResponseAgainstPulseUsingPresence`/
+//! `balanceROimpulseResponseAgainstPulseUsingPresence` - kept as two
+//! functions rather than one shared one because they index their own
+//! presence-level table differently, a real confirmed difference, not a
+//! missed reuse opportunity), and
+//! [`find_maximum_speaker_to_listener_distance`]/
+//! [`find_maximum_speaker_to_speaker_distance`]
+//! (`findMaximumSpeakerToListenerDistance`/`findMaximumSpeakerToSpeakerDistance`,
+//! the two distance producers that [`front_source_head_room_scalar`]/
+//! [`pre_echo_time_seconds`] were already ported, in Phase 3, as pure
+//! consumers of - without their own distance-search callers ever having
+//! been read yet; this phase closes that loop). Finding 30 confirms Phase
+//! 3's own choice there was already correct.
+//!
 //! **What's still not covered, and why**: `readInWallImpulseResponses`/
 //! `readInReflectionOrderImpulseResponses` (real file I/O, belongs with
 //! `pvc-cli`/`pvc-io`), `getWallImpulseResponseChannelAssignments`/
-//! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`
-//! (settled in Phase 6), and the ~750 lines of
-//! functions near the end of the file not yet read by any phase
-//! (`getReflectionOrderDecibelGainscaleLevels`,
-//! `findreflectionOrderCVOrderSequences`,
-//! `makeOrIncreaseMemorySpaceForSavedWallReflectionPatterns`,
-//! `getWallImpulseResponsePresenceLevels`,
-//! `balanceWallImpulseResponseAgainstPulseUsingPresence`,
-//! `balanceROimpulseResponseAgainstPulseUsingPresence`,
-//! `preConvolveReflectionOrderImpulseResponsesWithIrconvolver`,
-//! `truncateCVOrderSequences`, `makeIR_DataSpace`,
-//! `getReflectionOrderImpulseResponsePresenceLevels`,
-//! `findMaximumSpeakerToListenerDistance`,
-//! `findMaximumSpeakerToSpeakerDistance`). `makeSpaceReflectionCoordinates`
+//! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`/
+//! `getWallImpulseResponsePresenceLevels`/`getReflectionOrderImpulseResponsePresenceLevels`
+//! (all pure file I/O, same convention - see finding 29 for a real bug a
+//! future `pvc-io` reader for the wall variant needs to decide whether to
+//! reproduce), `preConvolveReflectionOrderImpulseResponsesWithIrconvolver`
+//! (see finding 31 - not pure math at all, so there is nothing here for a
+//! future phase to port other than the orchestration itself),
+//! `makeIR_DataSpace` (a `static bool first`-gated alloc-or-zero for a
+//! module-global output buffer - no Rust equivalent needed, matching
+//! Phase 6's established memory-growth precedent) and `copyFloatArray` (a
+//! generic array-copy loop with no tool-specific content - a plain
+//! `.to_vec()`/`copy_from_slice()` at any real call site, not worth a
+//! dedicated port function). `makeSpaceReflectionCoordinates`
 //! is pure geometry with no I/O, but its only consumer
 //! (`reflectionSoundPathCoordinates`, confirmed via its single call site at
 //! line ~3119 inside `mirrorPolygonCoordinatesAroundAllSides()`) is
@@ -390,6 +416,60 @@
 //!     and its callers therefore return same-length-as-input data with no
 //!     buffer-growth path at all - not an omission, a faithful
 //!     reproduction of unreachable C.
+//!
+//! 28. **`reflectionOrderCVIRSequences` (built alongside
+//!     `reflectionOrderCVOrderSequences` inside
+//!     `findreflectionOrderCVOrderSequences()`, lines 8633-8691) is a
+//!     write-only duplicate**, confirmed by grepping every use: the one
+//!     line that would make it diverge from its sibling (an upper-bound
+//!     clamp against `numberOfReflectionOrderChannelAssignments`) is
+//!     commented out, so both arrays get the exact same value assigned in
+//!     the same loop iteration, and its only reader afterward is a debug
+//!     `fprintf`. Not ported, matching finding 5's precedent for a
+//!     byte-identical write-only twin.
+//!
+//! 29. **A confirmed asymmetry between two sibling presence-level file
+//!     readers**: `getWallImpulseResponsePresenceLevels()` (line 8874)
+//!     truncates every value it reads into an `int` before storing it
+//!     (`wallImpulseResponsePresenceLevels[ i ] = (int) temp ;`, both
+//!     sides of the assignment marked with the source's own `// %%%`
+//!     comment), collapsing any fractional dB presence level to its
+//!     integer part - but `getReflectionOrderImpulseResponsePresenceLevels()`
+//!     (line 9210), reading the equivalent file for reflection-order
+//!     impulse responses, stores the raw `float` untouched
+//!     (`ROimpulseResponsePresenceLevels[ i ] = temp ;`, the same `// %%%`
+//!     marker). Both functions are pure file I/O, deferred to `pvc-io`
+//!     along with every other reader in this module - flagged here so
+//!     whichever phase eventually writes that reader decides deliberately
+//!     whether to reproduce the wall side's truncation rather than
+//!     missing the asymmetry.
+//!
+//! 30. **Confirmed dead, closing an open question from Phase 3**:
+//!     `makePreEchoValues()` (lines 9229-9258) computes `preEchoDistance`
+//!     (`preEchoTime * speedOfSoundInFeetPerSecond`), but its only reader
+//!     is a `frontSourceHeadRoomScalar` formula that is entirely commented
+//!     out (lines 9242-9247) - grepping every other use of
+//!     `preEchoDistance` in the file turns up nothing. The *live*
+//!     `frontSourceHeadRoomScalar` formula right below the commented-out
+//!     block uses `maxSpeakerToForwardSourceDistanceLimit` instead, which
+//!     is exactly what Phase 3's [`front_source_head_room_scalar`] already
+//!     reproduces - confirming, now that this phase has read the whole
+//!     function body, that Phase 3's choice of formula was already
+//!     correct.
+//!
+//! 31. **`preConvolveReflectionOrderImpulseResponsesWithIrconvolver()`
+//!     (lines 8946-9089) has no pure-math content at all to port.** When
+//!     `reflection_order_IR_convolution_mode != 0`, it writes every
+//!     reflection-order impulse response to a `/tmp` sound file, then
+//!     shells out via `system()` to a hand-built pipeline of `cp`, this
+//!     project's own `impulseresponse`/`irconvolver` legacy binaries, and
+//!     `channelcollect` (per [[pvcplus-port-methodology]], `channelcollect`
+//!     is explicitly not planned as a literal port in this project) to
+//!     perform the actual compounded convolution externally, before
+//!     reading the result back in via `readInReflectionOrderImpulseResponses()`.
+//!     A Rust port of this behaviour is a subprocess-orchestration
+//!     question for a future CLI-wiring phase, not a math one - there is
+//!     no formula here to extract into `pvc-core`.
 
 /// A 2D point in feet (this tool's native unit - see `usage()`'s "All
 /// distances are expressed in feet").
@@ -3210,6 +3290,197 @@ pub fn truncate_envelope_and_normalize_impulse_responses(
         .collect()
 }
 
+/// Ports `findreflectionOrderCVOrderSequences()`: for each reflection
+/// order `1..=high_order_limit`, builds the sequence of order indices that
+/// order's own compounded impulse response is convolved through - walking
+/// from `seq_begin = clamp(order + reflection_order_ir_convolution_mode,
+/// 1, high_order_limit)` back toward `order` one step at a time (step
+/// direction is `-sign(reflection_order_ir_convolution_mode)`;
+/// `reflection_order_ir_convolution_mode == 0` always yields a size-1
+/// sequence, so the step direction is moot then).
+///
+/// See finding 28 for `reflectionOrderCVIRSequences`, a second output
+/// array the C builds alongside this one that turned out to be a
+/// write-only duplicate - not ported.
+///
+/// Returns one `Vec<i32>` per order (`high_order_limit` sequences total,
+/// index `0` == order `1`), matching this module's established
+/// `Vec<Vec<_>>`-per-channel convention (see e.g.
+/// [`filter_and_normalize_impulse_responses`]) rather than the C's own
+/// `high_order_limit`-strided flat array. A caller wanting the C's own
+/// `reflectionOrderCVOrderSequenceSizes` reads each sequence's own
+/// `.len()`.
+pub fn find_reflection_order_cv_order_sequences(
+    high_order_limit: i32,
+    reflection_order_ir_convolution_mode: i32,
+) -> Vec<Vec<i32>> {
+    debug_assert!(high_order_limit >= 1);
+    let step = if reflection_order_ir_convolution_mode >= 0 {
+        -1
+    } else {
+        1
+    };
+    (1..=high_order_limit)
+        .map(|order| {
+            let seq_begin =
+                (order + reflection_order_ir_convolution_mode).clamp(1, high_order_limit);
+            let size = (order - seq_begin).unsigned_abs() as usize + 1;
+            let mut seq = Vec::with_capacity(size);
+            let mut seq_val = seq_begin;
+            for _ in 0..size {
+                seq.push(seq_val);
+                seq_val += step;
+            }
+            seq
+        })
+        .collect()
+}
+
+/// Ports `truncateCVOrderSequences()`: collapses every order's own
+/// convolution sequence (as built by
+/// [`find_reflection_order_cv_order_sequences`]) down to a single
+/// element - its own last-generated entry. Confirmed, by reading
+/// `main()`'s own call order (lines 1523-1527), to run *after*
+/// `filterAndNormalizeReflectionOrderImpulseResponsesPostConvolution()`
+/// already used the full, untruncated sequence sizes for its own rolloff
+/// scaler - this function does not feed that step. Its own real consumer
+/// is later, still-unported cache-key-building code (line ~4521) that
+/// only needs one order index per reflection once the external
+/// pre-convolution pipeline (finding 31) has already baked every order's
+/// own compounded response into a single file.
+///
+/// This port takes the already-built sequences and returns a fresh,
+/// truncated copy rather than mutating in place, matching this module's
+/// usual immutable-input convention.
+pub fn truncate_cv_order_sequences(sequences: &[Vec<i32>]) -> Vec<Vec<i32>> {
+    sequences
+        .iter()
+        .map(|seq| vec![*seq.last().expect("a CV order sequence is never empty")])
+        .collect()
+}
+
+/// Ports `balanceWallImpulseResponseAgainstPulseUsingPresence()`: scales
+/// each wall-impulse-response channel by its own presence-level amplitude
+/// (`dB_to_amp` of a non-positive dB value, so always `<= 1.`), then adds
+/// the complementary `1. - wallAmp` "dry pulse" amount back onto the
+/// channel's own first sample - a `0.` dB presence level leaves the
+/// channel untouched (`wallAmp = 1.`, nothing added), and progressively
+/// more negative levels blend the impulse response toward a bare,
+/// unshaped pulse instead. `presence_levels_db` is indexed one-to-one with
+/// `channels` (no modulo/loop-assign here - contrast
+/// [`balance_reflection_order_impulse_responses_against_pulse_using_presence`],
+/// whose own C sibling loop-assigns via a modulo inline instead of relying
+/// on a pre-expanded table; see finding 29's own note on why the two
+/// underlying presence-level readers already differ).
+pub fn balance_wall_impulse_responses_against_pulse_using_presence(
+    channels: &[Vec<f32>],
+    presence_levels_db: &[f32],
+    db_to_amp: &crate::units::DbToAmp,
+) -> Vec<Vec<f32>> {
+    channels
+        .iter()
+        .zip(presence_levels_db)
+        .map(|(ch, &level_db)| {
+            let wall_amp = db_to_amp.convert(level_db);
+            let impulse_amp = 1.0 - wall_amp;
+            let mut out: Vec<f32> = ch.iter().map(|&x| x * wall_amp).collect();
+            if let Some(first) = out.first_mut() {
+                *first += impulse_amp;
+            }
+            out
+        })
+        .collect()
+}
+
+/// Ports `balanceROimpulseResponseAgainstPulseUsingPresence()`: the same
+/// per-channel presence-blend math as
+/// [`balance_wall_impulse_responses_against_pulse_using_presence`], but
+/// `presence_levels_db` is indexed `order % presence_levels_db.len()` for
+/// channel `order` rather than one-to-one - the C's own inline loop-assign
+/// (`ROimpulseResponsePresenceLevels[ order %
+/// numberOfROimpulseResponsePresenceLevels ]`), reproduced here rather
+/// than requiring the caller to pre-expand the table first.
+pub fn balance_reflection_order_impulse_responses_against_pulse_using_presence(
+    channels: &[Vec<f32>],
+    presence_levels_db: &[f32],
+    db_to_amp: &crate::units::DbToAmp,
+) -> Vec<Vec<f32>> {
+    debug_assert!(!presence_levels_db.is_empty());
+    channels
+        .iter()
+        .enumerate()
+        .map(|(order, ch)| {
+            let level_db = presence_levels_db[order % presence_levels_db.len()];
+            let ro_amp = db_to_amp.convert(level_db);
+            let impulse_amp = 1.0 - ro_amp;
+            let mut out: Vec<f32> = ch.iter().map(|&x| x * ro_amp).collect();
+            if let Some(first) = out.first_mut() {
+                *first += impulse_amp;
+            }
+            out
+        })
+        .collect()
+}
+
+/// Ports `findMaximumSpeakerToListenerDistance()`: the greatest
+/// [`segment_length`] between `listener` and any of `speakers`. Feeds
+/// [`front_source_head_room_scalar`]'s own `max_speaker_to_listener_distance`
+/// input directly, and [`pre_echo_time_seconds`]'s own
+/// `max_speaker_to_listener_distance_delay_time` input after a trivial
+/// `distance / speed_of_sound_feet_per_second` conversion left to the
+/// caller (matching how [`pre_echo_time_seconds`] itself already takes
+/// delay times rather than raw distances).
+///
+/// The C's own outer loop also walks `numberOfListenerPositions` listener
+/// positions via `pos % numberOfListenerPositions` - always exactly `pos`
+/// itself, and per finding 1, `numberOfListenerPositions` is always `1` in
+/// the real C (`getListenerCoordinates()` hard-exits on more than one
+/// pair) - so this port takes a single `listener: Point`, matching every
+/// other function in this module that resolves a listener position (see
+/// e.g. [`listener_to_speaker_angles`]). An empty `speakers` returns `0.`,
+/// matching the C's own local `maxSpeakerToListenerDistance = 0.` init.
+pub fn find_maximum_speaker_to_listener_distance(listener: Point, speakers: &[Point]) -> f32 {
+    speakers
+        .iter()
+        .map(|&sp| segment_length(Segment::new(sp, listener)))
+        .fold(0.0f32, f32::max)
+}
+
+/// Ports `findMaximumSpeakerToSpeakerDistance()`: the greatest
+/// [`segment_length`] between any two speakers in `speakers`.
+///
+/// **Faithfully reproduces the C's own redundant pair iteration**: the
+/// nested loop (`sp0` from `0` to `numberOfSpeakerPositions - 2`, `sp1`
+/// from `1` to `numberOfSpeakerPositions - 1`, independently) revisits
+/// several pairs more than once and includes same-index pairs
+/// (`sp0 == sp1`, a zero-length self-comparison) rather than walking only
+/// the unique unordered pairs - harmless for a running maximum, since
+/// extra, duplicate, or zero-length comparisons can never raise it, so
+/// this port keeps the same double loop instead of switching to
+/// unique-pair iteration. The C's own signed-int loop bounds skip cleanly
+/// when there are fewer than two speakers (a negative bound just never
+/// satisfies `<`); this port needs an explicit `speakers.len() < 2` guard
+/// instead, to avoid an unsigned-subtraction underflow computing the same
+/// bound - a port necessity, not a behavior change (both return `0.` for
+/// fewer than two speakers, matching the C's own zero-initialized
+/// `maxSpeakerToSpeakerDistance` global).
+pub fn find_maximum_speaker_to_speaker_distance(speakers: &[Point]) -> f32 {
+    let n = speakers.len();
+    if n < 2 {
+        return 0.0;
+    }
+    let mut max = 0.0f32;
+    for sp0 in 0..(n - 1) {
+        for sp1 in 1..n {
+            let length = segment_length(Segment::new(speakers[sp0], speakers[sp1]));
+            if length > max {
+                max = length;
+            }
+        }
+    }
+    max
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4702,5 +4973,126 @@ mod tests {
 
     fn db_to_amp() -> DbToAmp {
         DbToAmp::new()
+    }
+
+    #[test]
+    fn cv_order_sequences_zero_mode_gives_each_order_a_size_one_sequence_of_itself() {
+        let seqs = find_reflection_order_cv_order_sequences(4, 0);
+        assert_eq!(seqs, vec![vec![1], vec![2], vec![3], vec![4]]);
+    }
+
+    #[test]
+    fn cv_order_sequences_positive_mode_walks_downward_from_the_clamped_begin() {
+        // order=3, mode=2, high_order_limit=5: seq_begin = clamp(5,1,5) = 5,
+        // size = |3-5|+1 = 3, step = -1 (mode >= 0): [5, 4, 3].
+        let seqs = find_reflection_order_cv_order_sequences(5, 2);
+        assert_eq!(seqs[2], vec![5, 4, 3]);
+        // order=1, mode=2: seq_begin = clamp(3,1,5) = 3, size = |1-3|+1 = 3: [3, 2, 1].
+        assert_eq!(seqs[0], vec![3, 2, 1]);
+        // order=5, mode=2: seq_begin = clamp(7,1,5) = 5 (clamped), size = 1: [5].
+        assert_eq!(seqs[4], vec![5]);
+    }
+
+    #[test]
+    fn cv_order_sequences_negative_mode_walks_upward_from_the_clamped_begin() {
+        // order=3, mode=-2, high_order_limit=5: seq_begin = clamp(1,1,5) = 1,
+        // size = |3-1|+1 = 3, step = +1 (mode < 0): [1, 2, 3].
+        let seqs = find_reflection_order_cv_order_sequences(5, -2);
+        assert_eq!(seqs[2], vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn truncate_cv_order_sequences_keeps_only_the_last_element_of_each() {
+        let seqs = vec![vec![5, 4, 3], vec![1, 2, 3], vec![7]];
+        assert_eq!(
+            truncate_cv_order_sequences(&seqs),
+            vec![vec![3], vec![3], vec![7]]
+        );
+    }
+
+    #[test]
+    fn balance_wall_impulse_responses_zero_db_presence_is_near_unity_gain() {
+        // DbToAmp's own dB->amp conversion is a C-oracle-matching
+        // approximation, not exact identity at 0 dB (see units.rs's own
+        // tests) - so this checks "close to untouched," not bit-exact.
+        let channels = vec![vec![0.5, 0.25, 0.1]];
+        let out = balance_wall_impulse_responses_against_pulse_using_presence(
+            &channels,
+            &[0.0],
+            &db_to_amp(),
+        );
+        for (a, b) in out[0].iter().zip(channels[0].iter()) {
+            assert!((a - b).abs() < 1e-2, "{:?} vs {:?}", out[0], channels[0]);
+        }
+    }
+
+    #[test]
+    fn balance_wall_impulse_responses_blends_toward_a_bare_pulse_at_negative_db() {
+        let channels = vec![vec![0.5, 0.25, 0.1]];
+        let amp = db_to_amp();
+        let wall_amp = amp.convert(-6.0);
+        let out =
+            balance_wall_impulse_responses_against_pulse_using_presence(&channels, &[-6.0], &amp);
+        assert!((out[0][0] - (0.5 * wall_amp + (1.0 - wall_amp))).abs() < 1e-5);
+        assert!((out[0][1] - (0.25 * wall_amp)).abs() < 1e-5);
+        assert!((out[0][2] - (0.1 * wall_amp)).abs() < 1e-5);
+    }
+
+    #[test]
+    fn balance_reflection_order_impulse_responses_loop_assigns_presence_levels() {
+        // Only one presence level for three channels: every channel should
+        // use presence_levels_db[0] via `order % 1 == 0`.
+        let channels = vec![vec![1.0, 1.0], vec![1.0, 1.0], vec![1.0, 1.0]];
+        let amp = db_to_amp();
+        let out = balance_reflection_order_impulse_responses_against_pulse_using_presence(
+            &channels,
+            &[-3.0],
+            &amp,
+        );
+        let ro_amp = amp.convert(-3.0);
+        for ch in &out {
+            assert!((ch[1] - ro_amp).abs() < 1e-5);
+        }
+    }
+
+    #[test]
+    fn find_maximum_speaker_to_listener_distance_picks_the_farthest_speaker() {
+        let listener = Point::new(0.0, 0.0);
+        let speakers = vec![
+            Point::new(3.0, 0.0),
+            Point::new(0.0, 10.0),
+            Point::new(1.0, 1.0),
+        ];
+        let max = find_maximum_speaker_to_listener_distance(listener, &speakers);
+        assert!((max - 10.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn find_maximum_speaker_to_listener_distance_empty_speakers_is_zero() {
+        assert_eq!(
+            find_maximum_speaker_to_listener_distance(Point::new(0.0, 0.0), &[]),
+            0.0
+        );
+    }
+
+    #[test]
+    fn find_maximum_speaker_to_speaker_distance_picks_the_farthest_pair() {
+        let speakers = vec![
+            Point::new(0.0, 0.0),
+            Point::new(5.0, 0.0),
+            Point::new(5.0, 12.0),
+        ];
+        let max = find_maximum_speaker_to_speaker_distance(&speakers);
+        // (0,0) to (5,12) is the farthest pair: hypot(5, 12) = 13.
+        assert!((max - 13.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn find_maximum_speaker_to_speaker_distance_fewer_than_two_speakers_is_zero_no_panic() {
+        assert_eq!(find_maximum_speaker_to_speaker_distance(&[]), 0.0);
+        assert_eq!(
+            find_maximum_speaker_to_speaker_distance(&[Point::new(1.0, 1.0)]),
+            0.0
+        );
     }
 }

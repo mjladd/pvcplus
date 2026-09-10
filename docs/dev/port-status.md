@@ -76,6 +76,7 @@ file. Read the module doc comment for the current findings.
 | 5 | Direct-sound pulse path and speaker-dispersion math | `91faa8d` |
 | 6 | Wall/reflection-order impulse-response cache bookkeeping (the longest-cached-prefix search a new reflection reuses instead of recomputing a shared convolution chain) | `c4859e3` |
 | 7 | Filter/normalize and truncate/envelope/normalize orchestration for wall and reflection-order impulse responses | `94fe45a` |
+| 8 | Reflection-order convolution-sequence bookkeeping, presence-level balance math, and maximum speaker-to-listener/speaker-to-speaker distance search | pending |
 
 Phase 6 also settled an open question from Phase 4: the wall
 channel-assignment and gainscale-level readers turned out to hold no pure
@@ -91,11 +92,35 @@ filter-and-normalize orchestration functions alike. The port always
 returns data the same length as its input for this reason, not because of
 a missing case.
 
-Work still not started, after Phase 7 lands:
+Phase 8 read the last unread stretch of the file, close to 750 lines. It
+ported every piece of that stretch that turned out to be pure math.
+
+Phase 8 also closed an open question from Phase 3. Phase 3 had already
+ported the formulas for the greatest speaker-to-listener and
+speaker-to-speaker distances. It had not yet ported the two functions that
+search for those distances. Phase 8 ports both search functions and shows
+that Phase 3's own formula choice was already right (finding 30 in the
+module's own doc comment).
+
+`preConvolveReflectionOrderImpulseResponsesWithIrconvolver` turned out to
+hold no math at all to port. It shells out to `cp`, this project's own
+`impulseresponse`/`irconvolver` legacy binaries, and `channelcollect`.
+It does this through `/tmp` files and `system()` calls (finding 31).
+
+Real per-wall and per-reflection-order impulse-response file I/O still
+needs a `pvc-io` reader. A presence-level file that feeds one of those
+readers has a real inconsistency with its own sibling reader. A future
+reader of that file needs to decide on that inconsistency on purpose
+(finding 29).
+
+Work still not started, after Phase 8 lands:
 
 - The actual file I/O that reads and writes per-wall and
-  per-reflection-order impulse-response files.
-- Presence-level bookkeeping.
+  per-reflection-order impulse-response files, and the presence-level and
+  gainscale-level files that feed them.
+- The external shell-out pre-convolution pipeline in
+  `preConvolveReflectionOrderImpulseResponsesWithIrconvolver` (finding 31).
+  This is a subprocess-orchestration question, not a math one.
 - `main()`'s CLI control flow.
 - A golden test against the real oracle binary.
 
