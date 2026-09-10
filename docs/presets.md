@@ -79,5 +79,6 @@ preset cannot force a default-`true` switch back off today.
 ## Bundled example presets
 
 `pvc preset list` shows the example presets bundled with `pvc`, under
-`examples/presets/`. That directory does not exist yet in this
-project. A later change adds a first batch of demo presets there.
+`examples/presets/`. Run `make demo` to try all of them against a
+generated test tone in one step. See [examples/README.md](../examples/README.md)
+for what each one does.

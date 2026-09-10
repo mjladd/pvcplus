@@ -1,0 +1,9 @@
+# Spectral noise gate demo preset - see docs/presets.md.
+# Points the noise-sample window at the first half second of input.
+tool = "denoise"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+noise_begin = 0.0
+noise_end = 0.5

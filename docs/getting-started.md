@@ -74,7 +74,8 @@ for a 440 Hz input, at close to the original duration.
   [Migration](migration.md). It maps every legacy tool name to its
   `pvc` equivalent.
 - [Presets](presets.md) covers `pvc run` and TOML presets, the
-  replacement for the old `S.*` shell scripts.
+  replacement for the old `S.*` shell scripts. Run `make demo` for a
+  ready-to-hear walkthrough of five of them.
 - `docs/tools/<name>.md` documents one `pvc` subcommand's own flags in
   detail. Start from `pvc --help` to see the full command list.
 - Every legacy tool, ported or not, still runs through `pvc legacy

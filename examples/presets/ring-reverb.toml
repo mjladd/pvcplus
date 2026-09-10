@@ -1,0 +1,8 @@
+# Phase-vocoder resonator/reverb demo preset - see docs/presets.md.
+tool = "ring"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+feedback_decay = 4     # reverb tail decay time, in seconds
+feedback_gain = -6     # reverb (feedback) gain, in dB

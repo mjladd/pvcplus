@@ -1,0 +1,7 @@
+# Pitch-transposition demo preset - see docs/presets.md.
+tool = "pv"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+pitch = 7.0   # up a perfect fifth, same duration

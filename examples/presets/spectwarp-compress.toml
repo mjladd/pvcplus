@@ -1,0 +1,8 @@
+# Self-referential per-bin compander demo preset - see docs/presets.md.
+tool = "spectwarp"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+compress_threshold = -6.0
+compress_amount = -3.0
