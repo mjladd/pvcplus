@@ -102,10 +102,14 @@ Everything below is what is left against the plan, as of 2026-09-10.
   under the plan's own "consider leaving legacy-only" note.
 - **Repo rename**: the plan's decision 7 approves renaming this
   repository from `docker-pvcplus` to `pvcplus`. Nobody did this yet.
-- **SuperCollider scripts**: the plan's decision 5 calls these
-  deprecated, pointing users to `pvc run --set`/presets instead, and
-  asks for `legacy/supercollider_scripts/DEPRECATED.md` to say so. That
-  file does not exist yet.
+- ~~**SuperCollider scripts**~~: done. `legacy/supercollider_scripts/DEPRECATED.md`
+  points to `pvc run --set`/presets, and to `pvc migrate-script` for
+  converting an `S.plainpv`-shaped script directly. The plan's own text
+  also names a `[[batch]]` preset array as this layer's replacement for
+  multi-file iteration. No such feature exists. `preset.rs`/`run.rs`
+  only support `--set`, one field at a time, so the new file points to
+  a plain shell loop over `pvc run` instead. This is now a real,
+  separate open item: nobody built a `[[batch]]` array.
 - **Performance benchmark**: the plan's own validation section asks
   for a documented comparison of `pvc pv --stretch 2` against legacy
   `plainpv` on a 60-second file, saved to `docs/dev/bench.md`. A
