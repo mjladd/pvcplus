@@ -28,6 +28,9 @@ for a ready-to-hear tour of five transforms, described in
 
 - [Getting started](docs/getting-started.md): build from source or
   Docker, a verified quickstart, and where to go next.
+- [Tutorial](docs/tutorial.md): a full walkthrough, chaining tools,
+  building presets, using `--set` overrides, scripting with `--json`,
+  and migrating an old `S.*` script.
 - [Concepts](docs/concepts.md): the phase-vocoder ideas most `pvc`
   commands share.
 - [Migration](docs/migration.md): every legacy tool name mapped to its

@@ -4,5 +4,13 @@ input = "in.wav"
 output = "out.wav"
 
 [params]
-feedback_decay = 4     # reverb tail decay time, in seconds
-feedback_gain = -6     # reverb (feedback) gain, in dB
+feedback_decay = 4      # reverb tail decay time, in seconds
+feedback_gain = -6      # reverb (feedback) gain, in dB
+
+# Real bug in the original C, reproduced on purpose (see docs/tools/ring.md):
+# the low-shelf EQ gain defaults to 200 dB in all three EQ stages. With the
+# feedback loop on (feedback_decay above), that compounds every recirculation
+# and the output goes silent within a few seconds unless overridden here.
+input_eq_low_gain = 0
+loop_eq_low_gain = 0
+output_eq_low_gain = 0

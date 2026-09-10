@@ -70,8 +70,12 @@ Each of these three stages shares the same shape: a low shelf gain and frequency
 
 Every low-shelf-gain default above reads `200`, and every low-shelf-frequency default reads `0`. That is not a typo in this table. It is a real bug in the original C, reproduced here on purpose. `rust/crates/pvc-core/src/tools/ring.rs` documents it as a swapped default across all three EQ stages.
 
+With the feedback loop off (`--feedback-decay 0`, the default), this bug has no visible effect. Once you turn the feedback loop on, this `200` dB gain compounds every time a frame recirculates through the loop. The output goes silent within a few seconds (confirmed: sample values hit exactly `0`, not just very quiet). Pass `--input-eq-low-gain 0 --loop-eq-low-gain 0 --output-eq-low-gain 0` alongside any real `--feedback-decay` value to avoid this.
+
 ## Example
 
 ```
-pvc ring --feedback-decay 4 --feedback-gain -6 input.wav output.wav
+pvc ring --feedback-decay 4 --feedback-gain -6 \
+  --input-eq-low-gain 0 --loop-eq-low-gain 0 --output-eq-low-gain 0 \
+  input.wav output.wav
 ```
