@@ -110,12 +110,11 @@ Everything below is what is left against the plan, as of 2026-09-10.
   only support `--set`, one field at a time, so the new file points to
   a plain shell loop over `pvc run` instead. This is now a real,
   separate open item: nobody built a `[[batch]]` array.
-- **Performance benchmark**: the plan's own validation section asks
-  for a documented comparison of `pvc pv --stretch 2` against legacy
-  `plainpv` on a 60-second file, saved to `docs/dev/bench.md`. A
-  `criterion` benchmark suite already exists
-  (`rust/crates/pvc-core/benches/pvoc.rs`). Nobody wrote the actual
-  comparison against the legacy binary, or the document, yet.
+- ~~**Performance benchmark**~~: done. `docs/dev/bench.md` compares
+  `pvc pv --stretch 2` against legacy `plainpv` on a 60-second stereo
+  file, both run inside the same `runtime` Docker image. Result: `pvc`
+  is about 4% slower, not at least as fast as the plan's own target.
+  Nobody profiled the gap yet.
 - **GHCR image**: the release workflow from Phase 4.4 is ready. Nobody
   pushed a version tag yet, so no image exists at
   `ghcr.io/mjladd/pvcplus`.
