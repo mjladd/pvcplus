@@ -24,6 +24,11 @@ pub fn execute(command: Command, json: bool, dry_run: bool, quiet: bool) -> anyh
 
         Command::Fn { generator } => commands::gen::run(generator),
 
+        Command::Completions { shell } => {
+            commands::completions::run(shell);
+            Ok(())
+        }
+
         Command::Pv(args) => commands::pv::run(&args, json, quiet),
 
         Command::Stretch {

@@ -1,4 +1,4 @@
-.PHONY: build demo
+.PHONY: build demo man
 
 CARGO := cargo
 PVC := rust/target/release/pvc
@@ -8,6 +8,12 @@ PRESETS := stretch pitch ring-reverb denoise spectwarp-compress
 
 build:
 	cd rust && $(CARGO) build --release -p pvc-cli
+
+# Regenerates man/*.1 from pvc's own current flag surface (clap_mangen).
+# Run this whenever cli.rs's flags change; the output is checked in,
+# since there is no packaging step yet to generate it at install time.
+man:
+	cd rust && $(CARGO) run --release -p pvc-cli --bin gen-man -- ../man
 
 # Generates a test tone, then runs every preset under examples/presets/
 # against it - see docs/presets.md and examples/README.md. Requires sox

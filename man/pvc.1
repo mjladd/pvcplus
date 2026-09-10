@@ -1,0 +1,154 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc 1  "pvc 0.1.0" 
+.SH NAME
+pvc \- A modern CLI for the PVCplus phase\-vocoder toolkit.
+.SH SYNOPSIS
+\fBpvc\fR [\fB\-\-quiet\fR] [\fB\-\-json\fR] [\fB\-\-dry\-run\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+A modern CLI for the PVCplus phase\-vocoder toolkit.
+.SH OPTIONS
+.TP
+\fB\-\-quiet\fR
+Suppress non\-essential output
+.TP
+\fB\-\-json\fR
+Emit machine\-readable JSON instead of human\-readable text
+.TP
+\fB\-\-dry\-run\fR
+Print the resolved parameters/actions without doing anything
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+pvc\-info(1)
+Print information about an audio file or a `.pva` analysis file
+.TP
+pvc\-legacy(1)
+Run a legacy C tool directly (transition path)
+.TP
+pvc\-preset(1)
+Manage presets (TOML files consumed by `pvc run`)
+.TP
+pvc\-run(1)
+Run a preset, optionally overriding fields with `\-\-set key=value`
+.TP
+pvc\-fn(1)
+Control\-function generators (the CARL/cmusic "GEN" family)
+.TP
+pvc\-completions(1)
+Print a shell completion script to stdout
+.TP
+pvc\-pv(1)
+Phase vocoder: analyze then resynthesize
+.TP
+pvc\-stretch(1)
+Time\-stretch only \- `pvc pv \-\-stretch <factor>` with everything else at its default
+.TP
+pvc\-pitch(1)
+Pitch transposition only \- `pvc pv \-\-pitch <semitones>` with everything else at its default
+.TP
+pvc\-analyze(1)
+Phase vocoder analysis only: writes a `.pva` frame file, no resynthesis
+.TP
+pvc\-twarp(1)
+Time\-varying resynthesis: navigates a virtual time position through a `.pva` analysis file (rate/origin/window\-driven) and resynthesizes from whatever frame it lands on
+.TP
+pvc\-freqresponse(1)
+Analysis\-driven `.fr` frequency response: accumulates a sound file\*(Aqs spectrum (by average or peak amplitude, across all channels combined) into a response file, with formant detection and optional formant\-band normalization/companding
+.TP
+pvc\-filter(1)
+Fixed\-spectrum phase\-vocoder filter: multiplies each frame\*(Aqs amplitude by a shaped copy of a `.fr` response, then mixes the filtered signal with (unless disabled) the original source
+.TP
+pvc\-tvfilter(1)
+Like `filter`, but the response is a time\-varying sequence of frames (a legacy `.pva` file) navigated over time the same way `twarp` navigates its own resynthesis source, rather than one static `.fr` file
+.TP
+pvc\-denoise(1)
+Spectral noise gate: builds a noise\-response profile by analyzing a `[\-\-noise\-begin, \-\-noise\-end)` window of the input itself (default: the whole file \- point these at an actual noise\-only stretch, e.g. leading silence), then expands any bin quieter than its noise\-response threshold toward silence
+.TP
+pvc\-compand(1)
+Per\-bin dynamics processor: compresses or expands each bin\*(Aqs amplitude relative to a static peaks/reference file (e.g. from `pvc freqresponse`), within an adjustable frequency band
+.TP
+pvc\-spectwarp(1)
+Per\-bin dynamics processor: compresses or expands each bin\*(Aqs amplitude relative to its *own frame\*(Aqs* live spectral peak (a self\-referential envelope\-follower), within an adjustable frequency band
+.TP
+pvc\-harmonize(1)
+Builds one or more "voices" from a data table of frequency bands, each a pitch/frequency\-shifted copy of a triangular\-windowed slice of the input spectrum, optionally summed with a delayed/ shifted copy of the source signal
+.TP
+pvc\-envelope(1)
+Amplitude envelope over a frequency band: a time\-series of scalar values (ASCII or raw float), never audio
+.TP
+pvc\-centroid(1)
+Spectral centroid (amplitude²\-weighted mean frequency) over a frequency band: a time\-series of scalar values, never audio
+.TP
+pvc\-flux(1)
+Spectral flux (frame\-to\-frame frequency change, optionally amplitude\-weighted) over a frequency band: a time\-series of scalar values, never audio
+.TP
+pvc\-pitchtrack(1)
+Fundamental\-frequency tracker: a time\-series of scalar pitch values, never audio
+.TP
+pvc\-convert\-units(1)
+Convert between amplitude/decibel and Hz/octave.pitchclass units
+.TP
+pvc\-impulseresponse(1)
+Impulse\-response analysis: zero\-pads and FFTs a `[\-\-begin, \-\-end)` window of each input channel into a peak\-normalized `.ir` file (Phase 5\*(Aqs FFT\-convolution family \- see `pvc\-core::tools:: impulseresponse`\*(Aqs doc comment for what\*(Aqs out of scope)
+.TP
+pvc\-irconvolver(1)
+Fast FFT convolution (or deconvolution) of each input channel against a `.ir` file\*(Aqs spectrum (Phase 5\*(Aqs FFT\-convolution family). See `pvc\-core::tools::irconvolver`\*(Aqs doc comment for what\*(Aqs out of scope, and a real usage\-text bug in the C corrected here
+.TP
+pvc\-ring(1)
+Phase\-vocoder feedback reverberator/resonator: a delay network built out of spectral frames rather than time\-domain samples, combining an independently pitch/frequency\-shiftable copy of the dry source with a recirculating, EQ\*(Aqd and envelope\-gated feedback path. See `pvc\-core::tools::ring`\*(Aqs doc comment for real dead flags, a real swapped\-default bug reproduced faithfully, and what\*(Aqs out of scope (Phase 5\*(Aqs long tail)
+.TP
+pvc\-ringfilter(1)
+`pvc ring` plus a switchable fixed\-spectrum filter (a `.fr` response file, the same format `pvc filter` reads), placed either on the feedback path\*(Aqs input ("prefilter") or inside the loop ("postfilter"). See `pvc\-core::tools::ringfilter`\*(Aqs doc comment for what\*(Aqs shared with `pvc ring` and what\*(Aqs different
+.TP
+pvc\-ringtvfilter(1)
+`pvc ring` plus a switchable *time\-varying* filter (a `.pva` filter\-analysis file, navigated over time the same way `pvc tvfilter` navigates its own response), placed either on the feedback path\*(Aqs input ("prefilter") or inside the loop ("postfilter"). See `pvc\-core::tools::ringtvfilter`\*(Aqs doc comment for what\*(Aqs shared with `pvc ringfilter`/`pvc tvfilter` and what\*(Aqs different
+.TP
+pvc\-irconvolvesequencer(1)
+Crossfades a signal through a sequence of impulse responses, morphing from one to the next (Phase 5\*(Aqs FFT\-convolution family). See `pvc\-core::tools::irconvolvesequencer`\*(Aqs doc comment for the C\*(Aqs dead `\-a` flag and what\*(Aqs out of scope
+.TP
+pvc\-convolver(1)
+Short\-term FFT spectral multiplier: convolves a live input ("Sound A") against a pre\-analyzed `.pva` filter file ("Sound B"), navigated over time the same way `pvc tvfilter`/`pvc twarp` navigate their own filter/resynthesis sources, then pans between the dry sounds and their convolution
+.TP
+pvc\-peakformant(1)
+Peak formant tracker: a time\-series of the loudest bin\*(Aqs frequency over a detection band, never audio
+.TP
+pvc\-specflattracker(1)
+Spectral flatness tracker: a time\-series of the geometric\-to\- arithmetic mean ratio of each frame\*(Aqs bins over a detection band (near `1.0` for noise\-like spectra, near `0.0` for tonal ones), never audio
+.TP
+pvc\-spectralextractor(1)
+Periodic/noise spectrum separator: tracks each bin\*(Aqs frame\-to\- frame frequency deviation and gates it on or off depending on whether that deviation stays under a threshold, extracting either the tonal part of a sound or its noise residue
+.TP
+pvc\-delayfilter(1)
+Per\-bin time\-delay resynthesis: reads a source `.pva` file and, for each frequency bin, fetches its source frame from a bin\-specific point earlier in the source\*(Aqs own timeline \- the per\-bin delay times (and amp multipliers) come from a `groupdelaymaker`\-produced response file
+.TP
+pvc\-filtdeviator(1)
+Fixed\-spectrum, additive source+filter phase\-vocoder filter (like `pvc filter`) plus a per\-bin, response\-shaped time delay into the filter\*(Aqs own delay line, a self\-referential decay/feedback accumulator on that same delay line, and a per\-bin frequency deviation shaped by the response (the tool\*(Aqs own headline "response\-correlated frequency deviation")
+.TP
+pvc\-tvfiltdeviator(1)
+`pvc tvfilter`\*(Aqs own time\-varying cross\-synthetic filter plus a per\-bin, response\-shaped time delay into the source\*(Aqs own delay line and a per\-bin frequency deviation shaped by the response (the same "response\-correlated frequency deviation" `pvc filtdeviator` has)
+.TP
+pvc\-ratechanger(1)
+Varispeed resampler: reads raw audio directly (no `.pva` analysis file first) and resynthesizes it at a possibly time\-varying playback rate and/or semitone shift, via windowed\-sinc summation, sample\-and\-hold/decimation, or linear interpolation
+.TP
+pvc\-inharmonator(1)
+Inharmonic partials remapper: builds a per\-bin filter from a data table of discrete target partials (windowed bands around each partial\*(Aqs own bin), resynthesizes the residual spectrum separately, and feeds both through a spectral feedback delay line, optionally mixed with a delayed copy of the source
+.TP
+pvc\-formantsmapper(1)
+Formant mapper: reads source and target formant lists (binary files produced externally, not by any tool in this project), pairs each formant with its nearest counterpart in the other list, and remaps each source formant\*(Aqs own bin band onto the paired target\*(Aqs frequency and amplitude via one or two independently\-controllable oscillator banks, optionally passing unclaimed bins through as a separate residue bank
+.TP
+pvc\-spectrummapper(1)
+Formant\-*tracking* analysis tool: extracts formant peaks frame by frame from raw audio, greedily assembles them into time\-continuous segments (tracks), links separate segments into longer chains, and writes the result to ASCII/binary formant\-track files. Writes no audio output at all
+.TP
+pvc\-chordmapperplus(1)
+Data\-file\-driven multi\-tone additive chord/harmony synthesizer \- the largest tool in this project\*(Aqs Phase 5 port. Each tone in the `\-\-tones` data file picks a source point out of the `\-\-analysis` `.pva` file, builds a set of partials around it, and resynthesizes them blended between the live per\-frame analysis and a static spectral\-morph average of the whole file
+.TP
+pvc\-help(1)
+Print this message or the help of the given subcommand(s)
+.SH VERSION
+v0.1.0

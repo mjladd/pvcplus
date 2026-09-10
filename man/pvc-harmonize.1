@@ -1,0 +1,108 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-harmonize 1  "pvc-harmonize " 
+.SH NAME
+pvc\-harmonize \- Builds one or more "voices" from a data table of frequency bands, each a pitch/frequency\-shifted copy of a triangular\-windowed slice of the input spectrum, optionally summed with a delayed/ shifted copy of the source signal
+.SH SYNOPSIS
+\fBpvc\-harmonize\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-stretch\fR] <\fB\-\-table\fR> [\fB\-\-shift\-format\fR] [\fB\-\-table\-freq\-scale\fR] [\fB\-\-table\-freq\-shift\fR] [\fB\-\-table\-peak\-scale\fR] [\fB\-\-table\-stopband\-scale\fR] [\fB\-\-table\-stopband\-shift\fR] [\fB\-\-table\-q\-shift\fR] [\fB\-\-table\-delay\-scale\fR] [\fB\-\-table\-delay\-shift\fR] [\fB\-\-table\-shift\-scale\fR] [\fB\-\-table\-shift\-shift\fR] [\fB\-\-gain\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-delay\fR] [\fB\-\-voice\-freq\-shift\fR] [\fB\-\-voice\-pitch\fR] [\fB\-\-voice\-gain\fR] [\fB\-\-voice\-warp\fR] [\fB\-\-freq\-interp\fR] [\fB\-\-time\-interp\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Builds one or more "voices" from a data table of frequency bands, each a pitch/frequency\-shifted copy of a triangular\-windowed slice of the input spectrum, optionally summed with a delayed/ shifted copy of the source signal.
+.PP
+Ports `harmonizer`\*(Aqs audio\-processing path (`legacy/pvc_src/ harmonizer.c`); see `pvc\-core::tools::harmonizer`\*(Aqs doc comment for the data\-table format and what\*(Aqs in and out of scope (including a real crash bug it validates against instead of reproducing, and a real cross\-band bug it reproduces faithfully).
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+Analysis/resynthesis window length. `0` means auto (`2 * fft`); the C\*(Aqs own hardcoded default is a literal `2048`, matching `pv`\*(Aqs `\-\-window\-size` gotcha
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-stretch\fR \fI<STRETCH>\fR [default: 1]
+Time\-stretch factor (`1.0` = unchanged)
+.TP
+\fB\-\-table\fR \fI<TABLE>\fR
+Path to the 8\-column data table (whitespace\-delimited ASCII floats, one row per band: shift factor, low/high/center frequency in Hz or octave.pitchclass, peak dB, stopband dB, Q\-index, delay in seconds \- see `pvc\-core::tools::harmonizer`\*(Aqs doc comment)
+.TP
+\fB\-\-shift\-format\fR \fI<SHIFT_FORMAT>\fR [default: multiplier]
+How the table\*(Aqs shift\-factor column is interpreted
+.TP
+\fB\-\-table\-freq\-scale\fR \fI<TABLE_FREQ_SCALE>\fR [default: 1]
+Table frequency\-column scaler (applied to low/high/center, after octave.pitchclass conversion)
+.TP
+\fB\-\-table\-freq\-shift\fR \fI<TABLE_FREQ_SHIFT>\fR [default: 0]
+Table frequency\-column shifter, in Hz
+.TP
+\fB\-\-table\-peak\-scale\fR \fI<TABLE_PEAK_SCALE>\fR [default: 1]
+Table peak\-dB\-column scaler
+.TP
+\fB\-\-table\-stopband\-scale\fR \fI<TABLE_STOPBAND_SCALE>\fR [default: 1]
+Table stopband\-dB\-column scaler
+.TP
+\fB\-\-table\-stopband\-shift\fR \fI<TABLE_STOPBAND_SHIFT>\fR [default: 0]
+Table stopband\-dB\-column shifter, in dB
+.TP
+\fB\-\-table\-q\-shift\fR \fI<TABLE_Q_SHIFT>\fR [default: 0]
+Table Q\-index\-column shifter
+.TP
+\fB\-\-table\-delay\-scale\fR \fI<TABLE_DELAY_SCALE>\fR [default: 1]
+Table delay\-column scaler
+.TP
+\fB\-\-table\-delay\-shift\fR \fI<TABLE_DELAY_SHIFT>\fR [default: 0]
+Table delay\-column shifter, in seconds
+.TP
+\fB\-\-table\-shift\-scale\fR \fI<TABLE_SHIFT_SCALE>\fR [default: 1]
+Table shift\-factor\-column scaler
+.TP
+\fB\-\-table\-shift\-shift\fR \fI<TABLE_SHIFT_SHIFT>\fR [default: 0]
+Table shift\-factor\-column shifter
+.TP
+\fB\-\-gain\fR \fI<GAIN>\fR [default: 0]
+Master gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-source\-freq\-shift\fR \fI<SOURCE_FREQ_SHIFT>\fR [default: 0]
+Source frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-pitch\fR \fI<SOURCE_PITCH>\fR [default: 1]
+Source pitch shift in semitones \- a plain number, or `@path`. Defaults to `1` semitone, matching the real tool\*(Aqs own default (`docs/dev/parameter\-inventory.md`\*(Aqs table lists `0` here, but the source\*(Aqs own initializer is `SOURCE_ptrans.A[0] = 1.` \- confirmed by reading `harmonizer.c`)
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+Source gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-source\-delay\fR \fI<SOURCE_DELAY>\fR [default: 0]
+Source delay in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-voice\-freq\-shift\fR \fI<VOICE_FREQ_SHIFT>\fR [default: 0]
+Voice (harmony) frequency shift in Hz, added post\-shift \- a plain number, or `@path`
+.TP
+\fB\-\-voice\-pitch\fR \fI<VOICE_PITCH>\fR [default: 1]
+Voice (harmony) pitch shift in semitones, applied post\-shift \- a plain number, or `@path`. Defaults to `1` semitone \- see `\-\-source\-pitch`\*(Aqs doc comment for why
+.TP
+\fB\-\-voice\-gain\fR \fI<VOICE_GAIN>\fR [default: 0]
+Voice (harmony) gain in dB, per band \- a plain number, or `@path`
+.TP
+\fB\-\-voice\-warp\fR \fI<VOICE_WARP>\fR [default: 0]
+Voice (harmony) spectrum warp index \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-interp\fR \fI<FREQ_INTERP>\fR [default: 1]
+Frequency interpolation control, per band (`0` = unshifted, `1` = fully shifted) \- a plain number, or `@path`. See this struct\*(Aqs doc comment for a real bug affecting this flag\*(Aqs per\-band granularity in `multiplier`/`semitones` shift\-format modes
+.TP
+\fB\-\-time\-interp\fR \fI<TIME_INTERP>\fR [default: 1]
+Time interpolation control, per band (`0` = no delay applied, `1` = the table\*(Aqs full delay) \- a plain number, or `@path`
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+Oscillator resynthesis threshold in dB (bins quieter than this, relative to the frame\*(Aqs own peak, are skipped)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-gen6 1  "pvc-fn-gen6 " 
+.SH NAME
+pvc\-fn\-gen6 \- gen6: uniform noise in `[\-1.0, 1.0)` (`legacy/cmusic_gen/gen/ gen6.c`), using the exact `rand()` sequence the C gets by never seeding one (glibc\*(Aqs default state, as if `srandom(1)` had been called) \- deterministic, not a fresh random table on every run
+.SH SYNOPSIS
+\fBpvc\-fn\-gen6\fR <\fB\-L\fR|\fB\-\-length\fR> [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+gen6: uniform noise in `[\-1.0, 1.0)` (`legacy/cmusic_gen/gen/ gen6.c`), using the exact `rand()` sequence the C gets by never seeding one (glibc\*(Aqs default state, as if `srandom(1)` had been called) \- deterministic, not a fresh random table on every run
+.SH OPTIONS
+.TP
+\fB\-L\fR, \fB\-\-length\fR \fI<LENGTH>\fR
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIOUTPUT\fR>
+

@@ -1,0 +1,84 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-denoise 1  "pvc-denoise " 
+.SH NAME
+pvc\-denoise \- Spectral noise gate: builds a noise\-response profile by analyzing a `[\-\-noise\-begin, \-\-noise\-end)` window of the input itself (default: the whole file \- point these at an actual noise\-only stretch, e.g. leading silence), then expands any bin quieter than its noise\-response threshold toward silence
+.SH SYNOPSIS
+\fBpvc\-denoise\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-stretch\fR] [\fB\-\-noise\-begin\fR] [\fB\-\-noise\-end\fR] [\fB\-\-noise\-method\fR] [\fB\-\-noise\-bypass\-threshold\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-gain\fR] [\fB\-\-noise\-threshold\-gain\fR] [\fB\-\-expansion\-index\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Spectral noise gate: builds a noise\-response profile by analyzing a `[\-\-noise\-begin, \-\-noise\-end)` window of the input itself (default: the whole file \- point these at an actual noise\-only stretch, e.g. leading silence), then expands any bin quieter than its noise\-response threshold toward silence.
+.PP
+Ports `noisefilter`\*(Aqs audio\-processing path (`legacy/pvc_src/ noisefilter.c`); see `pvc\-core::tools::noisefilter`\*(Aqs doc comment for what\*(Aqs in and out of scope.
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+Analysis/resynthesis window length. `0` means auto (`2 * fft`); the C\*(Aqs own hardcoded default is a literal `2048`, matching `pv`\*(Aqs `\-\-window\-size` gotcha
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-stretch\fR \fI<STRETCH>\fR [default: 1]
+Time\-stretch factor (`1.0` = unchanged)
+.TP
+\fB\-\-noise\-begin\fR \fI<NOISE_BEGIN>\fR [default: 0]
+Start of the noise\-sample window to analyze, in seconds \- point this at an actual noise\-only stretch of the input (e.g. leading silence)
+.TP
+\fB\-\-noise\-end\fR \fI<NOISE_END>\fR [default: 0]
+End of the noise\-sample window, in seconds (`0` = end of file)
+.TP
+\fB\-\-noise\-method\fR \fI<NOISE_METHOD>\fR [default: average]
+How the noise\-sample window\*(Aqs spectrum is accumulated
+.TP
+\fB\-\-noise\-bypass\-threshold\fR \fI<NOISE_BYPASS_THRESHOLD>\fR [default: 0]
+Noise\-response bypass threshold in dB: bins in the (peak\- normalized) noise response louder than this are excluded from the gate, letting those frequencies pass through unaffected
+.TP
+\fB\-\-pitch\fR \fI<PITCH>\fR [default: 0]
+Pitch shift in semitones \- a plain number, or `@path`. Selects oscillator\-bank resynthesis whenever nonzero/time\-varying
+.TP
+\fB\-\-freq\-shift\fR \fI<FREQ_SHIFT>\fR [default: 0]
+Frequency shift in Hz \- a plain number, or `@path`. Selects oscillator\-bank resynthesis whenever nonzero/time\-varying
+.TP
+\fB\-\-gain\fR \fI<GAIN>\fR [default: 0]
+Gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-noise\-threshold\-gain\fR \fI<NOISE_THRESHOLD_GAIN>\fR [default: 0]
+Noise threshold adjust in dB \- a plain number, or `@path`. Positive values increase noise reduction, negative values reduce it
+.TP
+\fB\-\-expansion\-index\fR \fI<EXPANSION_INDEX>\fR [default: 3]
+Shape of the noise gate\*(Aqs expansion curve \- a plain number, or `@path`
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+Envelope attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+Envelope release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+Oscillator resynthesis threshold in dB (bins quieter than this, relative to the frame\*(Aqs own peak, are skipped)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

@@ -1,0 +1,111 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-convolver 1  "pvc-convolver " 
+.SH NAME
+pvc\-convolver \- Short\-term FFT spectral multiplier: convolves a live input ("Sound A") against a pre\-analyzed `.pva` filter file ("Sound B"), navigated over time the same way `pvc tvfilter`/`pvc twarp` navigate their own filter/resynthesis sources, then pans between the dry sounds and their convolution
+.SH SYNOPSIS
+\fBpvc\-convolver\fR [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-gain\fR] <\fB\-\-filter\-response\fR> [\fB\-\-analysis\-channel\fR] [\fB\-\-filter\-time\-origin\fR] [\fB\-\-filter\-rate\fR] [\fB\-\-filter\-window\-low\fR] [\fB\-\-filter\-window\-high\fR] [\fB\-\-loop\-mode\fR] [\fB\-\-onset\-release\fR] [\fB\-\-autostop\fR] [\fB\-\-sound\-a\-gain\fR] [\fB\-\-sound\-b\-gain\fR] [\fB\-\-convolve\-gain\fR] [\fB\-\-pan\fR] [\fB\-\-panwarp\-a\fR] [\fB\-\-panwarp\-b\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-frame\-norm\-limit\fR] [\fB\-\-normalize\-to\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Short\-term FFT spectral multiplier: convolves a live input ("Sound A") against a pre\-analyzed `.pva` filter file ("Sound B"), navigated over time the same way `pvc tvfilter`/`pvc twarp` navigate their own filter/resynthesis sources, then pans between the dry sounds and their convolution.
+.PP
+Ports `convolver`\*(Aqs audio\-processing path (`legacy/pvc_src/ convolver.c`); see `pvc\-core::tools::convolver`\*(Aqs doc comment for a real "spectral multiplication" bug (the tool\*(Aqs own complex\- multiply code is commented out; the active code does a naive per\-index multiply instead, reproduced faithfully) and a real uninitialized\-memory bug in its `\-l`/`\-L` smoothing path, not exposed here.
+.SH OPTIONS
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 0]
+`\-M`: analysis/resynthesis window length. `0` means auto (`2 * fft`, where `fft` is Sound B\*(Aqs own analysis file\*(Aqs FFT size \- there is no independent `\-N`)
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-time\-factor\fR \fI<TIME_FACTOR>\fR [default: 1]
+`\-I`: time expansion/contraction factor (`1.0` = unchanged duration)
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: begin time in seconds \- real sample\-accurate trimming, not `dur`\-only bookkeeping (see `pvc\-core::tools::convolver`\*(Aqs doc comment)
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: end time in seconds (`0` = end of file)
+.TP
+\fB\-\-pitch\fR \fI<PITCH>\fR [default: 0]
+`\-P`: pitch transposition of the output spectrum, in semitones \- a plain number, or `@path`. Selects oscillator\-bank resynthesis whenever nonzero (with `\-\-freq\-shift`), and, unlike `pvc spectralextractor`\*(Aqs otherwise similar\-looking flag, genuinely does transpose the output
+.TP
+\fB\-\-freq\-shift\fR \fI<FREQ_SHIFT>\fR [default: 0]
+`\-a`: frequency shift of the output spectrum, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-gain\fR \fI<GAIN>\fR [default: 0]
+`\-A`: output gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-response\fR \fI<FILTER_RESPONSE>\fR
+`\-F`: path to Sound B\*(Aqs analysis file (the filter to convolve against) \- a `.pva` file, either the legacy layout or `pvc analyze`\*(Aqs own `PVA1` format. Required
+.TP
+\fB\-\-analysis\-channel\fR \fI<ANALYSIS_CHANNEL>\fR [default: 0]
+`\-K`: which filter\-file channel to use (`0` = pair by channel index with the input sound file)
+.TP
+\fB\-\-filter\-time\-origin\fR \fI<FILTER_TIME_ORIGIN>\fR [default: 0]
+`\-Q`: Sound B time point origin, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-rate\fR \fI<FILTER_RATE>\fR [default: 1]
+`\-Y`: Sound B rate multiplier \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-window\-low\fR \fI<FILTER_WINDOW_LOW>\fR [default: 0]
+`\-g`: Sound B time window lower boundary, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-window\-high\fR \fI<FILTER_WINDOW_HIGH>\fR [default: \-1]
+`\-G`: Sound B time window upper boundary, in seconds (negative = end of the filter file) \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-mode\fR \fI<LOOP_MODE>\fR [default: wrap]
+`\-o`: Sound B time window out\-of\-bounds behavior (only used outside autostop mode)
+.TP
+\fB\-\-onset\-release\fR
+`\-r`: trigger the time window only once it\*(Aqs first entered
+.TP
+\fB\-\-autostop\fR
+`\-y`: stop synthesis once Sound B\*(Aqs time position exits its window, instead of looping
+.TP
+\fB\-\-sound\-a\-gain\fR \fI<SOUND_A_GAIN>\fR [default: 0]
+`\-q`: Sound A\*(Aqs own gain, in dB \- a plain number, or `@path` (confirmed by reading `convolver.c`\*(Aqs own `crack()` switch \- an unusual letter for this purpose, not a typo)
+.TP
+\fB\-\-sound\-b\-gain\fR \fI<SOUND_B_GAIN>\fR [default: 0]
+`\-B`: Sound B\*(Aqs own gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-convolve\-gain\fR \fI<CONVOLVE_GAIN>\fR [default: 0]
+`\-Z`: convolution gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-pan\fR \fI<PAN>\fR [default: 0]
+`\-S`: pan position between Sound A, Sound B, and their convolution (`\-1` = Sound A, `1` = Sound B, `0` = convolution) \- a plain number, or `@path`
+.TP
+\fB\-\-panwarp\-a\fR \fI<PANWARP_A>\fR [default: 0]
+`\-j`: pan\-position domain warp on the Sound A side (`pan < 0`)
+.TP
+\fB\-\-panwarp\-b\fR \fI<PANWARP_B>\fR [default: 0]
+`\-J`: pan\-position domain warp on the Sound B side (`pan >= 0`)
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+`\-H`: convolution output low shelf gain, in dB. Fixed for the whole run, not a control function (matches the real tool)
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+`\-X`: convolution output high shelf gain, in dB
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+`\-m`: convolution output low shelf frequency, in Hz
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+`\-R`: convolution output high shelf frequency, in Hz
+.TP
+\fB\-\-frame\-norm\-limit\fR \fI<FRAME_NORM_LIMIT>\fR [default: 0]
+`\-n`: frame normalization decibel limit (`0` disables normalization) \- a plain number, or `@path`
+.TP
+\fB\-\-normalize\-to\fR \fI<NORMALIZE_TO_FILTER>\fR [default: input]
+`\-v`: what frame normalization scales toward
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+`\-t`: oscillator\-bank resynthesis threshold in dB
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

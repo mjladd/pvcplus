@@ -1,0 +1,147 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-inharmonator 1  "pvc-inharmonator " 
+.SH NAME
+pvc\-inharmonator \- Inharmonic partials remapper: builds a per\-bin filter from a data table of discrete target partials (windowed bands around each partial\*(Aqs own bin), resynthesizes the residual spectrum separately, and feeds both through a spectral feedback delay line, optionally mixed with a delayed copy of the source
+.SH SYNOPSIS
+\fBpvc\-inharmonator\fR <\fB\-\-partials\fR> [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-channel\fR] [\fB\-\-method\fR] [\fB\-\-partial\-window\fR] [\fB\-\-partial\-bandwidth\fR] [\fB\-\-fundamental\fR] [\fB\-\-master\-gain\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-warpshape\fR] [\fB\-\-target\-freq\-shift\fR] [\fB\-\-target\-pitch\fR] [\fB\-\-target\-gain\fR] [\fB\-\-target\-amp\-interp\fR] [\fB\-\-target\-freq\-interp\fR] [\fB\-\-target\-time\-interp\fR] [\fB\-\-non\-target\-freq\-shift\fR] [\fB\-\-non\-target\-pitch\fR] [\fB\-\-non\-target\-gain\fR] [\fB\-\-non\-target\-delay\fR] [\fB\-\-non\-target\-decay\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-attack\fR] [\fB\-\-source\-release\fR] [\fB\-\-source\-delay\fR] [\fB\-\-partial\-number\-scale\fR] [\fB\-\-partial\-number\-shift\fR] [\fB\-\-partial\-db\-scale\fR] [\fB\-\-partial\-delay\-scale\fR] [\fB\-\-partial\-delay\-shift\fR] [\fB\-\-partial\-decay\-scale\fR] [\fB\-\-partial\-decay\-shift\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Inharmonic partials remapper: builds a per\-bin filter from a data table of discrete target partials (windowed bands around each partial\*(Aqs own bin), resynthesizes the residual spectrum separately, and feeds both through a spectral feedback delay line, optionally mixed with a delayed copy of the source.
+.PP
+Ports `inharmonator` (`legacy/pvc_src/inharmonator.c`); see `pvc\-core::tools::inharmonator`\*(Aqs doc comment for what\*(Aqs in and out of scope, including a real, severe bug where seven data\-modifier scalers are used uninitialized in the C unless their own flag is passed (this port uses `usage()`\*(Aqs own documented defaults instead), and a real finding that "master gain" only ever affects the source signal, never the resynthesized partials.
+.SH OPTIONS
+.TP
+\fB\-\-partials\fR \fI<PARTIALS>\fR
+`\-F`: path to the partials data table (5 whitespace\-separated columns per row: partial number, shift target, decibels, delay time, feedback decay time). Required
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+`\-N`: FFT size
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+`\-M`: analysis/resynthesis window length. `0` means auto (`2 * fft`)
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+`\-D`: analysis frames per second (sets the hop size). Values under `32` reset to `200`
+.TP
+\fB\-\-time\-factor\fR \fI<TIME_FACTOR>\fR [default: 1]
+`\-I`: time expansion/contraction factor. Values `<= 0` reset to `1.0`
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: begin time in seconds \- real sample\-accurate trimming
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: end time in seconds (`0` = end of file)
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR [default: 0]
+`\-C`: which input channel to resynthesize (`0` = all channels, each processed independently; `1..` = only that one, 1\-based)
+.TP
+\fB\-\-method\fR \fI<METHOD>\fR [default: multiplier]
+`\-Z`: how each partial\*(Aqs own shift column is interpreted
+.TP
+\fB\-\-partial\-window\fR \fI<PARTIAL_WINDOW>\fR [default: welch]
+`\-B`: how the bins between a partial\*(Aqs own bin and its band edges taper
+.TP
+\fB\-\-partial\-bandwidth\fR \fI<PARTIAL_BANDWIDTH>\fR [default: 1]
+`\-x`: each target partial\*(Aqs own bandwidth, in partial\-number units \- a plain number, or `@path`
+.TP
+\fB\-\-fundamental\fR \fI<FUNDAMENTAL>\fR [default: 60]
+`\-f`: fundamental frequency, in Hz (`> 12`) or `octave.pitchclass` (`<= 12`) \- a plain number, or `@path`
+.TP
+\fB\-\-master\-gain\fR \fI<MASTER_GAIN>\fR [default: 0]
+`\-A`: master gain in decibels \- a plain number, or `@path`. Real finding: only affects the source signal, never the resynthesized partials/non\-targets (see `pvc\-core::tools::inharmonator`\*(Aqs doc comment)
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+`\-v`: envelope attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+`\-V`: envelope release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-warpshape\fR \fI<WARPSHAPE>\fR [default: 0]
+`\-W`: target spectrum warpshape index \- a plain number, or `@path`
+.TP
+\fB\-\-target\-freq\-shift\fR \fI<TARGET_FREQ_SHIFT>\fR [default: 0]
+`\-q`: target frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-target\-pitch\fR \fI<TARGET_PITCH>\fR [default: 0]
+`\-X`: target pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-target\-gain\fR \fI<TARGET_GAIN>\fR [default: 0]
+`\-m`: target gain in decibels \- a plain number, or `@path`
+.TP
+\fB\-\-target\-amp\-interp\fR \fI<TARGET_AMP_INTERP>\fR [default: 1]
+`\-U`: target amplitude interpolation control (`0`\-`1`) \- a plain number, or `@path`
+.TP
+\fB\-\-target\-freq\-interp\fR \fI<TARGET_FREQ_INTERP>\fR [default: 1]
+`\-S`: target frequency interpolation control (`0`\-`1`) \- a plain number, or `@path`
+.TP
+\fB\-\-target\-time\-interp\fR \fI<TARGET_TIME_INTERP>\fR [default: 1]
+`\-T`: target time\-delay interpolation control (`0`\-`1`) \- a plain number, or `@path`
+.TP
+\fB\-\-non\-target\-freq\-shift\fR \fI<NON_TARGET_FREQ_SHIFT>\fR [default: 0]
+`\-a`: non\-target (residual spectrum) frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-non\-target\-pitch\fR \fI<NON_TARGET_PITCH>\fR [default: 0]
+`\-P`: non\-target pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-non\-target\-gain\fR \fI<NON_TARGET_GAIN>\fR [default: 0]
+`\-G`: non\-target gain in decibels \- a plain number, or `@path`
+.TP
+\fB\-\-non\-target\-delay\fR \fI<NON_TARGET_DELAY>\fR [default: 0]
+`\-j`: non\-target delay time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-non\-target\-decay\fR \fI<NON_TARGET_DECAY>\fR [default: 0]
+`\-E`: non\-target feedback decay time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-source\-freq\-shift\fR \fI<SOURCE_FREQ_SHIFT>\fR [default: 0]
+`\-Q`: source frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-pitch\fR \fI<SOURCE_PITCH>\fR [default: 0]
+`\-u`: source pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+`\-r`: source gain in decibels \- a plain number, or `@path`. Values `> \-\-threshold` (or a time\-varying function) enable mixing the source signal in at all
+.TP
+\fB\-\-source\-attack\fR \fI<SOURCE_ATTACK>\fR [default: 0]
+`\-l`: source envelope attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-source\-release\fR \fI<SOURCE_RELEASE>\fR [default: 0]
+`\-L`: source envelope release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-source\-delay\fR \fI<SOURCE_DELAY>\fR [default: 0]
+`\-J`: source delay time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-partial\-number\-scale\fR \fI<PARTIAL_NUMBER_SCALE>\fR [default: 1]
+`\-z`: partial\-number scaler applied to the data table\*(Aqs own partial\-number column, scaled relative to `1`. Real bug in the C: uninitialized unless passed \- see `pvc\-core::tools::inharmonator`\*(Aqs doc comment; this default (`1`) is `usage()`\*(Aqs own documented one
+.TP
+\fB\-\-partial\-number\-shift\fR \fI<PARTIAL_NUMBER_SHIFT>\fR [default: 0]
+`\-R`: partial\-number shifter, added after scaling
+.TP
+\fB\-\-partial\-db\-scale\fR \fI<PARTIAL_DB_SCALE>\fR [default: 1]
+`\-y`: decibel scaler applied to the data table\*(Aqs own decibels column
+.TP
+\fB\-\-partial\-delay\-scale\fR \fI<PARTIAL_DELAY_SCALE>\fR [default: 1]
+`\-o`: scaler applied to the data table\*(Aqs own delay\-time column
+.TP
+\fB\-\-partial\-delay\-shift\fR \fI<PARTIAL_DELAY_SHIFT>\fR [default: 0]
+`\-O`: shifter added to the data table\*(Aqs own delay\-time column after scaling
+.TP
+\fB\-\-partial\-decay\-scale\fR \fI<PARTIAL_DECAY_SCALE>\fR [default: 0]
+`\-g`: scaler applied to the data table\*(Aqs own feedback\-decay\-time column
+.TP
+\fB\-\-partial\-decay\-shift\fR \fI<PARTIAL_DECAY_SHIFT>\fR [default: 0]
+`\-k`: shifter added to the data table\*(Aqs own feedback\-decay\-time column after scaling
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-60]
+`\-t`: oscillator resynthesis threshold in dB. Also gates whether the source signal is mixed in at all (see `\-\-source\-gain`)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

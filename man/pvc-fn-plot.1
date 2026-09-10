@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-plot 1  "pvc-fn-plot " 
+.SH NAME
+pvc\-fn\-plot \- Plot a control/data file as a terminal sparkline \- replaces the legacy `showme`/`showmeb`/`showmed`/... family, whose actual job (confirmed by reading them: `reshape \-A1 $1 > /tmp/$USER`, then `gnuplot` on that file) is exactly "convert a binary or ASCII float file to something plottable, then plot it" \- not any of `reshape.c`\*(Aqs ~40 other transformation flags, none of which any script in this repo actually uses. No `gnuplot` dependency needed
+.SH SYNOPSIS
+\fBpvc\-fn\-plot\fR [\fB\-\-width\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> 
+.SH DESCRIPTION
+Plot a control/data file as a terminal sparkline \- replaces the legacy `showme`/`showmeb`/`showmed`/... family, whose actual job (confirmed by reading them: `reshape \-A1 $1 > /tmp/$USER`, then `gnuplot` on that file) is exactly "convert a binary or ASCII float file to something plottable, then plot it" \- not any of `reshape.c`\*(Aqs ~40 other transformation flags, none of which any script in this repo actually uses. No `gnuplot` dependency needed
+.SH OPTIONS
+.TP
+\fB\-\-width\fR \fI<WIDTH>\fR
+Number of columns to downsample to (default: 120, or the file\*(Aqs own length if shorter)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIINPUT\fR>
+An ASCII (.txt) or binary f32 control/data file

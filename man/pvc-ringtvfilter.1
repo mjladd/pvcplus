@@ -1,0 +1,177 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-ringtvfilter 1  "pvc-ringtvfilter " 
+.SH NAME
+pvc\-ringtvfilter \- `pvc ring` plus a switchable *time\-varying* filter (a `.pva` filter\-analysis file, navigated over time the same way `pvc tvfilter` navigates its own response), placed either on the feedback path\*(Aqs input ("prefilter") or inside the loop ("postfilter"). See `pvc\-core::tools::ringtvfilter`\*(Aqs doc comment for what\*(Aqs shared with `pvc ringfilter`/`pvc tvfilter` and what\*(Aqs different
+.SH SYNOPSIS
+\fBpvc\-ringtvfilter\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-oscbank\-threshold\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-feedback\-gain\fR] [\fB\-\-feedback\-freq\-shift\fR] [\fB\-\-feedback\-pitch\fR] [\fB\-\-feedback\-decay\fR] [\fB\-\-feedback\-threshold\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-input\-eq\-low\-gain\fR] [\fB\-\-input\-eq\-high\-gain\fR] [\fB\-\-input\-eq\-low\-freq\fR] [\fB\-\-input\-eq\-high\-freq\fR] [\fB\-\-loop\-eq\-decay\fR] [\fB\-\-loop\-balance\-limit\fR] [\fB\-\-loop\-eq\-low\-gain\fR] [\fB\-\-loop\-eq\-high\-gain\fR] [\fB\-\-loop\-eq\-low\-freq\fR] [\fB\-\-loop\-eq\-high\-freq\fR] [\fB\-\-output\-eq\-low\-gain\fR] [\fB\-\-output\-eq\-high\-gain\fR] [\fB\-\-output\-eq\-low\-freq\fR] [\fB\-\-output\-eq\-high\-freq\fR] <\fB\-\-filter\-response\fR> [\fB\-\-analysis\-channel\fR] [\fB\-\-time\-origin\fR] [\fB\-\-rate\fR] [\fB\-\-window\-low\fR] [\fB\-\-window\-high\fR] [\fB\-\-loop\-mode\fR] [\fB\-\-onset\-release\fR] [\fB\-\-autostop\fR] [\fB\-\-loop\-normalization\fR] [\fB\-\-loop\-smooth\fR] [\fB\-\-filter\-warpshape\fR] [\fB\-\-comp\-threshold\fR] [\fB\-\-comp\-db\fR] [\fB\-\-filter\-transpose\fR] [\fB\-\-filter\-shift\fR] [\fB\-\-filter\-source\-gain\fR] [\fB\-\-filter\-decay\fR] [\fB\-\-filter\-placement\fR] [\fB\-\-filter\-pitch\-mode\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+`pvc ring` plus a switchable *time\-varying* filter (a `.pva` filter\-analysis file, navigated over time the same way `pvc tvfilter` navigates its own response), placed either on the feedback path\*(Aqs input ("prefilter") or inside the loop ("postfilter"). See `pvc\-core::tools::ringtvfilter`\*(Aqs doc comment for what\*(Aqs shared with `pvc ringfilter`/`pvc tvfilter` and what\*(Aqs different.
+.PP
+Ports `ringtvfilter`\*(Aqs audio\-processing path (`legacy/pvc_src/ ringtvfilter.c`).
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two) \- independent of the filter response file\*(Aqs own FFT size (see `pvc\-core::tools::tvfilter`\*(Aqs doc comment on `N_ratio`, reused here)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 0]
+Analysis/resynthesis window length. `0` means auto (`2 * fft`)
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-time\-factor\fR \fI<TIME_FACTOR>\fR [default: 1]
+Time expansion/contraction factor (`1.0` = unchanged duration)
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: begin time in seconds
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: end time in seconds (`0` = end of file)
+.TP
+\fB\-\-oscbank\-threshold\fR \fI<OSCBANK_THRESHOLD>\fR [default: \-96]
+`\-t`: oscillator\-bank resynthesis threshold, in dB
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+`\-S`: source gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-source\-freq\-shift\fR \fI<SOURCE_FREQ_SHIFT>\fR [default: 0]
+`\-f`: source frequency shift adder, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-pitch\fR \fI<SOURCE_PITCH>\fR [default: 0]
+`\-p`: source pitch transposition, in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-gain\fR \fI<FEEDBACK_GAIN>\fR [default: 0]
+`\-F`: reverb (feedback) gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-freq\-shift\fR \fI<FEEDBACK_FREQ_SHIFT>\fR [default: 0]
+`\-H`: reverb frequency shift adder, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-pitch\fR \fI<FEEDBACK_PITCH>\fR [default: 0]
+`\-P`: reverb pitch transposition, in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-decay\fR \fI<FEEDBACK_DECAY>\fR [default: 0]
+`\-Z`: reverb (feedback delay line) decay time, in seconds \- `0` disables the loop entirely. A plain number, or `@path`
+.TP
+\fB\-\-feedback\-threshold\fR \fI<FEEDBACK_THRESHOLD>\fR [default: \-96]
+`\-z`: reverb (input) envelope\-follower gate threshold, in dB \- a plain number, or `@path`. Unlike `pvc ring`/`pvc ringfilter`, there is no threshold pass\-mode flag here \- see `pvc\-core::tools:: ringtvfilter`\*(Aqs doc comment
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+`\-l`: reverb (input) envelope attack time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+`\-L`: reverb (input) envelope release time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-input\-eq\-low\-gain\fR \fI<INPUT_EQ_LOW_GAIN>\fR [default: 200]
+`\-O`: reverb (input) EQ low shelf gain, in dB \- a plain number, or `@path`. Defaults to `200`, not `0` \- see `pvc\-core::tools:: ring`\*(Aqs doc comment on the real swapped\-default bug this reproduces (independently present here too)
+.TP
+\fB\-\-input\-eq\-high\-gain\fR \fI<INPUT_EQ_HIGH_GAIN>\fR [default: 0]
+`\-Y`: reverb (input) EQ high shelf gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-input\-eq\-low\-freq\fR \fI<INPUT_EQ_LOW_FREQ>\fR [default: 0]
+`\-d`: reverb (input) EQ low shelf frequency, in Hz \- a plain number, or `@path`. Defaults to `0`, not `200` \- see `pvc\-core::tools::ring`\*(Aqs doc comment
+.TP
+\fB\-\-input\-eq\-high\-freq\fR \fI<INPUT_EQ_HIGH_FREQ>\fR [default: 2000]
+`\-n`: reverb (input) EQ high shelf frequency, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-eq\-decay\fR \fI<LOOP_EQ_DECAY>\fR [default: 1]
+`\-T`: reverb (in\-loop feedback) EQ decay time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-balance\-limit\fR \fI<LOOP_BALANCE_LIMIT>\fR [default: 0]
+`\-E`: reverb (feedback) signal balance gain limiter level, `0` to `96` dB (`0` disables balancing entirely)
+.TP
+\fB\-\-loop\-eq\-low\-gain\fR \fI<LOOP_EQ_LOW_GAIN>\fR [default: 200]
+`\-X`: reverb (in\-loop feedback) EQ low shelf gain, in dB \- a plain number, or `@path`. Defaults to `200`, not `0` \- see `pvc\-core::tools::ring`\*(Aqs doc comment on the real swapped\-default bug this reproduces (independently present here too)
+.TP
+\fB\-\-loop\-eq\-high\-gain\fR \fI<LOOP_EQ_HIGH_GAIN>\fR [default: 0]
+`\-Q`: reverb (in\-loop feedback) EQ high shelf gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-eq\-low\-freq\fR \fI<LOOP_EQ_LOW_FREQ>\fR [default: 0]
+`\-U`: reverb (in\-loop feedback) EQ low shelf frequency, in Hz \- a plain number, or `@path`. Defaults to `0`, not `200` \- see `pvc\-core::tools::ring`\*(Aqs doc comment
+.TP
+\fB\-\-loop\-eq\-high\-freq\fR \fI<LOOP_EQ_HIGH_FREQ>\fR [default: 2000]
+`\-m`: reverb (in\-loop feedback) EQ high shelf frequency, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-output\-eq\-low\-gain\fR \fI<OUTPUT_EQ_LOW_GAIN>\fR [default: 200]
+`\-k`: reverb (output) EQ low shelf gain, in dB \- a plain number, or `@path`. Defaults to `200`, not `0` \- see `pvc\-core::tools:: ring`\*(Aqs doc comment on the real swapped\-default bug this reproduces (independently present here too)
+.TP
+\fB\-\-output\-eq\-high\-gain\fR \fI<OUTPUT_EQ_HIGH_GAIN>\fR [default: 0]
+`\-c`: reverb (output) EQ high shelf gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-output\-eq\-low\-freq\fR \fI<OUTPUT_EQ_LOW_FREQ>\fR [default: 0]
+`\-s`: reverb (output) EQ low shelf frequency, in Hz \- a plain number, or `@path`. Defaults to `0`, not `200` \- see `pvc\-core::tools::ring`\*(Aqs doc comment
+.TP
+\fB\-\-output\-eq\-high\-freq\fR \fI<OUTPUT_EQ_HIGH_FREQ>\fR [default: 2000]
+`\-G`: reverb (output) EQ high shelf frequency, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-response\fR \fI<FILTER_RESPONSE>\fR
+`\-y`: path to the time\-varying filter response file \- a `.pva` analysis file, either the legacy layout or `pvc analyze`\*(Aqs own `PVA1` format. Required
+.TP
+\fB\-\-analysis\-channel\fR \fI<ANALYSIS_CHANNEL>\fR [default: 0]
+`\-~`: which filter\-file channel to use (`0` = pair by channel index with the input sound file)
+.TP
+\fB\-\-time\-origin\fR \fI<TIME_ORIGIN>\fR [default: 0]
+`\-h`: filter time point origin, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-rate\fR \fI<RATE>\fR [default: 1]
+`\-R`: filter rate multiplier \- a plain number, or `@path`
+.TP
+\fB\-\-window\-low\fR \fI<WINDOW_LOW>\fR [default: 0]
+`\-g`: filter time window low boundary, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-window\-high\fR \fI<WINDOW_HIGH>\fR [default: \-1]
+`\-J`: filter time window high boundary, in seconds (negative = end of the filter file) \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-mode\fR \fI<LOOP_MODE>\fR [default: wrap]
+`/Q`: sampler\-loop boundary behavior (only used outside autostop mode)
+.TP
+\fB\-\-onset\-release\fR
+`::`: trigger the time window only once it\*(Aqs first entered
+.TP
+\fB\-\-autostop\fR
+`\-@`: stop synthesis once the filter\*(Aqs time position exits its window, instead of looping
+.TP
+\fB\-\-loop\-normalization\fR
+`\-A`: keep the filter\*(Aqs own amplitude roughly continuous across a sampler loop\*(Aqs seam
+.TP
+\fB\-\-loop\-smooth\fR \fI<LOOP_SMOOTH>\fR [default: 0.2]
+`\-a`: peak loop\-seam smoothing time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-warpshape\fR \fI<FILTER_WARPSHAPE>\fR [default: 0]
+`\-q`: reshapes the filter response curve. A plain number, or `@path`
+.TP
+\fB\-\-comp\-threshold\fR \fI<COMP_THRESHOLD>\fR [default: 0]
+`\-W`: filter\-spectrum compression threshold, in dB (`<= 0`). A plain constant, not a `(func)` \- see `pvc\-core::tools:: ringtvfilter`\*(Aqs doc comment
+.TP
+\fB\-\-comp\-db\fR \fI<COMP_DB>\fR [default: 0]
+`\-v`: filter\-spectrum decibels of compression (`<= 0`). A plain constant, not a `(func)`
+.TP
+\fB\-\-filter\-transpose\fR \fI<FILTER_TRANSPOSE>\fR [default: 0]
+`\-u`: filter response transposition, in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-shift\fR \fI<FILTER_SHIFT>\fR [default: 0]
+`\-V`: filter response shift, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-source\-gain\fR \fI<FILTER_SOURCE_GAIN>\fR [default: \-96]
+`\-x`: blend between the filtered signal and the dry source, in dB. `\-96` (the default) is fully filtered, `0` bypasses the filter entirely. A plain number, or `@path`
+.TP
+\fB\-\-filter\-decay\fR \fI<FILTER_DECAY>\fR [default: 1]
+`\-r`: filter decay time, in seconds \- only used by `\-\-filter\-placement postfilter`. A plain number, or `@path`
+.TP
+\fB\-\-filter\-placement\fR \fI<FILTER_PLACEMENT>\fR [default: prefilter]
+`\-o`: where the filter is applied
+.TP
+\fB\-\-filter\-pitch\-mode\fR \fI<FILTER_PITCH_MODE>\fR [default: source\-only]
+`\-B`: whether the filter\*(Aqs own transpose/shift compensates for the reverb\*(Aqs own `\-feedback\-pitch`/`\-feedback\-freq\-shift`
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

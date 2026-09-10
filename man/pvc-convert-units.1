@@ -1,0 +1,27 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-convert-units 1  "pvc-convert-units " 
+.SH NAME
+pvc\-convert\-units \- Convert between amplitude/decibel and Hz/octave.pitchclass units
+.SH SYNOPSIS
+\fBpvc\-convert\-units\fR <\fB\-\-from\fR> <\fB\-\-to\fR> [\fB\-\-norm\fR] <\fB\-\-value\fR> [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Convert between amplitude/decibel and Hz/octave.pitchclass units.
+.PP
+Replaces the four standalone unit\-conversion utilities `amptodB`, `dBtoamp`, `Hztopitch`, `pitchtoHz` (`legacy/pvc_src/*.c`) with one command taking a `\-\-from`/`\-\-to` unit pair (`amp`, `db`, `hz`, `oppc`). `\-\-norm` (`amptodB`\*(Aqs `\-n`) only applies to `amp \-> db`.
+.SH OPTIONS
+.TP
+\fB\-\-from\fR \fI<FROM>\fR
+Unit to convert from: `amp`, `db`, `hz`, or `oppc`
+.TP
+\fB\-\-to\fR \fI<TO>\fR
+Unit to convert to: `amp`, `db`, `hz`, or `oppc`
+.TP
+\fB\-\-norm\fR \fI<NORM>\fR [default: 1]
+Normalization amplitude for `amp \-> db`: divides the amplitude by this before converting to decibels. Ignored otherwise
+.TP
+\fB\-\-value\fR \fI<VALUES>\fR
+A value to convert; repeat for more than one
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)

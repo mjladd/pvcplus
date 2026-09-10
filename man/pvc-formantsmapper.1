@@ -1,0 +1,174 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-formantsmapper 1  "pvc-formantsmapper " 
+.SH NAME
+pvc\-formantsmapper \- Formant mapper: reads source and target formant lists (binary files produced externally, not by any tool in this project), pairs each formant with its nearest counterpart in the other list, and remaps each source formant\*(Aqs own bin band onto the paired target\*(Aqs frequency and amplitude via one or two independently\-controllable oscillator banks, optionally passing unclaimed bins through as a separate residue bank
+.SH SYNOPSIS
+\fBpvc\-formantsmapper\fR <\fB\-\-source\-formants\fR> <\fB\-\-target\-formants\fR> [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-channel\fR] [\fB\-\-gain\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-source\-low\-freq\fR] [\fB\-\-source\-high\-freq\fR] [\fB\-\-source\-db\-threshold\fR] [\fB\-\-bandwidth\-extension\-factor\fR] [\fB\-\-extend\-source\fR] [\fB\-\-source\-extend\-db\-threshold\fR] [\fB\-\-source\-extend\-peak\-partial\fR] [\fB\-\-source\-extend\-octaves\fR] [\fB\-\-target\-transpose\fR] [\fB\-\-target\-db\-threshold\fR] [\fB\-\-target\-low\-freq\fR] [\fB\-\-target\-high\-freq\fR] [\fB\-\-extend\-target\fR] [\fB\-\-target\-extend\-db\-threshold\fR] [\fB\-\-target\-extend\-peak\-partial\fR] [\fB\-\-target\-extend\-octaves\fR] [\fB\-\-extend\-partial\-rolloff\fR] [\fB\-\-amp\-gain\-limit\fR] [\fB\-\-bank\-a\-rolloff\fR] [\fB\-\-bank\-a\-freq\-interp\fR] [\fB\-\-bank\-a\-amp\-interp\fR] [\fB\-\-bank\-a\-gain\fR] [\fB\-\-bank\-a\-pitch\fR] [\fB\-\-dual\-bank\fR] [\fB\-\-bank\-b\-rolloff\fR] [\fB\-\-bank\-b\-freq\-interp\fR] [\fB\-\-bank\-b\-amp\-interp\fR] [\fB\-\-bank\-b\-gain\fR] [\fB\-\-bank\-b\-pitch\fR] [\fB\-\-residue\-bins\fR] [\fB\-\-residue\-gain\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Formant mapper: reads source and target formant lists (binary files produced externally, not by any tool in this project), pairs each formant with its nearest counterpart in the other list, and remaps each source formant\*(Aqs own bin band onto the paired target\*(Aqs frequency and amplitude via one or two independently\-controllable oscillator banks, optionally passing unclaimed bins through as a separate residue bank.
+.PP
+Ports `formantsmapper` (`legacy/pvc_src/formantsmapper.c`); see `pvc\-core::tools::formantsmapper`\*(Aqs doc comment for what\*(Aqs in and out of scope, including an entirely dead "duplicate formant amplitude" correction subsystem and a real bug where enabling residue bins together with dual\-bank mode silently drops bank B.
+.SH OPTIONS
+.TP
+\fB\-\-source\-formants\fR \fI<SOURCE_FORMANTS>\fR
+`\-E`: path to the source formants file. Required. Note: `usage()` mislabels this "Target Formants File" \- it is the source file (see `pvc\-core::tools::formantsmapper`\*(Aqs doc comment)
+.TP
+\fB\-\-target\-formants\fR \fI<TARGET_FORMANTS>\fR
+`\-g`: path to the target formants file. Required
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+`\-N`: FFT size
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+`\-M`: analysis/resynthesis window length. `0` means auto (`2 * fft`)
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+`\-D`: analysis frames per second (sets the hop size). Values under `32` reset to `200`
+.TP
+\fB\-\-time\-factor\fR \fI<TIME_FACTOR>\fR [default: 1]
+`\-I`: time expansion/contraction factor. Values `<= 0` reset to `1.0`
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: begin time in seconds \- real sample\-accurate trimming
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: end time in seconds (`0` = end of file)
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR [default: 0]
+`\-C`: which input channel to resynthesize (`0` = all channels, each processed independently; `1..` = only that one, 1\-based)
+.TP
+\fB\-\-gain\fR \fI<GAIN>\fR [default: 0]
+`\-A`: gain in decibels \- a plain number, or `@path`
+.TP
+\fB\-\-pitch\fR \fI<PITCH>\fR [default: 0]
+`\-P`: pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-shift\fR \fI<FREQ_SHIFT>\fR [default: 0]
+`\-a`: frequency shift in Hz, applied before `\-P` \- a plain number, or `@path`
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+`\-l`: envelope attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+`\-L`: envelope release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+`\-H`: low shelf EQ gain in dB (post transpose/shift) \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+`\-X`: high shelf EQ gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+`\-m`: low shelf EQ frequency in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+`\-R`: high shelf EQ frequency in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-low\-freq\fR \fI<SOURCE_LOW_FREQ>\fR [default: 20]
+`\-z`: source formants low frequency boundary in Hz
+.TP
+\fB\-\-source\-high\-freq\fR \fI<SOURCE_HIGH_FREQ>\fR [default: 0]
+`\-Z`: source formants high frequency boundary in Hz (`0` = Nyquist)
+.TP
+\fB\-\-source\-db\-threshold\fR \fI<SOURCE_DB_THRESHOLD>\fR [default: \-200]
+`\-@`: source formants amplitude threshold in dB
+.TP
+\fB\-\-bandwidth\-extension\-factor\fR \fI<BANDWIDTH_EXTENSION_FACTOR>\fR [default: 1]
+`\-S`: pre\-synthesis formant bandwidth extension factor (source formants only). `0` reduces every formant to a single bin, `1` (the default) bypasses this step
+.TP
+\fB\-\-extend\-source\fR
+`\-n`: extend source formants with synthetic harmonic\-partial formants
+.TP
+\fB\-\-source\-extend\-db\-threshold\fR \fI<SOURCE_EXTEND_DB_THRESHOLD>\fR [default: \-96]
+`\-U`: source formant extension amplitude threshold in dB
+.TP
+\fB\-\-source\-extend\-peak\-partial\fR \fI<SOURCE_EXTEND_PEAK_PARTIAL>\fR [default: 0]
+`\-V`: highest partial to extend source formants to (`0` = all below Nyquist)
+.TP
+\fB\-\-source\-extend\-octaves\fR
+`\-y`: also add upper octaves of each extended source partial
+.TP
+\fB\-\-target\-transpose\fR \fI<TARGET_TRANSPOSE>\fR [default: 0]
+`\-T`: target formants transposition in semitones, applied before filtering/extension
+.TP
+\fB\-\-target\-db\-threshold\fR \fI<TARGET_DB_THRESHOLD>\fR [default: \-96]
+`\-K`: target formants amplitude threshold in dB
+.TP
+\fB\-\-target\-low\-freq\fR \fI<TARGET_LOW_FREQ>\fR [default: 0]
+`\-o`: target formants low frequency boundary in Hz
+.TP
+\fB\-\-target\-high\-freq\fR \fI<TARGET_HIGH_FREQ>\fR [default: 0]
+`\-O`: target formants high frequency boundary in Hz (`0` = Nyquist)
+.TP
+\fB\-\-extend\-target\fR
+`\-c`: extend target formants with synthetic harmonic\-partial formants
+.TP
+\fB\-\-target\-extend\-db\-threshold\fR \fI<TARGET_EXTEND_DB_THRESHOLD>\fR [default: \-96]
+`\-d`: target formant extension amplitude threshold in dB
+.TP
+\fB\-\-target\-extend\-peak\-partial\fR \fI<TARGET_EXTEND_PEAK_PARTIAL>\fR [default: 0]
+`\-j`: highest partial to extend target formants to (`0` = all below Nyquist)
+.TP
+\fB\-\-target\-extend\-octaves\fR
+`\-k`: also add upper octaves of each extended target partial
+.TP
+\fB\-\-extend\-partial\-rolloff\fR \fI<EXTEND_PARTIAL_ROLLOFF>\fR [default: 0]
+`\-Y`: added\-formant\-partial decibel rolloff per partial (shared between source and target extension)
+.TP
+\fB\-\-amp\-gain\-limit\fR \fI<AMP_GAIN_LIMIT>\fR [default: 200]
+`\-~`: amplitude\-scaler clamp limit. Real unit\-mismatch bug in the C, reproduced exactly \- see `pvc\-core::tools::formantsmapper`\*(Aqs doc comment
+.TP
+\fB\-\-bank\-a\-rolloff\fR \fI<BANK_A_ROLLOFF>\fR [default: 0]
+`\-h`: bank A decibel rolloff per octave (distance from a mapped formant\*(Aqs own center bin) \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-a\-freq\-interp\fR \fI<BANK_A_FREQ_INTERP>\fR [default: 0]
+`\-r`: bank A frequency interpolation control (`0`\-`1`) \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-a\-amp\-interp\fR \fI<BANK_A_AMP_INTERP>\fR [default: 0]
+`\-v`: bank A amplitude interpolation control (`0`\-`1`) \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-a\-gain\fR \fI<BANK_A_GAIN>\fR [default: 0]
+`\-G`: bank A gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-a\-pitch\fR \fI<BANK_A_PITCH>\fR [default: 0]
+`\-f`: bank A pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-dual\-bank\fR
+`\-/`: also resynthesize bank B (a second, independently\-controlled mapping of the same formant pairing)
+.TP
+\fB\-\-bank\-b\-rolloff\fR \fI<BANK_B_ROLLOFF>\fR [default: 0]
+`\-B`: bank B decibel rolloff per octave \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-b\-freq\-interp\fR \fI<BANK_B_FREQ_INTERP>\fR [default: 0]
+`\-:`: bank B frequency interpolation control (`0`\-`1`) \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-b\-amp\-interp\fR \fI<BANK_B_AMP_INTERP>\fR [default: 0]
+`\-J`: bank B amplitude interpolation control (`0`\-`1`) \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-b\-gain\fR \fI<BANK_B_GAIN>\fR [default: 0]
+`\-F`: bank B gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-bank\-b\-pitch\fR \fI<BANK_B_PITCH>\fR [default: 0]
+`\-W`: bank B pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-residue\-bins\fR
+`\-x`: pass bins outside every formant\*(Aqs own band through as a separate residue oscillator bank
+.TP
+\fB\-\-residue\-gain\fR \fI<RESIDUE_GAIN>\fR [default: 0]
+`\-s`: residue bins gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+`\-t`: oscillator resynthesis threshold in dB
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

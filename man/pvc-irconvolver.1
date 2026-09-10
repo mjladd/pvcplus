@@ -1,0 +1,72 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-irconvolver 1  "pvc-irconvolver " 
+.SH NAME
+pvc\-irconvolver \- Fast FFT convolution (or deconvolution) of each input channel against a `.ir` file\*(Aqs spectrum (Phase 5\*(Aqs FFT\-convolution family). See `pvc\-core::tools::irconvolver`\*(Aqs doc comment for what\*(Aqs out of scope, and a real usage\-text bug in the C corrected here
+.SH SYNOPSIS
+\fBpvc\-irconvolver\fR <\fB\-\-ir\fR> [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-ring\-tail\fR] [\fB\-\-impulse\-channel\fR] [\fB\-\-mode\fR] [\fB\-\-ir\-low\-freq\fR] [\fB\-\-ir\-high\-freq\fR] [\fB\-\-ir\-low\-rolloff\fR] [\fB\-\-ir\-high\-rolloff\fR] [\fB\-\-source\-low\-freq\fR] [\fB\-\-source\-high\-freq\fR] [\fB\-\-source\-low\-rolloff\fR] [\fB\-\-source\-high\-rolloff\fR] [\fB\-\-source\-gain\fR] [\fB\-\-input\-gain\fR] [\fB\-\-output\-gain\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Fast FFT convolution (or deconvolution) of each input channel against a `.ir` file\*(Aqs spectrum (Phase 5\*(Aqs FFT\-convolution family). See `pvc\-core::tools::irconvolver`\*(Aqs doc comment for what\*(Aqs out of scope, and a real usage\-text bug in the C corrected here.
+.PP
+Ports `irconvolver`\*(Aqs resynthesis path (`legacy/pvc_src/ irconvolver.c`).
+.SH OPTIONS
+.TP
+\fB\-\-ir\fR \fI<IR>\fR
+`\-E`: path to the `.ir` impulse\-response file (from `pvc impulseresponse`)
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: analysis window start, in seconds
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: analysis window end, in seconds (`0` = end of file)
+.TP
+\fB\-\-ring\-tail\fR
+`\-d`: extend the processed window by one impulse\-length of trailing silence, so the reverb tail isn\*(Aqt cut off
+.TP
+\fB\-\-impulse\-channel\fR \fI<IMPULSE_CHANNEL>\fR [default: 0]
+`\-J`: which `.ir` channel to use (`0` = auto round\-robin)
+.TP
+\fB\-\-mode\fR \fI<MODE>\fR [default: convolve]
+`\-a` (the C\*(Aqs own usage text mislabels this flag \- see `pvc\-core::tools::irconvolver`\*(Aqs doc comment)
+.TP
+\fB\-\-ir\-low\-freq\fR \fI<IR_LOW_FREQ>\fR [default: 0]
+`\-s`: impulse response bandpass low rolloff point, Hz
+.TP
+\fB\-\-ir\-high\-freq\fR \fI<IR_HIGH_FREQ>\fR [default: 0]
+`\-t`: impulse response bandpass high rolloff point, Hz (`0` = Nyquist)
+.TP
+\fB\-\-ir\-low\-rolloff\fR \fI<IR_LOW_ROLLOFF>\fR [default: 0]
+`\-g`
+.TP
+\fB\-\-ir\-high\-rolloff\fR \fI<IR_HIGH_ROLLOFF>\fR [default: 0]
+`\-G`
+.TP
+\fB\-\-source\-low\-freq\fR \fI<SOURCE_LOW_FREQ>\fR [default: 0]
+`\-D`: input sound bandpass low rolloff point, Hz
+.TP
+\fB\-\-source\-high\-freq\fR \fI<SOURCE_HIGH_FREQ>\fR [default: 0]
+`\-f`: input sound bandpass high rolloff point, Hz (`0` = Nyquist)
+.TP
+\fB\-\-source\-low\-rolloff\fR \fI<SOURCE_LOW_ROLLOFF>\fR [default: 0]
+`\-h`
+.TP
+\fB\-\-source\-high\-rolloff\fR \fI<SOURCE_HIGH_ROLLOFF>\fR [default: 0]
+`\-H`
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+`\-A`: dry\-signal gain mixed back in after convolution, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-input\-gain\fR \fI<INPUT_GAIN>\fR [default: 0]
+`\-q`: gain applied before convolution, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-output\-gain\fR \fI<OUTPUT_GAIN>\fR [default: 0]
+`\-r`: gain applied to the convolution output, in dB \- a plain number, or `@path`
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

@@ -1,0 +1,25 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-gen4 1  "pvc-fn-gen4 " 
+.SH NAME
+pvc\-fn\-gen4 \- gen4: like gen1, but each breakpoint carries its own transition shape (`legacy/cmusic_gen/gen/gen4.c`): `alpha = 0` linear, negative exponential, positive logarithmic
+.SH SYNOPSIS
+\fBpvc\-fn\-gen4\fR <\fB\-L\fR|\fB\-\-length\fR> [\fB\-\-open\fR] <\fB\-\-point\fR> [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+gen4: like gen1, but each breakpoint carries its own transition shape (`legacy/cmusic_gen/gen/gen4.c`): `alpha = 0` linear, negative exponential, positive logarithmic
+.SH OPTIONS
+.TP
+\fB\-L\fR, \fB\-\-length\fR \fI<LENGTH>\fR
+
+.TP
+\fB\-\-open\fR
+
+.TP
+\fB\-\-point\fR \fI<POINTS>\fR
+A breakpoint as `time,value,alpha`; repeat for each point (need at least two \- the last point\*(Aqs alpha is unused, since there\*(Aqs no segment after it)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIOUTPUT\fR>
+

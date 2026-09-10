@@ -86,3 +86,6 @@ for a 440 Hz input, at close to the original duration.
   detail. Start from `pvc --help` to see the full command list.
 - Every legacy tool, ported or not, still runs through `pvc legacy
   <name> <flags>` (its own original flags, unchanged).
+- `pvc completions <shell>` prints a shell completion script (bash,
+  zsh, fish, elvish, or powershell). Man pages for every subcommand
+  live under `man/` in this repository.

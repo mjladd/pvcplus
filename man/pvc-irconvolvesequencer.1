@@ -1,0 +1,69 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-irconvolvesequencer 1  "pvc-irconvolvesequencer " 
+.SH NAME
+pvc\-irconvolvesequencer \- Crossfades a signal through a sequence of impulse responses, morphing from one to the next (Phase 5\*(Aqs FFT\-convolution family). See `pvc\-core::tools::irconvolvesequencer`\*(Aqs doc comment for the C\*(Aqs dead `\-a` flag and what\*(Aqs out of scope
+.SH SYNOPSIS
+\fBpvc\-irconvolvesequencer\fR <\fB\-\-impulse\-list\-dir\fR> [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-ring\-tail\fR] [\fB\-\-impulse\-channel\fR] [\fB\-\-normalization\fR] [\fB\-\-ir\-low\-freq\fR] [\fB\-\-ir\-high\-freq\fR] [\fB\-\-ir\-low\-rolloff\fR] [\fB\-\-ir\-high\-rolloff\fR] [\fB\-\-source\-low\-freq\fR] [\fB\-\-source\-high\-freq\fR] [\fB\-\-source\-low\-rolloff\fR] [\fB\-\-source\-high\-rolloff\fR] [\fB\-\-source\-gain\fR] [\fB\-\-output\-gain\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Crossfades a signal through a sequence of impulse responses, morphing from one to the next (Phase 5\*(Aqs FFT\-convolution family). See `pvc\-core::tools::irconvolvesequencer`\*(Aqs doc comment for the C\*(Aqs dead `\-a` flag and what\*(Aqs out of scope.
+.PP
+Ports `irconvolvesequencer` (`legacy/pvc_src/ irconvolvesequencer.c`).
+.SH OPTIONS
+.TP
+\fB\-\-impulse\-list\-dir\fR \fI<IMPULSE_LIST_DIR>\fR
+`\-I`: directory containing an `impulseFileNames` list file \- its first whitespace\-separated token is the impulse count, followed by that many impulse\-response sound file paths, one sequence point each, in order
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: sequence window start, in seconds
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: sequence window end, in seconds (`0` = end of file)
+.TP
+\fB\-\-ring\-tail\fR
+`\-d`: extend every segment\*(Aqs processed window by one impulse\-length of trailing silence
+.TP
+\fB\-\-impulse\-channel\fR \fI<IMPULSE_CHANNEL>\fR [default: 0]
+`\-J`: which impulse channel to use (`0` = auto round\-robin)
+.TP
+\fB\-\-normalization\fR \fI<NORMALIZATION>\fR [default: off]
+`\-v`: how the final mixed output is peak\-normalized
+.TP
+\fB\-\-ir\-low\-freq\fR \fI<IR_LOW_FREQ>\fR [default: 0]
+`\-s`: impulse response bandpass low rolloff point, Hz \- a plain number, or `@path`, evaluated once per impulse at its sequence position
+.TP
+\fB\-\-ir\-high\-freq\fR \fI<IR_HIGH_FREQ>\fR [default: 0]
+`\-t`: impulse response bandpass high rolloff point, Hz (`0` = Nyquist) \- a plain number, or `@path`
+.TP
+\fB\-\-ir\-low\-rolloff\fR \fI<IR_LOW_ROLLOFF>\fR [default: 0]
+`\-g` \- a plain number, or `@path`
+.TP
+\fB\-\-ir\-high\-rolloff\fR \fI<IR_HIGH_ROLLOFF>\fR [default: 0]
+`\-G` \- a plain number, or `@path`
+.TP
+\fB\-\-source\-low\-freq\fR \fI<SOURCE_LOW_FREQ>\fR [default: 0]
+`\-D`: input sound bandpass low rolloff point, Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-high\-freq\fR \fI<SOURCE_HIGH_FREQ>\fR [default: 0]
+`\-f`: input sound bandpass high rolloff point, Hz (`0` = Nyquist) \- a plain number, or `@path`
+.TP
+\fB\-\-source\-low\-rolloff\fR \fI<SOURCE_LOW_ROLLOFF>\fR [default: 0]
+`\-h` \- a plain number, or `@path`
+.TP
+\fB\-\-source\-high\-rolloff\fR \fI<SOURCE_HIGH_ROLLOFF>\fR [default: 0]
+`\-H` \- a plain number, or `@path`
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+`\-A`: dry\-signal gain mixed back in after convolution, in dB, evaluated once per impulse at its sequence position \- a plain number, or `@path`
+.TP
+\fB\-\-output\-gain\fR \fI<OUTPUT_GAIN>\fR [default: 0]
+`\-r`: gain applied to each segment\*(Aqs convolution output, in dB \- a plain number, or `@path`
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

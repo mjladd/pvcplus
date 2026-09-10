@@ -1,0 +1,34 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-response-groupdelaymaker 1  "pvc-fn-response-groupdelaymaker " 
+.SH NAME
+pvc\-fn\-response\-groupdelaymaker \- Ports `groupdelaymaker` (`legacy/pvc_src/groupdelaymaker.c`): like `chordresponsemaker`, but each bin\*(Aqs response is an `(amp, delay\-time)` pair instead of `(amp, frequency)`, from unordered septuples `(pitch\-or\-Hz, num_partials, bandwidth, decibels, partial_spacing, db_rolloff_total, delay_secs)`. See `pvc\-core:: tools::groupdelaymaker`\*(Aqs doc comment for the real differences from `chordresponsemaker`\*(Aqs own dB\-rolloff/edge\-falloff formulas
+.SH SYNOPSIS
+\fBpvc\-fn\-response\-groupdelaymaker\fR <\fB\-\-analysis\fR> <\fB\-\-partials\fR> [\fB\-\-edge\-db\fR] [\fB\-\-default\-db\fR] [\fB\-\-default\-delay\fR] [\fB\-\-method\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Ports `groupdelaymaker` (`legacy/pvc_src/groupdelaymaker.c`): like `chordresponsemaker`, but each bin\*(Aqs response is an `(amp, delay\-time)` pair instead of `(amp, frequency)`, from unordered septuples `(pitch\-or\-Hz, num_partials, bandwidth, decibels, partial_spacing, db_rolloff_total, delay_secs)`. See `pvc\-core:: tools::groupdelaymaker`\*(Aqs doc comment for the real differences from `chordresponsemaker`\*(Aqs own dB\-rolloff/edge\-falloff formulas
+.SH OPTIONS
+.TP
+\fB\-\-analysis\fR \fI<ANALYSIS>\fR
+`\-f`: a `.pva` analysis file (legacy or `pvc analyze`\*(Aqs own `PVA1` format), used only to adopt its FFT size and sample rate \- required
+.TP
+\fB\-\-partials\fR \fI<PARTIALS>\fR
+`\-F`: ASCII data file of unordered septuples: `pitch\-or\-Hz, num_partials, bandwidth, decibels, partial_spacing, db_rolloff_total, delay_secs` (whitespace\-separated)
+.TP
+\fB\-\-edge\-db\fR \fI<EDGE_DB>\fR [default: 0]
+`\-D`: dB offset (relative to each partial\*(Aqs own level) at the outer edge of its band. `0` (the default) is a flat, effectively rectangular band \- not silence at the edges
+.TP
+\fB\-\-default\-db\fR \fI<DEFAULT_DB>\fR [default: 0]
+`\-i`: default decibel level for bins no tone ever touches
+.TP
+\fB\-\-default\-delay\fR \fI<DEFAULT_DELAY>\fR [default: 0]
+`\-I`: default delay time, in seconds, for bins no tone ever touches
+.TP
+\fB\-\-method\fR \fI<METHOD>\fR [default: average]
+`\-s`: how overlapping partials resolve their `(amp, delay)` pair at a shared bin
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIOUTPUT\fR>
+
