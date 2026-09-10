@@ -87,17 +87,37 @@
 //! Rust equivalent to port at all - see [`WallResponseCache`]'s own doc
 //! comment for why a `Vec`-backed cache makes the question moot.
 //!
+//! **Phase 7** (this update) covers the filter/normalize and
+//! truncate/envelope/normalize orchestration functions Phase 6 deferred:
+//! [`filter_and_normalize_impulse_response_now`]
+//! (`filterAndNormalizeImpulseResponseNow`), [`BandpassRolloff::scaled`]
+//! (the rolloff-scaler multiplication its call sites do inline),
+//! [`filter_and_normalize_impulse_responses`] (the shared per-channel loop
+//! body of `filterAndNormalizeWallImpulseResponses`/
+//! `filterAndNormalizeReflectionOrderImpulseResponses` - confirmed
+//! identical apart from which globals/gate/BPF constants each reads, so
+//! ported once), [`filter_and_normalize_reflection_order_impulse_responses_post_convolution`]
+//! (`filterAndNormalizeReflectionOrderImpulseResponsesPostConvolution`,
+//! kept separate since its own per-channel rolloff scaler and skip-below-
+//! order-2 guard are genuinely different from the other two), and
+//! [`truncate_envelope_and_normalize_impulse_responses`] (the shared body
+//! of `truncateEnvelopeAndNormalizeWallImpulseResponses`/
+//! `truncateEnvelopeAndNormalizeReflectionOrderImpulseResponses`, also
+//! confirmed identical apart from which globals each reads - reusing
+//! [`crate::control::ControlFn::at`] for the envelope lookup instead of
+//! re-deriving `fval`). Each orchestration function's own gate condition
+//! (`wall_IR_BPF_and_normalize__*`/`reflection_order_impulse_responses__off_0__on_1`/
+//! the "no truncation needed" bypass) is left to the caller, matching this
+//! module's established convention of keeping CLI-flag dispatch out of the
+//! pure-math layer - see finding 27 for a real dead-code finding this
+//! phase's own analysis turned up in all three filter/normalize functions
+//! alike.
+//!
 //! **What's still not covered, and why**: `readInWallImpulseResponses`/
 //! `readInReflectionOrderImpulseResponses` (real file I/O, belongs with
 //! `pvc-cli`/`pvc-io`), `getWallImpulseResponseChannelAssignments`/
 //! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`
-//! (settled this phase - see above), `filterAndNormalizeImpulseResponseNow`/
-//! `filterAndNormalizeWallImpulseResponses`/`filterAndNormalizeReflectionOrderImpulseResponses(PostConvolution)`/
-//! `truncateEnvelopeAndNormalizeWallImpulseResponses`/`truncateEnvelopeAndNormalizeReflectionOrderImpulseResponses`
-//! (orchestration functions that mostly just call already-ported Phase 4
-//! math in sequence - the very code Phase 4's finding 14 says needs to
-//! renormalize [`convolve_two_arrays`]'s `1/N`-scaled output - deferred to
-//! a Phase 7 rather than crammed into this one), and the ~750 lines of
+//! (settled in Phase 6), and the ~750 lines of
 //! functions near the end of the file not yet read by any phase
 //! (`getReflectionOrderDecibelGainscaleLevels`,
 //! `findreflectionOrderCVOrderSequences`,
@@ -341,6 +361,35 @@
 //!     threshold to `0.0` for virtually all real audio (any peak sample
 //!     magnitude below exactly `1.0`) and degrading "crop below some
 //!     fraction of the peak" into "crop trailing negative samples."
+//!
+//! 27. **A dead "did the filtered result come back longer?" grow-and-
+//!     reshuffle branch, present identically in
+//!     `filterAndNormalizeImpulseResponseNow()` and all three of its
+//!     callers.** `filterAudioArray()` (lines 6968-7029) reads/writes the
+//!     file-scope globals `audioArrayForFilter`/`lengthOfAudioArrayForFilter`
+//!     directly (no array/length parameters at all - confirmed by its own
+//!     prototype) and its one line that would grow
+//!     `lengthOfAudioArrayForFilter` back up to the padded FFT size `N` is
+//!     commented out (line 7025, `// lengthOfAudioArrayForFilter = N ;`) -
+//!     the same fact [`filter_audio_array`]'s own finding 16 already
+//!     established. `filterAndNormalizeImpulseResponseNow()` sets
+//!     `lengthOfAudioArrayForFilter = impulseResponseNowMemorySize` once,
+//!     before calling `filterAudioArray()`, and never reassigns it
+//!     afterward - so by finding 16, its own "is
+//!     `lengthOfAudioArrayForFilter` now greater than
+//!     `impulseResponseNowMemorySize`" "LONGER" branch (line 7768) can
+//!     never be true; the function's real output is always exactly
+//!     `impulseResponseNowMemorySize` samples. The same reasoning makes the
+//!     identically-shaped "LONGER" branches in
+//!     `filterAndNormalizeWallImpulseResponses()`/
+//!     `filterAndNormalizeReflectionOrderImpulseResponses()`/
+//!     `filterAndNormalizeReflectionOrderImpulseResponsesPostConvolution()`
+//!     dead too, since each sets `impulseResponseNowMemorySize` to that
+//!     channel's own frame count immediately before calling
+//!     `filterAndNormalizeImpulseResponseNow()`. [`filter_and_normalize_impulse_response_now`]
+//!     and its callers therefore return same-length-as-input data with no
+//!     buffer-growth path at all - not an omission, a faithful
+//!     reproduction of unreachable C.
 
 /// A 2D point in feet (this tool's native unit - see `usage()`'s "All
 /// distances are expressed in feet").
@@ -1933,6 +1982,24 @@ pub struct BandpassRolloff {
     pub compound_levels: i32,
 }
 
+impl BandpassRolloff {
+    /// Ports the inline `WIRBPF_low_edge_amplitude_rolloff_in_dB_per_octave
+    /// times rolloffScaler` / `..._high_edge..._per_octave times
+    /// rolloffScaler` multiplication every
+    /// `filterAndNormalizeImpulseResponseNow()` call site does itself
+    /// before passing the two rolloff-per-octave values in -
+    /// `low_freq`/`high_freq`/`compound_levels` are left untouched,
+    /// matching the C (only the edge steepness scales, not the cutoff
+    /// frequencies or the compounding count).
+    pub fn scaled(&self, rolloff_scaler: f32) -> Self {
+        BandpassRolloff {
+            low_rolloff_db_per_octave: self.low_rolloff_db_per_octave * rolloff_scaler,
+            high_rolloff_db_per_octave: self.high_rolloff_db_per_octave * rolloff_scaler,
+            ..*self
+        }
+    }
+}
+
 pub fn filter_fft(
     fft_array: &mut [f32],
     n: usize,
@@ -2977,6 +3044,170 @@ pub fn wall_impulse_response_cropped_size(
     );
 
     cropped_size
+}
+
+/// Ports `filterAndNormalizeImpulseResponseNow()`: filters `impulse_response`
+/// through [`filter_audio_array`] and peak-normalizes the result via
+/// [`find_peak_amp`]. `rolloff` must already have any rolloff-scaler
+/// applied (see [`BandpassRolloff::scaled`]) - this function itself
+/// applies no scaling, matching how the C's own scalar multiplication
+/// happens at each call site rather than inside the shared function.
+///
+/// Per finding 27, always returns exactly `impulse_response.len()`
+/// samples: [`filter_audio_array`] computes a longer, zero-padded internal
+/// buffer, but the real C never reads past its own original length here
+/// (the "grow" branch every caller of this function also has is dead for
+/// the same reason - see finding 27), so this port simply truncates
+/// [`filter_audio_array`]'s output back down rather than reproducing an
+/// unreachable growth path.
+pub fn filter_and_normalize_impulse_response_now(
+    impulse_response: &[f32],
+    sample_rate: f32,
+    rolloff: &BandpassRolloff,
+    db_to_amp: &crate::units::DbToAmp,
+) -> Vec<f32> {
+    let filtered = filter_audio_array(impulse_response, sample_rate, rolloff, db_to_amp);
+    let mut out = filtered[..impulse_response.len()].to_vec();
+    let peak = find_peak_amp(&out);
+    if peak > 0.0 {
+        for x in out.iter_mut() {
+            *x /= peak;
+        }
+    }
+    out
+}
+
+/// Ports the per-channel loop shared by `filterAndNormalizeWallImpulseResponses()`
+/// and `filterAndNormalizeReflectionOrderImpulseResponses()` - confirmed
+/// identical apart from which globals (`wallImpulseResponses`/
+/// `wall_numberOfInputChannels`/`wall_numberOfFrames` vs. their
+/// `reflectionOrderImpulseResponses`/`reflection_order_*` counterparts) and
+/// which BPF constants (`WIRBPF_*` vs. `RO_IR_BPF_*`) each reads, and which
+/// gate flag each checks before running at all
+/// (`wall_IR_BPF_and_normalize__off_0__input_1__compounded_convolution_outputs_2__both_3`
+/// vs. `reflection_order_impulse_responses__off_0__on_1 &&
+/// RO_IR_BPF_and_normalize__...`) - both real call sites pass a fixed
+/// `rolloffScaler` of `1.`, so `rolloff` is used as given (no per-channel
+/// scaling here; contrast
+/// [`filter_and_normalize_reflection_order_impulse_responses_post_convolution`],
+/// which does scale per channel). The caller checks its own gate condition
+/// before calling; this function always filters+normalizes every channel
+/// it's given.
+pub fn filter_and_normalize_impulse_responses(
+    channels: &[Vec<f32>],
+    sample_rate: f32,
+    rolloff: &BandpassRolloff,
+    db_to_amp: &crate::units::DbToAmp,
+) -> Vec<Vec<f32>> {
+    channels
+        .iter()
+        .map(|ch| filter_and_normalize_impulse_response_now(ch, sample_rate, rolloff, db_to_amp))
+        .collect()
+}
+
+/// Ports `filterAndNormalizeReflectionOrderImpulseResponsesPostConvolution()`'s
+/// per-channel loop: unlike [`filter_and_normalize_impulse_responses`],
+/// each reflection-order-impulse-response channel gets its own rolloff
+/// scaler, `cv_order_sequence_sizes[i] - 1` (the number of convolution
+/// stages that channel's own compounded-order impulse response went
+/// through beyond the first - `reflectionOrderCVOrderSequenceSizes[i]` in
+/// the C). A channel whose scaler comes out below `1.` (an order-1
+/// channel, `cv_order_sequence_sizes[i] == 1` giving scaler `0.`) is left
+/// completely unfiltered and unnormalized, reproducing the C's own
+/// `if (rolloffScaler >= 1.) filterAndNormalizeImpulseResponseNow(...)`
+/// guard verbatim (no `else` branch in the C - the channel's existing data
+/// simply isn't touched). The caller checks the
+/// `reflection_order_impulse_responses__off_0__on_1`/
+/// `RO_IR_BPF_and_normalize__...` gate itself before calling, same
+/// convention as [`filter_and_normalize_impulse_responses`].
+pub fn filter_and_normalize_reflection_order_impulse_responses_post_convolution(
+    channels: &[Vec<f32>],
+    cv_order_sequence_sizes: &[i32],
+    sample_rate: f32,
+    rolloff: &BandpassRolloff,
+    db_to_amp: &crate::units::DbToAmp,
+) -> Vec<Vec<f32>> {
+    debug_assert_eq!(channels.len(), cv_order_sequence_sizes.len());
+    channels
+        .iter()
+        .zip(cv_order_sequence_sizes)
+        .map(|(ch, &size)| {
+            let rolloff_scaler = (size - 1) as f32;
+            if rolloff_scaler >= 1.0 {
+                let scaled_rolloff = rolloff.scaled(rolloff_scaler);
+                filter_and_normalize_impulse_response_now(
+                    ch,
+                    sample_rate,
+                    &scaled_rolloff,
+                    db_to_amp,
+                )
+            } else {
+                ch.clone()
+            }
+        })
+        .collect()
+}
+
+/// Ports the per-channel truncate/envelope/normalize body shared by
+/// `truncateEnvelopeAndNormalizeWallImpulseResponses()` and
+/// `truncateEnvelopeAndNormalizeReflectionOrderImpulseResponses()` -
+/// confirmed identical apart from which globals each reads. Callers must
+/// check the real gate condition and the "no truncation needed" bypass
+/// themselves first (`wallImpulseResponsesFromSoundFileFlag &&
+/// wall_IR_truncate_duration > 0. && !wallPulseModeFlag &&
+/// wall_inputDuration > wall_IR_truncate_duration`, or the
+/// `reflection_order_impulse_responses__off_0__on_1 &&
+/// reflection_order_IR_truncate_duration > 0. &&
+/// reflection_order_inputDuration > reflection_order_IR_truncate_duration`
+/// equivalent) - this function always performs the truncation once called,
+/// matching the established convention of leaving CLI-flag/gate dispatch
+/// out of the pure-math layer (see [`filter_and_normalize_impulse_responses`]).
+///
+/// Each channel is truncated to `channel.len() * (truncate_duration /
+/// input_duration)` frames (the C's plain truncating `(int)` cast, not
+/// rounded). When `envelope` is `Some`, each retained frame `n` is scaled
+/// by the envelope evaluated at `truncate_duration * n / (new_len - 1)`
+/// via [`crate::control::ControlFn::at`] (`fval`'s own binary-table
+/// boundary handling, reused rather than re-derived) - **faithfully
+/// reproducing the C's own `n == 0, new_len == 1` edge case**: `new_len -
+/// 1` is then `0`, so the lookup time is `0. / 0.` (`NaN`), not `0.`,
+/// matching this module's established precedent of not special-casing
+/// away a real C `NaN` (see [`smooth_release_of_cropped_end`]'s own
+/// finding 17). `envelope: None` reproduces the "NO ENVELOPE FUNCTION
+/// FILE" branch (`ampEnv = 1.`) exactly. Every truncated channel is then
+/// peak-normalized via [`find_peak_amp`], matching the C's own per-channel
+/// `peakAmp`/divide loop.
+pub fn truncate_envelope_and_normalize_impulse_responses(
+    channels: &[Vec<f32>],
+    input_duration: f32,
+    truncate_duration: f32,
+    envelope: Option<&crate::control::ControlFn>,
+) -> Vec<Vec<f32>> {
+    debug_assert!(truncate_duration < input_duration);
+    channels
+        .iter()
+        .map(|ch| {
+            let new_len = ((ch.len() as f32) * (truncate_duration / input_duration)) as usize;
+            let mut out = vec![0.0f32; new_len];
+            for n in 0..new_len {
+                let amp_env = match envelope {
+                    Some(env) => {
+                        let t = truncate_duration * n as f32 / (new_len - 1) as f32;
+                        env.at(t, truncate_duration)
+                    }
+                    None => 1.0,
+                };
+                out[n] = amp_env * ch[n];
+            }
+            let peak = find_peak_amp(&out);
+            if peak > 0.0 {
+                for x in out.iter_mut() {
+                    *x /= peak;
+                }
+            }
+            out
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -4320,6 +4551,153 @@ mod tests {
         let size =
             wall_impulse_response_cropped_size(&mut data, false, -60.0, 0.0, 44100.0, &db_to_amp());
         assert_eq!(size, 2);
+    }
+
+    #[test]
+    fn filter_and_normalize_impulse_response_now_preserves_length() {
+        // Finding 27: the C's own "grow" branch is dead - the real
+        // function always returns exactly the input length.
+        let ir = vec![0.5, -1.0, 0.25, 0.1, 0.0, 0.0, 0.0];
+        let rolloff = no_op_rolloff();
+        let out = filter_and_normalize_impulse_response_now(&ir, 44100.0, &rolloff, &db_to_amp());
+        assert_eq!(out.len(), ir.len());
+    }
+
+    #[test]
+    fn filter_and_normalize_impulse_response_now_truncates_padded_filter_output() {
+        // filter_audio_array's own padded buffer is longer than the input
+        // (finding 16); this function must truncate back down (finding 27).
+        let ir = vec![1.0, 0.5, -0.5, 0.25, -0.25];
+        let rolloff = BandpassRolloff {
+            low_freq: 50.0,
+            high_freq: 1_000_000.0,
+            low_rolloff_db_per_octave: -96.0,
+            high_rolloff_db_per_octave: -96.0,
+            compound_levels: 1,
+        };
+        let out = filter_and_normalize_impulse_response_now(&ir, 100.0, &rolloff, &db_to_amp());
+        assert_eq!(out.len(), ir.len());
+    }
+
+    #[test]
+    fn filter_and_normalize_impulse_response_now_peak_normalizes() {
+        let ir = vec![0.5, -1.0, 0.25, 0.1, 0.0, 0.0, 0.0];
+        let rolloff = no_op_rolloff();
+        let out = filter_and_normalize_impulse_response_now(&ir, 44100.0, &rolloff, &db_to_amp());
+        let peak = find_peak_amp(&out);
+        assert!((peak - 1.0).abs() < 1e-4, "expected unity peak, got {peak}");
+    }
+
+    #[test]
+    fn filter_and_normalize_impulse_response_now_silence_stays_silent() {
+        let ir = vec![0.0; 8];
+        let rolloff = no_op_rolloff();
+        let out = filter_and_normalize_impulse_response_now(&ir, 44100.0, &rolloff, &db_to_amp());
+        assert!(
+            out.iter().all(|&x| x == 0.0),
+            "silence in, silence out: {:?}",
+            out
+        );
+    }
+
+    #[test]
+    fn filter_and_normalize_impulse_responses_processes_each_channel_independently() {
+        let channels = vec![vec![0.2, 0.4, 0.1], vec![0.0, 0.0, 0.0]];
+        let rolloff = no_op_rolloff();
+        let out =
+            filter_and_normalize_impulse_responses(&channels, 44100.0, &rolloff, &db_to_amp());
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].len(), 3);
+        assert_eq!(out[1].len(), 3);
+        assert!((find_peak_amp(&out[0]) - 1.0).abs() < 1e-4);
+        assert!(out[1].iter().all(|&x| x == 0.0));
+    }
+
+    #[test]
+    fn post_convolution_skips_order_one_channels_untouched() {
+        // rolloffScaler = cv_order_sequence_sizes[i] - 1; a size-1 channel
+        // gets scaler 0., and the C's own `if (rolloffScaler >= 1.)` guard
+        // leaves it completely alone (no filtering, no normalizing).
+        let channels = vec![vec![0.2, 0.4, 0.1]];
+        let sizes = vec![1];
+        let rolloff = no_op_rolloff();
+        let out = filter_and_normalize_reflection_order_impulse_responses_post_convolution(
+            &channels,
+            &sizes,
+            44100.0,
+            &rolloff,
+            &db_to_amp(),
+        );
+        assert_eq!(out[0], channels[0]);
+    }
+
+    #[test]
+    fn post_convolution_filters_order_two_channels() {
+        let channels = vec![vec![0.2, 0.4, 0.1, 0.0]];
+        let sizes = vec![2]; // rolloffScaler = 1. -> >= 1. -> filtered+normalized
+        let rolloff = no_op_rolloff();
+        let out = filter_and_normalize_reflection_order_impulse_responses_post_convolution(
+            &channels,
+            &sizes,
+            44100.0,
+            &rolloff,
+            &db_to_amp(),
+        );
+        assert_eq!(out[0].len(), channels[0].len());
+        assert!((find_peak_amp(&out[0]) - 1.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn truncate_envelope_and_normalize_without_envelope_truncates_and_normalizes() {
+        let channels = vec![vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]];
+        // input_duration=1.0s, truncate to 0.5s -> new_len = 10 * 0.5 = 5.
+        let out = truncate_envelope_and_normalize_impulse_responses(&channels, 1.0, 0.5, None);
+        assert_eq!(out[0].len(), 5);
+        // Raw truncated values [0.1..0.5]; peak 0.5 -> normalized.
+        let expected = [0.2, 0.4, 0.6, 0.8, 1.0];
+        for (a, b) in out[0].iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-4, "{:?} vs {:?}", out[0], expected);
+        }
+    }
+
+    #[test]
+    fn truncate_envelope_and_normalize_with_envelope_scales_boundary_frames() {
+        let channels = vec![vec![1.0, 1.0, 1.0, 1.0]];
+        let envelope = crate::control::ControlFn::Table(vec![0.0, 1.0]);
+        // truncate_duration=1.0, input_duration=2.0 -> new_len = 4 * 0.5 = 2.
+        let out =
+            truncate_envelope_and_normalize_impulse_responses(&channels, 2.0, 1.0, Some(&envelope));
+        assert_eq!(out[0].len(), 2);
+        // n=0 -> t=0. -> envelope 0.; n=1 -> t=1.0*1/(2-1)=1. -> envelope 1.
+        // Peak-normalizing by the surviving 1.0 peak leaves it unchanged.
+        assert_eq!(out[0], vec![0.0, 1.0]);
+    }
+
+    #[test]
+    fn bandpass_rolloff_scaled_only_changes_db_per_octave_terms() {
+        let base = BandpassRolloff {
+            low_freq: 50.0,
+            high_freq: 5000.0,
+            low_rolloff_db_per_octave: -24.0,
+            high_rolloff_db_per_octave: -48.0,
+            compound_levels: 2,
+        };
+        let scaled = base.scaled(3.0);
+        assert_eq!(scaled.low_freq, base.low_freq);
+        assert_eq!(scaled.high_freq, base.high_freq);
+        assert_eq!(scaled.compound_levels, base.compound_levels);
+        assert_eq!(scaled.low_rolloff_db_per_octave, -72.0);
+        assert_eq!(scaled.high_rolloff_db_per_octave, -144.0);
+    }
+
+    fn no_op_rolloff() -> BandpassRolloff {
+        BandpassRolloff {
+            low_freq: 0.0,
+            high_freq: 1_000_000.0,
+            low_rolloff_db_per_octave: 0.0,
+            high_rolloff_db_per_octave: 0.0,
+            compound_levels: 1,
+        }
     }
 
     fn db_to_amp() -> DbToAmp {

@@ -75,6 +75,7 @@ file. Read the module doc comment for the current findings.
 | 4 | Impulse-response convolution and filtering math | `8971113` |
 | 5 | Direct-sound pulse path and speaker-dispersion math | `91faa8d` |
 | 6 | Wall/reflection-order impulse-response cache bookkeeping (the longest-cached-prefix search a new reflection reuses instead of recomputing a shared convolution chain) | `c4859e3` |
+| 7 | Filter/normalize and truncate/envelope/normalize orchestration for wall and reflection-order impulse responses | pending |
 
 Phase 6 also settled an open question from Phase 4: the wall
 channel-assignment and gainscale-level readers turned out to hold no pure
@@ -83,13 +84,17 @@ deferred to `pvc-cli`/`pvc-io`. The C's own manual cache memory-growth
 code has no Rust equivalent to write at all, since a `Vec`-backed cache
 grows on its own.
 
-Work still not started, after Phase 6 lands:
+Phase 7 found one more real dead-code case (finding 27 in the module's own
+doc comment): the C's own "did the filtered result come back longer than
+the input" grow-and-reshuffle branch can never run, in all three
+filter-and-normalize orchestration functions alike. The port always
+returns data the same length as its input for this reason, not because of
+a missing case.
+
+Work still not started, after Phase 7 lands:
 
 - The actual file I/O that reads and writes per-wall and
   per-reflection-order impulse-response files.
-- The filter-and-normalize and truncate-envelope-and-normalize
-  orchestration functions. These mostly call already-ported math in
-  sequence, deferred to their own phase rather than folded into Phase 6.
 - Presence-level bookkeeping.
 - `main()`'s CLI control flow.
 - A golden test against the real oracle binary.
