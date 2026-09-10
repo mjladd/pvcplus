@@ -7,7 +7,7 @@ use pvc_core::tools::filter::{process_channel, FilterParams};
 
 use crate::cli::FilterArgs;
 
-pub fn run(args: &FilterArgs) -> Result<()> {
+pub fn run(args: &FilterArgs, json: bool, quiet: bool) -> Result<()> {
     let audio = pvc_io::read_audio(&args.input)
         .with_context(|| format!("reading {}", args.input.display()))?;
     let (response_amps, analysis_n) = pvc_io::read_fr_amplitudes(&args.response)
@@ -95,5 +95,6 @@ pub fn run(args: &FilterArgs) -> Result<()> {
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
         .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
     Ok(())
 }

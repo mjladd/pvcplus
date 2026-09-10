@@ -9,7 +9,7 @@ use pvc_core::{ControlFn, Window};
 
 use crate::cli::PvArgs;
 
-pub fn run(args: &PvArgs) -> Result<()> {
+pub fn run(args: &PvArgs, json: bool, quiet: bool) -> Result<()> {
     let params = PvParams {
         fft_size: args.fft,
         window_size: args.window_size,
@@ -31,20 +31,40 @@ pub fn run(args: &PvArgs) -> Result<()> {
         filter_lowfreq: args.filter_low,
         filter_hifreq: args.filter_high,
     };
-    run_pv(&args.input, &args.output, params)
+    run_pv(&args.input, &args.output, params, json, quiet)
 }
 
 /// `pvc stretch --factor <f>`: `pv` with only the time-stretch factor set.
-pub fn run_stretch(factor: f32, input: &Path, output: &Path) -> Result<()> {
-    run_pv(input, output, default_params(factor, ControlFn::Const(0.0)))
+pub fn run_stretch(
+    factor: f32,
+    input: &Path,
+    output: &Path,
+    json: bool,
+    quiet: bool,
+) -> Result<()> {
+    run_pv(
+        input,
+        output,
+        default_params(factor, ControlFn::Const(0.0)),
+        json,
+        quiet,
+    )
 }
 
 /// `pvc pitch --semitones <s>`: `pv` with only the pitch transposition set.
-pub fn run_pitch(semitones: f32, input: &Path, output: &Path) -> Result<()> {
+pub fn run_pitch(
+    semitones: f32,
+    input: &Path,
+    output: &Path,
+    json: bool,
+    quiet: bool,
+) -> Result<()> {
     run_pv(
         input,
         output,
         default_params(1.0, ControlFn::Const(semitones)),
+        json,
+        quiet,
     )
 }
 
@@ -75,7 +95,13 @@ fn default_params(time_factor: f32, pitch: ControlFn) -> PvParams {
     }
 }
 
-fn run_pv(input: &Path, output: &Path, mut params: PvParams) -> Result<()> {
+fn run_pv(
+    input: &Path,
+    output: &Path,
+    mut params: PvParams,
+    json: bool,
+    quiet: bool,
+) -> Result<()> {
     let audio =
         pvc_io::read_audio(input).with_context(|| format!("reading {}", input.display()))?;
 
@@ -137,5 +163,6 @@ fn run_pv(input: &Path, output: &Path, mut params: PvParams) -> Result<()> {
     // Python-based golden-harness comparator.
     pvc_io::write_wav(output, &out_buffer, pvc_io::SampleFormat::I16)
         .with_context(|| format!("writing {}", output.display()))?;
+    crate::summary::RunSummary::from_buffer(output, &out_buffer).print(json, quiet);
     Ok(())
 }

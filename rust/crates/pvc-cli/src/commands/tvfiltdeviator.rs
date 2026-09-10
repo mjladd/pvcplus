@@ -34,7 +34,7 @@ fn resolve_analysis_channel(
     }
 }
 
-pub fn run(args: &TvfiltdeviatorArgs) -> Result<()> {
+pub fn run(args: &TvfiltdeviatorArgs, json: bool, quiet: bool) -> Result<()> {
     let audio = pvc_io::read_audio(&args.input)
         .with_context(|| format!("reading {}", args.input.display()))?;
     let filter_data = pvc_io::read_pva(&args.filter_response)
@@ -192,5 +192,7 @@ pub fn run(args: &TvfiltdeviatorArgs) -> Result<()> {
         channels: out_channels,
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
-        .with_context(|| format!("writing {}", args.output.display()))
+        .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
+    Ok(())
 }

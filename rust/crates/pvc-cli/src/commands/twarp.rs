@@ -7,7 +7,7 @@ use pvc_core::tools::twarp::{process_channel, TwarpParams};
 
 use crate::cli::TwarpArgs;
 
-pub fn run(args: &TwarpArgs) -> Result<()> {
+pub fn run(args: &TwarpArgs, json: bool, quiet: bool) -> Result<()> {
     let analysis = pvc_io::read_pva(&args.analysis)
         .or_else(|_| pvc_io::read_legacy_pva(&args.analysis))
         .with_context(|| format!("reading {}", args.analysis.display()))?;
@@ -96,5 +96,6 @@ pub fn run(args: &TwarpArgs) -> Result<()> {
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
         .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
     Ok(())
 }

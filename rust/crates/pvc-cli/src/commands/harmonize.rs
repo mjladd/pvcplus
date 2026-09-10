@@ -39,7 +39,7 @@ fn read_table(path: &std::path::Path) -> Result<Vec<TableRow>> {
         .collect())
 }
 
-pub fn run(args: &HarmonizeArgs) -> Result<()> {
+pub fn run(args: &HarmonizeArgs, json: bool, quiet: bool) -> Result<()> {
     let audio = pvc_io::read_audio(&args.input)
         .with_context(|| format!("reading {}", args.input.display()))?;
     let table = read_table(&args.table)?;
@@ -118,5 +118,6 @@ pub fn run(args: &HarmonizeArgs) -> Result<()> {
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
         .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
     Ok(())
 }

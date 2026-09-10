@@ -8,7 +8,7 @@ use pvc_core::tools::delayfilter::{process_channel, DelayfilterParams};
 
 use crate::cli::DelayfilterArgs;
 
-pub fn run(args: &DelayfilterArgs) -> Result<()> {
+pub fn run(args: &DelayfilterArgs, json: bool, quiet: bool) -> Result<()> {
     let analysis = pvc_io::read_pva(&args.analysis)
         .or_else(|_| pvc_io::read_legacy_pva(&args.analysis))
         .with_context(|| format!("reading {}", args.analysis.display()))?;
@@ -96,5 +96,7 @@ pub fn run(args: &DelayfilterArgs) -> Result<()> {
         channels: out_channels,
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
-        .with_context(|| format!("writing {}", args.output.display()))
+        .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
+    Ok(())
 }

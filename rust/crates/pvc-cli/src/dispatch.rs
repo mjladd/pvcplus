@@ -24,37 +24,37 @@ pub fn execute(command: Command, json: bool, dry_run: bool, quiet: bool) -> anyh
 
         Command::Fn { generator } => commands::gen::run(generator),
 
-        Command::Pv(args) => commands::pv::run(&args),
+        Command::Pv(args) => commands::pv::run(&args, json, quiet),
 
         Command::Stretch {
             factor,
             input,
             output,
-        } => commands::pv::run_stretch(factor, &input, &output),
+        } => commands::pv::run_stretch(factor, &input, &output, json, quiet),
 
         Command::Pitch {
             semitones,
             input,
             output,
-        } => commands::pv::run_pitch(semitones, &input, &output),
+        } => commands::pv::run_pitch(semitones, &input, &output, json, quiet),
 
         Command::Analyze(args) => commands::analyze::run(&args),
 
-        Command::Tvfilter(args) => commands::tvfilter::run(&args),
+        Command::Tvfilter(args) => commands::tvfilter::run(&args, json, quiet),
 
-        Command::Twarp(args) => commands::twarp::run(&args),
+        Command::Twarp(args) => commands::twarp::run(&args, json, quiet),
 
         Command::Freqresponse(args) => commands::freqresponse::run(&args),
 
-        Command::Filter(args) => commands::filter::run(&args),
+        Command::Filter(args) => commands::filter::run(&args, json, quiet),
 
-        Command::Denoise(args) => commands::denoise::run(&args),
+        Command::Denoise(args) => commands::denoise::run(&args, json, quiet),
 
-        Command::Compand(args) => commands::compand::run(&args),
+        Command::Compand(args) => commands::compand::run(&args, json, quiet),
 
-        Command::Spectwarp(args) => commands::spectwarp::run(&args),
+        Command::Spectwarp(args) => commands::spectwarp::run(&args, json, quiet),
 
-        Command::Harmonize(args) => commands::harmonize::run(&args),
+        Command::Harmonize(args) => commands::harmonize::run(&args, json, quiet),
 
         Command::Envelope(args) => commands::envelope::run(&args),
 
@@ -73,37 +73,39 @@ pub fn execute(command: Command, json: bool, dry_run: bool, quiet: bool) -> anyh
 
         Command::Impulseresponse(args) => commands::impulseresponse::run(&args),
 
-        Command::Irconvolver(args) => commands::irconvolver::run(&args),
+        Command::Irconvolver(args) => commands::irconvolver::run(&args, json, quiet),
 
-        Command::Ring(args) => commands::ring::run(&args),
+        Command::Ring(args) => commands::ring::run(&args, json, quiet),
 
-        Command::Ringfilter(args) => commands::ringfilter::run(&args),
+        Command::Ringfilter(args) => commands::ringfilter::run(&args, json, quiet),
 
-        Command::Ringtvfilter(args) => commands::ringtvfilter::run(&args),
+        Command::Ringtvfilter(args) => commands::ringtvfilter::run(&args, json, quiet),
 
-        Command::Irconvolvesequencer(args) => commands::irconvolvesequencer::run(&args),
+        Command::Irconvolvesequencer(args) => {
+            commands::irconvolvesequencer::run(&args, json, quiet)
+        }
 
-        Command::Spectralextractor(args) => commands::spectralextractor::run(&args),
+        Command::Spectralextractor(args) => commands::spectralextractor::run(&args, json, quiet),
 
         Command::Peakformant(args) => commands::peakformant::run(&args),
 
         Command::Specflattracker(args) => commands::specflattracker::run(&args),
 
-        Command::Convolver(args) => commands::convolver::run(&args),
+        Command::Convolver(args) => commands::convolver::run(&args, json, quiet),
 
-        Command::Delayfilter(args) => commands::delayfilter::run(&args),
+        Command::Delayfilter(args) => commands::delayfilter::run(&args, json, quiet),
 
-        Command::Filtdeviator(args) => commands::filtdeviator::run(&args),
+        Command::Filtdeviator(args) => commands::filtdeviator::run(&args, json, quiet),
 
-        Command::Tvfiltdeviator(args) => commands::tvfiltdeviator::run(&args),
+        Command::Tvfiltdeviator(args) => commands::tvfiltdeviator::run(&args, json, quiet),
 
-        Command::Ratechanger(args) => commands::ratechanger::run(&args),
+        Command::Ratechanger(args) => commands::ratechanger::run(&args, json, quiet),
 
-        Command::Inharmonator(args) => commands::inharmonator::run(&args),
+        Command::Inharmonator(args) => commands::inharmonator::run(&args, json, quiet),
 
-        Command::Formantsmapper(args) => commands::formantsmapper::run(&args),
+        Command::Formantsmapper(args) => commands::formantsmapper::run(&args, json, quiet),
 
         Command::Spectrummapper(args) => commands::spectrummapper::run(&args),
-        Command::Chordmapperplus(args) => commands::chordmapperplus::run(&args),
+        Command::Chordmapperplus(args) => commands::chordmapperplus::run(&args, json, quiet),
     }
 }

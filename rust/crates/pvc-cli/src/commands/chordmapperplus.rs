@@ -24,7 +24,7 @@ fn resolve_table(token: &str) -> Result<Vec<f32>, String> {
         .map_err(|e| format!("reading control file {token:?}: {e}"))
 }
 
-pub fn run(args: &ChordmapperplusArgs) -> Result<()> {
+pub fn run(args: &ChordmapperplusArgs, json: bool, quiet: bool) -> Result<()> {
     let analysis = pvc_io::read_pva(&args.analysis)
         .or_else(|_| pvc_io::read_legacy_pva(&args.analysis))
         .with_context(|| format!("reading {}", args.analysis.display()))?;
@@ -249,6 +249,7 @@ pub fn run(args: &ChordmapperplusArgs) -> Result<()> {
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
         .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
 
     Ok(())
 }
