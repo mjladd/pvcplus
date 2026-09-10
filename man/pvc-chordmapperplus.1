@@ -1,0 +1,120 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-chordmapperplus 1  "pvc-chordmapperplus " 
+.SH NAME
+pvc\-chordmapperplus \- Data\-file\-driven multi\-tone additive chord/harmony synthesizer \- the largest tool in this project\*(Aqs Phase 5 port. Each tone in the `\-\-tones` data file picks a source point out of the `\-\-analysis` `.pva` file, builds a set of partials around it, and resynthesizes them blended between the live per\-frame analysis and a static spectral\-morph average of the whole file
+.SH SYNOPSIS
+\fBpvc\-chordmapperplus\fR <\fB\-\-analysis\fR> <\fB\-\-tones\fR> [\fB\-\-window\-size\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-duration\fR] [\fB\-\-time\-origin\fR] [\fB\-\-rate\fR] [\fB\-\-window\-low\fR] [\fB\-\-window\-high\fR] [\fB\-\-loop\-smooth\fR] [\fB\-\-window\-mode\fR] [\fB\-\-loop\-mode\fR] [\fB\-\-onset\-release\fR] [\fB\-\-loop\-normalize\fR] [\fB\-\-master\-gain\fR] [\fB\-\-tones\-gain\fR] [\fB\-\-tones\-freq\-shift\fR] [\fB\-\-tones\-pitch\fR] [\fB\-\-rate\-correlated\-tone\fR] [\fB\-\-rate\-correlated\-noise\fR] [\fB\-\-rate\-correlated\-force\-suppression\fR] [\fB\-\-noise\-limit\fR] [\fB\-\-noise\-limit\-rolloff\fR] [\fB\-\-pitch\-change\-expansion\fR] [\fB\-\-frequency\-change\-threshold\fR] [\fB\-\-frequency\-change\-response\fR] [\fB\-\-vibrato\-rate\fR] [\fB\-\-vibrato\-period\-mechanical\fR] [\fB\-\-natural\-vibrato\fR] [\fB\-\-original\-audio\fR] [\fB\-\-vibrato\-reference\fR] [\fB\-\-vibrato\-deviation\fR] [\fB\-\-threshold\fR] [\fB\-\-channel\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Data\-file\-driven multi\-tone additive chord/harmony synthesizer \- the largest tool in this project\*(Aqs Phase 5 port. Each tone in the `\-\-tones` data file picks a source point out of the `\-\-analysis` `.pva` file, builds a set of partials around it, and resynthesizes them blended between the live per\-frame analysis and a static spectral\-morph average of the whole file.
+.PP
+Ports `chordmapperplus` (`legacy/pvc_src/chordmapperplus.c`); see `pvc\-core::tools::chordmapperplus`\*(Aqs own doc comment for the full, phase\-by\-phase account of what\*(Aqs in and out of scope, including a real per\-band `force_factor` clamping bug found while re\-verifying Phase 1\*(Aqs own formulas, and a real naming\-vs\-behavior mismatch in `\-\-pitch\-change\-expansion` (a stable\-frequency noise bin gets *quieter*, not louder, despite the C\*(Aqs own "expansion" name). Source\-signal mixing (`\-s`/`\-a`/`\-P`/`\-G`) and the auto\-adjust\-center\-frequency/bandwidth refinement (`\-n`/`\-o`/`\-l`) are not implemented and have no flag here.
+.SH OPTIONS
+.TP
+\fB\-\-analysis\fR \fI<ANALYSIS>\fR
+`\-f`: path to the `.pva` analysis file every tone\*(Aqs own source point is drawn from. Required
+.TP
+\fB\-\-tones\fR \fI<TONES>\fR
+`\-F`: path to the tone data file (23 whitespace\-separated fields per tone \- source point, transpose point, partial spacing/count/ bandwidth, spectral stretch, tone/noise levels, ...). Required
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 0]
+`\-M`: resynthesis window length. `0` means auto (`2 *` the analysis file\*(Aqs own FFT size)
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+`\-I`: resynthesis frames per second (sets the hop size). Values under `32` reset to `200`
+.TP
+\fB\-\-duration\fR \fI<DURATION>\fR [default: 0]
+Output duration in seconds. `0` (the default) means "use the analysis file\*(Aqs own duration"
+.TP
+\fB\-\-time\-origin\fR \fI<TIME_ORIGIN>\fR [default: 0]
+`\-x`: time\-position origin in seconds into the analysis data \- a plain number, or `@path`
+.TP
+\fB\-\-rate\fR \fI<RATE>\fR [default: 1]
+`\-Y`: analysis\-data playback rate multiplier \- a plain number, or `@path`
+.TP
+\fB\-\-window\-low\fR \fI<WINDOW_LOW>\fR [default: 0]
+`\-g`: analysis time window low boundary in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-window\-high\fR \fI<WINDOW_HIGH>\fR [default: \-1]
+`\-k`: analysis time window high boundary in seconds (negative = end of analysis data) \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-smooth\fR \fI<LOOP_SMOOTH>\fR [default: 0.2]
+`\-/`: sampler\-loop boundary smoothing time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-window\-mode\fR \fI<WINDOW_MODE>\fR [default: loop]
+`\-z`: time\-window behavior: stop once time exits the window (`autostop`), or wrap/fold/clip at its edges forever (`loop`, the real C\*(Aqs own default)
+.TP
+\fB\-\-loop\-mode\fR \fI<LOOP_MODE>\fR [default: wrap]
+`\-Q`: sampler\-loop boundary behavior (only used in `loop` window mode)
+.TP
+\fB\-\-onset\-release\fR \fI<ONSET_RELEASE>\fR [default: off]
+`\-@`: onset/release segment mode
+.TP
+\fB\-\-loop\-normalize\fR
+`\-e`: crossfade the analysis channel\*(Aqs own overall amplitude toward a reference level at the loop window\*(Aqs own two boundaries (only in `loop` window mode)
+.TP
+\fB\-\-master\-gain\fR \fI<MASTER_GAIN>\fR [default: 0]
+`\-A`: master gain in decibels \- a plain number, or `@path`
+.TP
+\fB\-\-tones\-gain\fR \fI<TONES_GAIN>\fR [default: 0]
+`\-m`: master gain for every tone, in decibels \- a plain number, or `@path`
+.TP
+\fB\-\-tones\-freq\-shift\fR \fI<TONES_FREQ_SHIFT>\fR [default: 0]
+`\-q`: frequency shift (Hz) applied to every tone whose own master transposition switch is on \- a plain number, or `@path`
+.TP
+\fB\-\-tones\-pitch\fR \fI<TONES_PITCH>\fR [default: 1]
+`\-X`: pitch transposition (semitones) applied to every tone whose own master transposition switch is on \- a plain number, or `@path`
+.TP
+\fB\-\-rate\-correlated\-tone\fR \fI<RATE_CORRELATED_TONE>\fR [default: 0]
+`\-T`: rate\-correlated tone\-level control in decibels \- a plain number, or `@path`. Has no audible effect unless `\-\-rate` (`\-Y`) varies away from `1`
+.TP
+\fB\-\-rate\-correlated\-noise\fR \fI<RATE_CORRELATED_NOISE>\fR [default: 0]
+`\-E`: rate\-correlated noise\-level control in decibels \- a plain number, or `@path`
+.TP
+\fB\-\-rate\-correlated\-force\-suppression\fR
+`\-B`: scale `force_factor`/the harmony and noise stasis medians down as `\-\-rate` approaches `0`
+.TP
+\fB\-\-noise\-limit\fR \fI<NOISE_LIMIT>\fR [default: 0]
+`\-L`: noise band decibel\-limiter offset \- a plain number, or `@path`
+.TP
+\fB\-\-noise\-limit\-rolloff\fR \fI<NOISE_LIMIT_ROLLOFF>\fR [default: 0]
+`\-b`: noise band decibel\-limiter rolloff \- a plain number, or `@path`
+.TP
+\fB\-\-pitch\-change\-expansion\fR \fI<PITCH_CHANGE_EXPANSION>\fR [default: \-50]
+`\-S`: despite the real C\*(Aqs own "expansion" naming, a *negative* value here makes a noise bin *quieter* once its own frequency has been stable for a while \- see `pvc\-core::tools::chordmapperplus::ChordmapperplusParams::pitch_change_expansion_db`\*(Aqs own doc comment. A plain number, or `@path`
+.TP
+\fB\-\-frequency\-change\-threshold\fR \fI<FREQUENCY_CHANGE_THRESHOLD>\fR [default: 0.1]
+`\-c`: a noise bin only gets the suppression above once its own smoothed frequency\-change metric drops below this \- a plain number, or `@path`
+.TP
+\fB\-\-frequency\-change\-response\fR \fI<FREQUENCY_CHANGE_RESPONSE>\fR [default: 0.1]
+`\-h`: how many seconds the frequency\-change metric above takes to rise (its own fall is always instant) \- a plain number, or `@path`
+.TP
+\fB\-\-vibrato\-rate\fR \fI<VIBRATO_RATE>\fR [default: 6]
+`\-r`: synthetic vibrato rate in Hz, for tones whose own data\-file switch enables it \- a plain number, or `@path`
+.TP
+\fB\-\-vibrato\-period\-mechanical\fR \fI<VIBRATO_PERIOD_MECHANICAL>\fR [default: 1]
+`\-U`: `1` (mechanical) uses the current natural\-vibrato segment\*(Aqs own period length; `0` (natural) uses the detected average throughout. Only consulted with `\-\-natural\-vibrato`
+.TP
+\fB\-\-natural\-vibrato\fR
+`\-R1`: detect natural vibrato periods from `\-\-original\-audio` and use the detected loop window in place of `\-\-window\-low`/ `\-\-window\-high`. Requires `\-\-original\-audio` and `\-\-vibrato\-reference`
+.TP
+\fB\-\-original\-audio\fR \fI<ORIGINAL_AUDIO>\fR
+The original sound file `\-\-natural\-vibrato` runs pitch tracking against \- the real C\*(Aqs own equivalent input (a global `afile`) is never actually assigned anywhere in `chordmapperplus.c` itself, so this port takes it as an explicit flag instead of reproducing whatever reading an unset global would do
+.TP
+\fB\-\-vibrato\-reference\fR \fI<VIBRATO_REFERENCE>\fR
+`\-u`: the reference fundamental frequency vibrato is detected around \- Hz, or `octave.pitchclass` (`<= 12`). Required with `\-\-natural\-vibrato`
+.TP
+\fB\-\-vibrato\-deviation\fR \fI<VIBRATO_DEVIATION>\fR [default: 0.05]
+`\-V`: how far a period\*(Aqs own length may deviate from the running median and still count as "in vibrato" (as a proportion), before this search widens its own threshold and retries
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+`\-t`: oscillator\-bank resynthesis threshold in decibels \- bins quieter than this are skipped entirely
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR [default: 0]
+`\-C`: which output channel to resynthesize (`0` = every channel used by any tone\*(Aqs own routing, each written independently; `1..` = only that one, 1\-based)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIOUTPUT\fR>
+Output audio file path

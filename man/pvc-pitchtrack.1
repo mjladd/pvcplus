@@ -1,0 +1,93 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-pitchtrack 1  "pvc-pitchtrack " 
+.SH NAME
+pvc\-pitchtrack \- Fundamental\-frequency tracker: a time\-series of scalar pitch values, never audio
+.SH SYNOPSIS
+\fBpvc\-pitchtrack\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-band\-low\fR] [\fB\-\-band\-high\fR] [\fB\-\-method\fR] [\fB\-\-window\-min\fR] [\fB\-\-window\-max\fR] [\fB\-\-detect\-threshold\fR] [\fB\-\-mode\-filter\-window\fR] [\fB\-\-oversample\fR] [\fB\-\-smooth\-response\fR] [\fB\-\-channel\-method\fR] [\fB\-\-compress\-threshold\fR] [\fB\-\-compress\-amount\fR] [\fB\-\-gate\-threshold\fR] [\fB\-\-warp\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-output\-rate\fR] [\fB\-\-output\-format\fR] [\fB\-\-reference\fR] [\fB\-\-output\-type\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Fundamental\-frequency tracker: a time\-series of scalar pitch values, never audio.
+.PP
+Ports `pitchtracker`\*(Aqs audio\-processing path (`legacy/pvc_src/ pitchtracker.c`); see `pvc\-core::tools::pitchtracker`\*(Aqs doc comment for two doc\-corrected defaults and several real bugs reproduced faithfully.
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-band\-low\fR \fI<BAND_LOW>\fR [default: 0]
+
+.TP
+\fB\-\-band\-high\fR \fI<BAND_HIGH>\fR [default: \-1]
+`< 0` means Nyquist
+.TP
+\fB\-\-method\fR \fI<METHOD>\fR [default: optimal\-comb]
+
+.TP
+\fB\-\-window\-min\fR \fI<WINDOW_MIN>\fR [default: 0.05]
+`\-j`: beginning note\-stabilization buffer size in seconds
+.TP
+\fB\-\-window\-max\fR \fI<WINDOW_MAX>\fR [default: 0.3]
+`\-J`: maximum note\-stabilization buffer size in seconds
+.TP
+\fB\-\-detect\-threshold\fR \fI<DETECT_THRESHOLD>\fR [default: \-40]
+
+.TP
+\fB\-\-mode\-filter\-window\fR \fI<MODE_FILTER_WINDOW>\fR [default: 0]
+`\-H`: temporal mode\-filter window, in seconds (`0` disables it)
+.TP
+\fB\-\-oversample\fR \fI<OVERSAMPLE>\fR [default: 0]
+`\-E`: amplitude\-weighted oversampling factor (`0` disables it)
+.TP
+\fB\-\-smooth\-response\fR \fI<SMOOTH_RESPONSE>\fR [default: 0]
+`\-a`: one\-pole lowpass on the output frequency alone
+.TP
+\fB\-\-channel\-method\fR \fI<CHANNEL_METHOD>\fR [default: average]
+
+.TP
+\fB\-\-compress\-threshold\fR \fI<COMPRESS_THRESHOLD>\fR [default: 0]
+
+.TP
+\fB\-\-compress\-amount\fR \fI<COMPRESS_AMOUNT>\fR [default: 0]
+
+.TP
+\fB\-\-gate\-threshold\fR \fI<GATE_THRESHOLD>\fR [default: \-96]
+
+.TP
+\fB\-\-warp\fR \fI<WARP>\fR [default: 0]
+
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+
+.TP
+\fB\-\-output\-rate\fR \fI<OUTPUT_RATE>\fR [default: 500]
+
+.TP
+\fB\-\-output\-format\fR \fI<OUTPUT_FORMAT>\fR [default: freq]
+
+.TP
+\fB\-\-reference\fR \fI<REFERENCE>\fR [default: 440]
+`\-o`: reference pitch, Hz or octave.pitchclass (`<= 12`) \- only affects `semitones\-deviation`/`neg\-semitones\-deviation` output
+.TP
+\fB\-\-output\-type\fR \fI<OUTPUT_TYPE>\fR [default: ascii]
+ASCII (one value per line) or a headerless raw f32 stream
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

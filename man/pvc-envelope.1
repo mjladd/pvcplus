@@ -1,0 +1,81 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-envelope 1  "pvc-envelope " 
+.SH NAME
+pvc\-envelope \- Amplitude envelope over a frequency band: a time\-series of scalar values (ASCII or raw float), never audio
+.SH SYNOPSIS
+\fBpvc\-envelope\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-band\-octave\-pitchclass\fR] [\fB\-\-band\-low\fR] [\fB\-\-band\-high\fR] [\fB\-\-channel\-method\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-filtered\-attack\fR] [\fB\-\-filtered\-release\fR] [\fB\-\-filtered\-cut\fR] [\fB\-\-compress\-threshold\fR] [\fB\-\-compress\-amount\fR] [\fB\-\-gate\-threshold\fR] [\fB\-\-warp\fR] [\fB\-\-output\-rate\fR] [\fB\-\-output\-scale\fR] [\fB\-\-output\-type\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Amplitude envelope over a frequency band: a time\-series of scalar values (ASCII or raw float), never audio.
+.PP
+Ports `envelope`\*(Aqs audio\-processing path (`legacy/pvc_src/ envelope.c`); see `pvc\-core::tools::envelope`\*(Aqs doc comment for the two\-pass design and a real pass\-1/pass\-2 state\-carryover quirk reproduced faithfully.
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-band\-octave\-pitchclass\fR
+Detection\-band boundaries are octave.pitchclass values instead of Hz
+.TP
+\fB\-\-band\-low\fR \fI<BAND_LOW>\fR [default: 0]
+
+.TP
+\fB\-\-band\-high\fR \fI<BAND_HIGH>\fR [default: \-1]
+`< 0` means Nyquist
+.TP
+\fB\-\-channel\-method\fR \fI<CHANNEL_METHOD>\fR [default: average]
+
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+
+.TP
+\fB\-\-filtered\-attack\fR \fI<FILTERED_ATTACK>\fR [default: 0]
+Attack time for the subtractable "filtered envelope" (`\-j`)
+.TP
+\fB\-\-filtered\-release\fR \fI<FILTERED_RELEASE>\fR [default: 0]
+Release time for the subtractable "filtered envelope" (`\-k`)
+.TP
+\fB\-\-filtered\-cut\fR \fI<FILTERED_CUT>\fR [default: 0]
+Proportion of the filtered envelope subtracted from the raw band sum before the main attack/release (`\-m`; `0` = none, `1` = full)
+.TP
+\fB\-\-compress\-threshold\fR \fI<COMPRESS_THRESHOLD>\fR [default: 0]
+
+.TP
+\fB\-\-compress\-amount\fR \fI<COMPRESS_AMOUNT>\fR [default: 0]
+
+.TP
+\fB\-\-gate\-threshold\fR \fI<GATE_THRESHOLD>\fR [default: \-96]
+
+.TP
+\fB\-\-warp\fR \fI<WARP>\fR [default: 0]
+
+.TP
+\fB\-\-output\-rate\fR \fI<OUTPUT_RATE>\fR [default: 500]
+
+.TP
+\fB\-\-output\-scale\fR \fI<OUTPUT_SCALE>\fR [default: amp]
+
+.TP
+\fB\-\-output\-type\fR \fI<OUTPUT_TYPE>\fR [default: ascii]
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

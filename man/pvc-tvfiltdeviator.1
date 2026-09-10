@@ -1,0 +1,174 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-tvfiltdeviator 1  "pvc-tvfiltdeviator " 
+.SH NAME
+pvc\-tvfiltdeviator \- `pvc tvfilter`\*(Aqs own time\-varying cross\-synthetic filter plus a per\-bin, response\-shaped time delay into the source\*(Aqs own delay line and a per\-bin frequency deviation shaped by the response (the same "response\-correlated frequency deviation" `pvc filtdeviator` has)
+.SH SYNOPSIS
+\fBpvc\-tvfiltdeviator\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] <\fB\-\-filter\-response\fR> [\fB\-\-analysis\-channel\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-gain\fR] [\fB\-\-filter\-pitch\-mode\fR] [\fB\-\-invert\-mode\fR] [\fB\-\-time\-origin\fR] [\fB\-\-rate\fR] [\fB\-\-window\-low\fR] [\fB\-\-window\-high\fR] [\fB\-\-loop\-mode\fR] [\fB\-\-onset\-release\fR] [\fB\-\-autostop\fR] [\fB\-\-loop\-normalization\fR] [\fB\-\-loop\-smooth\fR] [\fB\-\-comp\-threshold\fR] [\fB\-\-comp\-db\fR] [\fB\-\-filter\-transpose\fR] [\fB\-\-filter\-shift\fR] [\fB\-\-filter\-release\fR] [\fB\-\-filter\-attack\fR] [\fB\-\-filter\-source\-gain\fR] [\fB\-\-filter\-warpshape\fR] [\fB\-\-filter\-smoothing\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-time\-delay\-base\fR] [\fB\-\-time\-delay\-peak\fR] [\fB\-\-time\-delay\-control\fR] [\fB\-\-time\-delay\-warp\fR] [\fB\-\-freq\-dev\-base\fR] [\fB\-\-freq\-dev\-peak\fR] [\fB\-\-freq\-shift\-dev\-base\fR] [\fB\-\-freq\-shift\-dev\-peak\fR] [\fB\-\-freq\-dev\-control\fR] [\fB\-\-freq\-dev\-mode\fR] [\fB\-\-freq\-dev\-response\fR] [\fB\-\-freq\-dev\-warp\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+`pvc tvfilter`\*(Aqs own time\-varying cross\-synthetic filter plus a per\-bin, response\-shaped time delay into the source\*(Aqs own delay line and a per\-bin frequency deviation shaped by the response (the same "response\-correlated frequency deviation" `pvc filtdeviator` has).
+.PP
+Ports `tvfiltdeviator`\*(Aqs audio\-processing path (`legacy/pvc_src/ tvfiltdeviator.c`); see `pvc\-core::tools::tvfiltdeviator`\*(Aqs doc comment for what\*(Aqs in and out of scope, including the same `analysis_N`\-vs\-`analysis_Nplus2` filter\-fetch stride bug already found and reproduced in `pvc convolver`.
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+`\-N`: FFT size (must be a power of two) \- independent of the filter response file\*(Aqs own FFT size
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 0]
+`\-M`: analysis/resynthesis window length. `0` means auto (`2 * fft`)
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+`\-D`: analysis frames per second (sets the hop size)
+.TP
+\fB\-\-time\-factor\fR \fI<TIME_FACTOR>\fR [default: 1]
+`\-I`: time expansion/contraction factor (`1.0` = unchanged duration)
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: begin time in seconds \- real sample\-accurate trimming
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: end time in seconds (`0` = end of file)
+.TP
+\fB\-\-filter\-response\fR \fI<FILTER_RESPONSE>\fR
+`\-F`: path to the time\-varying filter response file \- a `.pva` analysis file, either the legacy layout or `pvc analyze`\*(Aqs own `PVA1` format. Required
+.TP
+\fB\-\-analysis\-channel\fR \fI<ANALYSIS_CHANNEL>\fR [default: 0]
+`\-K`: which filter\-file channel to use (`0` = pair by channel index with the input sound file)
+.TP
+\fB\-\-pitch\fR \fI<PITCH>\fR [default: 0]
+`\-P`: pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-shift\fR \fI<FREQ_SHIFT>\fR [default: 0]
+`\-a`: frequency shift adder in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-gain\fR \fI<GAIN>\fR [default: 0]
+`\-A`: gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-pitch\-mode\fR \fI<FILTER_PITCH_MODE>\fR [default: source\-only]
+`\-B`: whether the filter\*(Aqs own transpose/shift compensates for `\-\-pitch`/`\-\-freq\-shift`
+.TP
+\fB\-\-invert\-mode\fR \fI<INVERT_MODE>\fR [default: pass]
+`\-q`: filtering method
+.TP
+\fB\-\-time\-origin\fR \fI<TIME_ORIGIN>\fR [default: 0]
+`\-Q`: filter time point origin, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-rate\fR \fI<RATE>\fR [default: 1]
+`\-Y`: filter rate multiplier \- a plain number, or `@path`
+.TP
+\fB\-\-window\-low\fR \fI<WINDOW_LOW>\fR [default: 0]
+`\-g`: filter time window low boundary, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-window\-high\fR \fI<WINDOW_HIGH>\fR [default: \-1]
+`\-G`: filter time window high boundary, in seconds (negative = end of the filter file) \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-mode\fR \fI<LOOP_MODE>\fR [default: wrap]
+`\-x`: sampler\-loop boundary behavior (only used outside autostop mode)
+.TP
+\fB\-\-onset\-release\fR
+`\-v`: trigger the time window only once it\*(Aqs first entered
+.TP
+\fB\-\-autostop\fR
+`\-d`: stop synthesis once the filter\*(Aqs time position exits its window, instead of looping
+.TP
+\fB\-\-loop\-normalization\fR
+`\-u`: keep the filter\*(Aqs own amplitude roughly continuous across a sampler loop\*(Aqs seam
+.TP
+\fB\-\-loop\-smooth\fR \fI<LOOP_SMOOTH>\fR [default: 0.2]
+`\-~`: peak loop\-seam smoothing time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-comp\-threshold\fR \fI<COMP_THRESHOLD>\fR [default: 0]
+`\-E`: filter\-spectrum compression threshold, in dB (`< 0`) \- a plain number, or `@path`
+.TP
+\fB\-\-comp\-db\fR \fI<COMP_DB>\fR [default: 0]
+`\-c`: filter\-spectrum decibels of compression (`< 0`) \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-transpose\fR \fI<FILTER_TRANSPOSE>\fR [default: 0]
+`\-T`: filter response transposition, in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-shift\fR \fI<FILTER_SHIFT>\fR [default: 0]
+`\-V`: filter response shift, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-release\fR \fI<FILTER_RELEASE>\fR [default: 0]
+`\-Z`: filter envelope release time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-attack\fR \fI<FILTER_ATTACK>\fR [default: 0]
+`\-z`: filter envelope attack time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-source\-gain\fR \fI<FILTER_SOURCE_GAIN>\fR [default: \-96]
+`\-S`: blend between the filtered signal and the dry source, in dB. `\-96` (the default) is fully filtered, `0` bypasses the filter entirely. A plain number, or `@path`
+.TP
+\fB\-\-filter\-warpshape\fR \fI<FILTER_WARPSHAPE>\fR [default: 0]
+`\-W`: filter response warp index \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-smoothing\fR \fI<FILTER_SMOOTHING>\fR [default: 0]
+`\-f`: filter response smoothing bandwidth, in octaves (negative) or Hz (positive) \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+`\-l`: amplitude attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+`\-L`: amplitude release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-time\-delay\-base\fR \fI<TIME_DELAY_BASE>\fR [default: 0]
+`\-/a`: time delay base in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-time\-delay\-peak\fR \fI<TIME_DELAY_PEAK>\fR [default: 0]
+`\-:`: time delay peak in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-time\-delay\-control\fR \fI<TIME_DELAY_CONTROL>\fR [default: 1]
+`\-@`: time delay master control (0\-1) \- a plain number, or `@path`
+.TP
+\fB\-\-time\-delay\-warp\fR \fI<TIME_DELAY_WARP>\fR [default: 0]
+`\-//`: time delay response warp index \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-base\fR \fI<FREQ_DEV_BASE>\fR [default: 0]
+`\-h`: base frequency deviation in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-peak\fR \fI<FREQ_DEV_PEAK>\fR [default: 0]
+`\-j`: peak frequency deviation in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-shift\-dev\-base\fR \fI<FREQ_SHIFT_DEV_BASE>\fR [default: 0]
+`\-J`: base frequency deviation shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-shift\-dev\-peak\fR \fI<FREQ_SHIFT_DEV_PEAK>\fR [default: 0]
+`\-k`: peak frequency deviation shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-control\fR \fI<FREQ_DEV_CONTROL>\fR [default: 0]
+`\-O`: frequency deviation master control (0\-1) \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-mode\fR \fI<FREQ_DEV_MODE>\fR [default: 0]
+`\-U`: frequency deviation mode \- `0` (response\-driven, the default) or `@path` to a table (file mode). Random mode (`1`) is not supported \- see `pvc\-core::tools::tvfiltdeviator`\*(Aqs doc comment
+.TP
+\fB\-\-freq\-dev\-response\fR \fI<FREQ_DEV_RESPONSE>\fR [default: 0]
+`\-y`: frequency deviation response time in seconds (file mode only) \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-warp\fR \fI<FREQ_DEV_WARP>\fR [default: 0]
+`\-n`: frequency deviation response warp index \- a plain number, or `@path`
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-60]
+`\-t`: oscillator resynthesis threshold in dB
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

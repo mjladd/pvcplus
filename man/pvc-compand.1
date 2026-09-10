@@ -1,0 +1,90 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-compand 1  "pvc-compand " 
+.SH NAME
+pvc\-compand \- Per\-bin dynamics processor: compresses or expands each bin\*(Aqs amplitude relative to a static peaks/reference file (e.g. from `pvc freqresponse`), within an adjustable frequency band
+.SH SYNOPSIS
+\fBpvc\-compand\fR <\fB\-\-peaks\fR> [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-stretch\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-gain\fR] [\fB\-\-compress\-threshold\fR] [\fB\-\-compress\-amount\fR] [\fB\-\-expand\-threshold\fR] [\fB\-\-expand\-amount\fR] [\fB\-\-band\-low\fR] [\fB\-\-band\-high\fR] [\fB\-\-band\-rolloff\fR] [\fB\-\-peaks\-smoothing\fR] [\fB\-\-attack\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Per\-bin dynamics processor: compresses or expands each bin\*(Aqs amplitude relative to a static peaks/reference file (e.g. from `pvc freqresponse`), within an adjustable frequency band.
+.PP
+Ports `compander`\*(Aqs audio\-processing path (`legacy/pvc_src/ compander.c`); see `pvc\-core::tools::compander`\*(Aqs doc comment for what\*(Aqs in and out of scope (`\-L`/release is a real no\-op in the original tool, not exposed here).
+.SH OPTIONS
+.TP
+\fB\-\-peaks\fR \fI<PEAKS>\fR
+Path to the peaks/reference file (`.fr`\-layout raw `N+2` binary floats, e.g. from `pvc freqresponse`). Its size must match `\-\-fft` exactly \- the real tool exits with an error on mismatch rather than adjusting either value
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two, and must match `\-\-peaks`\*(Aqs own size)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+Analysis/resynthesis window length. `0` means auto (`2 * fft`); the C\*(Aqs own hardcoded default is a literal `2048`, matching `pv`\*(Aqs `\-\-window\-size` gotcha
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-stretch\fR \fI<STRETCH>\fR [default: 1]
+Time\-stretch factor (`1.0` = unchanged)
+.TP
+\fB\-\-pitch\fR \fI<PITCH>\fR [default: 0]
+Pitch shift in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-shift\fR \fI<FREQ_SHIFT>\fR [default: 0]
+Frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-gain\fR \fI<GAIN>\fR [default: 0]
+Gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-compress\-threshold\fR \fI<COMPRESS_THRESHOLD>\fR [default: 0]
+Compression threshold in dB (bins louder than this, relative to the peaks file, are compressed) \- a plain number, or `@path`
+.TP
+\fB\-\-compress\-amount\fR \fI<COMPRESS_AMOUNT>\fR [default: 0]
+Compression amount in dB (ratio; must be negative to actually compress \- a non\-negative value is a no\-op in the real tool) \- a plain number, or `@path`
+.TP
+\fB\-\-expand\-threshold\fR \fI<EXPAND_THRESHOLD>\fR [default: \-96]
+Expansion threshold in dB \- a plain number, or `@path`
+.TP
+\fB\-\-expand\-amount\fR \fI<EXPAND_AMOUNT>\fR [default: 0]
+Expansion amount in dB (must be negative to actually expand) \- a plain number, or `@path`
+.TP
+\fB\-\-band\-low\fR \fI<BAND_LOW>\fR [default: 0]
+Companding band low edge in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-band\-high\fR \fI<BAND_HIGH>\fR [default: \-1]
+Companding band high edge in Hz (`< 0` = Nyquist) \- a plain number, or `@path`
+.TP
+\fB\-\-band\-rolloff\fR \fI<BAND_ROLLOFF>\fR [default: 0]
+Companding band rolloff width in octaves \- a plain number, or `@path`
+.TP
+\fB\-\-peaks\-smoothing\fR \fI<PEAKS_SMOOTHING>\fR [default: 0]
+Peaks\-file smoothing bandwidth, applied once at load time (`< 0` = octaves, `>= 0` = Hz; `0` = no smoothing)
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+Per\-bin amplitude\-change attack time in seconds \- a plain number, or `@path`. (`\-L`/release has no effect in the real tool \- see `pvc\-core::tools::compander`\*(Aqs doc comment \- so it isn\*(Aqt exposed here.)
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+Low shelf EQ gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+High shelf EQ gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+Low shelf EQ frequency in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+High shelf EQ frequency in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+Oscillator resynthesis threshold in dB (bins quieter than this, relative to the frame\*(Aqs own peak, are skipped)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

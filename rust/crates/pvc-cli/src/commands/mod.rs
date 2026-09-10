@@ -2,6 +2,7 @@ pub mod analyze;
 pub mod centroid;
 pub mod chordmapperplus;
 pub mod compand;
+pub mod completions;
 pub mod convert_units;
 pub mod convolver;
 pub mod delayfilter;

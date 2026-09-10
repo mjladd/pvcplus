@@ -1,0 +1,133 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-filter 1  "pvc-filter " 
+.SH NAME
+pvc\-filter \- Fixed\-spectrum phase\-vocoder filter: multiplies each frame\*(Aqs amplitude by a shaped copy of a `.fr` response, then mixes the filtered signal with (unless disabled) the original source
+.SH SYNOPSIS
+\fBpvc\-filter\fR <\fB\-\-response\fR> [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-stretch\fR] [\fB\-\-filter\-pitch\fR] [\fB\-\-filter\-freq\-shift\fR] [\fB\-\-filter\-gain\fR] [\fB\-\-filter\-time\-delay\fR] [\fB\-\-delay\-time\-scaler\fR] [\fB\-\-source\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-time\-delay\fR] [\fB\-\-response\-pitch\fR] [\fB\-\-response\-freq\-shift\fR] [\fB\-\-response\-warp\fR] [\fB\-\-response\-smoothing\fR] [\fB\-\-source\-floor\fR] [\fB\-\-pitch\-shift\-source\-only\fR] [\fB\-\-band\-reject\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-comp\-threshold\fR] [\fB\-\-comp\-amount\fR] [\fB\-\-expand\-threshold\fR] [\fB\-\-expand\-amount\fR] [\fB\-\-normalization\-limit\fR] [\fB\-\-normalize\-to\-response\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Fixed\-spectrum phase\-vocoder filter: multiplies each frame\*(Aqs amplitude by a shaped copy of a `.fr` response, then mixes the filtered signal with (unless disabled) the original source.
+.PP
+Ports `filter`\*(Aqs audio\-processing path (`legacy/pvc_src/ filter.c`); see `pvc\-core::tools::filter`\*(Aqs doc comment for what\*(Aqs in and out of scope (oscillator\-bank resynthesis \- needed only for pitch/frequency\-shifted output \- isn\*(Aqt ported yet).
+.SH OPTIONS
+.TP
+\fB\-\-response\fR \fI<RESPONSE>\fR
+Path to the `.fr` response file (its own size determines the FFT size \- see `pvc\-core::tools::filter`\*(Aqs doc comment)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+Analysis/resynthesis window length. `0` means auto (`2 * fft`); the C\*(Aqs own hardcoded default is a literal `2048`, matching `pv`\*(Aqs `\-\-window\-size` gotcha
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-stretch\fR \fI<STRETCH>\fR [default: 1]
+Time\-stretch factor (`1.0` = unchanged)
+.TP
+\fB\-\-filter\-pitch\fR \fI<FILTER_PITCH>\fR [default: 0]
+Filter\-output pitch shift in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-freq\-shift\fR \fI<FILTER_FREQ_SHIFT>\fR [default: 0]
+Filter\-output frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-gain\fR \fI<FILTER_GAIN>\fR [default: 0]
+Filter\-output gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-time\-delay\fR \fI<FILTER_TIME_DELAY>\fR [default: 0]
+Filter\-output time delay in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-delay\-time\-scaler\fR \fI<DELAY_TIME_SCALER>\fR [default: 1]
+Scales the effective delay used when resolving time\-varying parameters against a delayed frame \- a plain number, or `@path`
+.TP
+\fB\-\-source\fR \fI<SOURCE_ENABLED>\fR [default: true]
+Mix the (delayed/shifted) original source in alongside the filtered signal \- on by default, matching the real tool (see `pvc\-core::tools::filter`\*(Aqs doc comment)
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+true
+.IP \(bu 2
+false
+.RE
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+Source gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-source\-pitch\fR \fI<SOURCE_PITCH>\fR [default: 0]
+Source pitch shift in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-source\-freq\-shift\fR \fI<SOURCE_FREQ_SHIFT>\fR [default: 0]
+Source frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-time\-delay\fR \fI<SOURCE_TIME_DELAY>\fR [default: 0]
+Source time delay in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-response\-pitch\fR \fI<RESPONSE_PITCH>\fR [default: 0]
+Response pitch shift in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-response\-freq\-shift\fR \fI<RESPONSE_FREQ_SHIFT>\fR [default: 0]
+Response frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-response\-warp\fR \fI<RESPONSE_WARP>\fR [default: 0]
+Response magnitude warp index \- a plain number, or `@path`
+.TP
+\fB\-\-response\-smoothing\fR \fI<RESPONSE_SMOOTHING>\fR [default: 0]
+Response smoothing bandwidth: positive is Hz, negative is octaves \- a plain number, or `@path`
+.TP
+\fB\-\-source\-floor\fR \fI<SOURCE_FLOOR>\fR [default: \-96]
+Source signal floor in dB \- how much of the source passes through unfiltered at the response\*(Aqs quietest points \- a plain number, or `@path`
+.TP
+\fB\-\-pitch\-shift\-source\-only\fR
+Apply the filter output\*(Aqs own pitch/frequency shift only to the source, not to how the response is positioned (off by default: the response tracks the filter output\*(Aqs shift too)
+.TP
+\fB\-\-band\-reject\fR
+Invert the response (band\-reject instead of band\-pass)
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+
+.TP
+\fB\-\-comp\-threshold\fR \fI<COMP_THRESHOLD>\fR [default: 0]
+Compression threshold in dB
+.TP
+\fB\-\-comp\-amount\fR \fI<COMP_AMOUNT>\fR [default: 0]
+Compression amount in dB
+.TP
+\fB\-\-expand\-threshold\fR \fI<EXPAND_THRESHOLD>\fR [default: \-96]
+Expansion threshold in dB
+.TP
+\fB\-\-expand\-amount\fR \fI<EXPAND_AMOUNT>\fR [default: 0]
+Expansion amount in dB
+.TP
+\fB\-\-normalization\-limit\fR \fI<NORMALIZATION_LIMIT>\fR [default: 0]
+Per\-frame amplitude normalization limit in dB \- a plain number, or `@path`
+.TP
+\fB\-\-normalize\-to\-response\fR
+Normalize each frame to match the filter response\*(Aqs own loudness instead of the (delayed) input sound\*(Aqs
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+Envelope attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+Envelope release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

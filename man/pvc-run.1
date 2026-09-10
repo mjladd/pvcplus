@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-run 1  "pvc-run " 
+.SH NAME
+pvc\-run \- Run a preset, optionally overriding fields with `\-\-set key=value`
+.SH SYNOPSIS
+\fBpvc\-run\fR [\fB\-\-set\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIPRESET\fR> 
+.SH DESCRIPTION
+Run a preset, optionally overriding fields with `\-\-set key=value`
+.SH OPTIONS
+.TP
+\fB\-\-set\fR \fI<KEY=VALUE>\fR
+Override a field before running, e.g. `\-\-set stretch=1.5`. Unqualified keys apply under `[params]`; `section.key` targets another table; `tool`/`input`/`output` are top\-level fields
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIPRESET\fR>
+Path to a preset TOML file

@@ -1,0 +1,66 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-centroid 1  "pvc-centroid " 
+.SH NAME
+pvc\-centroid \- Spectral centroid (amplitude²\-weighted mean frequency) over a frequency band: a time\-series of scalar values, never audio
+.SH SYNOPSIS
+\fBpvc\-centroid\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-band\-octave\-pitchclass\fR] [\fB\-\-band\-low\fR] [\fB\-\-band\-high\fR] [\fB\-\-channel\-method\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-warp\fR] [\fB\-\-output\-rate\fR] [\fB\-\-output\-format\fR] [\fB\-\-reference\-pitch\fR] [\fB\-\-output\-type\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Spectral centroid (amplitude²\-weighted mean frequency) over a frequency band: a time\-series of scalar values, never audio.
+.PP
+Ports `centroid`\*(Aqs audio\-processing path (`legacy/pvc_src/ centroid.c`); see `pvc\-core::tools::centroid`\*(Aqs doc comment for two provably\-dead flags this port doesn\*(Aqt expose.
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-band\-octave\-pitchclass\fR
+
+.TP
+\fB\-\-band\-low\fR \fI<BAND_LOW>\fR [default: 0]
+
+.TP
+\fB\-\-band\-high\fR \fI<BAND_HIGH>\fR [default: \-1]
+`< 0` means Nyquist
+.TP
+\fB\-\-channel\-method\fR \fI<CHANNEL_METHOD>\fR [default: average]
+
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+
+.TP
+\fB\-\-warp\fR \fI<WARP>\fR [default: 0]
+
+.TP
+\fB\-\-output\-rate\fR \fI<OUTPUT_RATE>\fR [default: 500]
+
+.TP
+\fB\-\-output\-format\fR \fI<OUTPUT_FORMAT>\fR [default: freq]
+
+.TP
+\fB\-\-reference\-pitch\fR \fI<REFERENCE_PITCH>\fR [default: 8]
+Reference pitch in octave.pitchclass notation, used only by `semitones\-deviation`/`neg\-semitones\-deviation` output formats
+.TP
+\fB\-\-output\-type\fR \fI<OUTPUT_TYPE>\fR [default: ascii]
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

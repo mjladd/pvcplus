@@ -1,0 +1,153 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-filtdeviator 1  "pvc-filtdeviator " 
+.SH NAME
+pvc\-filtdeviator \- Fixed\-spectrum, additive source+filter phase\-vocoder filter (like `pvc filter`) plus a per\-bin, response\-shaped time delay into the filter\*(Aqs own delay line, a self\-referential decay/feedback accumulator on that same delay line, and a per\-bin frequency deviation shaped by the response (the tool\*(Aqs own headline "response\-correlated frequency deviation")
+.SH SYNOPSIS
+\fBpvc\-filtdeviator\fR <\fB\-\-response\fR> [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-channel\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-delay\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-filter\-gain\fR] [\fB\-\-filter\-pitch\fR] [\fB\-\-filter\-freq\-shift\fR] [\fB\-\-response\-pitch\fR] [\fB\-\-response\-freq\-shift\fR] [\fB\-\-source\-floor\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-amp\-warp\fR] [\fB\-\-freq\-warp\fR] [\fB\-\-delay\-warp\fR] [\fB\-\-band\-reject\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-time\-delay\-base\fR] [\fB\-\-time\-delay\-peak\fR] [\fB\-\-time\-delay\-control\fR] [\fB\-\-delay\-time\-scaler\fR] [\fB\-\-decay\-time\-peak\fR] [\fB\-\-decay\-time\-base\fR] [\fB\-\-decay\-time\-control\fR] [\fB\-\-freq\-dev\-base\fR] [\fB\-\-freq\-dev\-peak\fR] [\fB\-\-freq\-shift\-dev\-base\fR] [\fB\-\-freq\-shift\-dev\-peak\fR] [\fB\-\-freq\-dev\-control\fR] [\fB\-\-freq\-dev\-mode\fR] [\fB\-\-normalization\-limit\fR] [\fB\-\-normalize\-to\-response\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Fixed\-spectrum, additive source+filter phase\-vocoder filter (like `pvc filter`) plus a per\-bin, response\-shaped time delay into the filter\*(Aqs own delay line, a self\-referential decay/feedback accumulator on that same delay line, and a per\-bin frequency deviation shaped by the response (the tool\*(Aqs own headline "response\-correlated frequency deviation").
+.PP
+Ports `filtdeviator`\*(Aqs audio\-processing path (`legacy/pvc_src/ filtdeviator.c`); see `pvc\-core::tools::filtdeviator`\*(Aqs doc comment for what\*(Aqs in and out of scope, including a real dead computation (`\-~`\*(Aqs own decay\-time response warp) and every `randf()`\-based mode this project defers by established precedent.
+.SH OPTIONS
+.TP
+\fB\-\-response\fR \fI<RESPONSE>\fR
+`\-F`: path to the `.fr` response file (its own size determines the FFT size, matching `pvc filter`\*(Aqs own convention). Required
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 0]
+`\-M`: analysis/resynthesis window length. `0` means auto (`2 * fft`, `fft` being the response file\*(Aqs own FFT size)
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+`\-D`: analysis frames per second (sets the hop size). Values under `32` reset to `200`
+.TP
+\fB\-\-time\-factor\fR \fI<TIME_FACTOR>\fR [default: 1]
+`\-I`: time expansion/contraction factor (`1.0` = unchanged duration). Values `<= 0` reset to `1.0`
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: begin time in seconds \- real sample\-accurate trimming
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: end time in seconds (`0` = end of file)
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR [default: 0]
+`\-C`: which input channel to resynthesize (`0` = all channels, each processed independently; `1..` = only that one, 1\-based, producing mono output). Unlike `pvc delayfilter`\*(Aqs own `\-C`, this tool\*(Aqs does use the number given, confirmed by reading the C
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+`\-h`: source gain in dB \- a plain number, or `@path`. `> \-96` (or time\-varying) enables source mixing entirely, matching `pvc filter`\*(Aqs own default\-on convention
+.TP
+\fB\-\-source\-freq\-shift\fR \fI<SOURCE_FREQ_SHIFT>\fR [default: 0]
+`\-r`: source frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-delay\fR \fI<SOURCE_DELAY>\fR [default: 0]
+`\-s`: source delay time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-source\-pitch\fR \fI<SOURCE_PITCH>\fR [default: 0]
+`\-y`: source pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-gain\fR \fI<FILTER_GAIN>\fR [default: 0]
+`\-A`: filter output gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-pitch\fR \fI<FILTER_PITCH>\fR [default: 0]
+`\-P`: filter output pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-filter\-freq\-shift\fR \fI<FILTER_FREQ_SHIFT>\fR [default: 0]
+`\-a`: filter output frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-response\-pitch\fR \fI<RESPONSE_PITCH>\fR [default: 0]
+`\-T`: response pitch transposition in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-response\-freq\-shift\fR \fI<RESPONSE_FREQ_SHIFT>\fR [default: 0]
+`\-V`: response frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-floor\fR \fI<SOURCE_FLOOR>\fR [default: \-96]
+`\-S`: source signal floor in dB \- a plain number, or `@path`
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+`\-l`: amplitude attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+`\-L`: amplitude release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-amp\-warp\fR \fI<AMP_WARP>\fR [default: 0]
+`\-W`: amplitude response warp index \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-warp\fR \fI<FREQ_WARP>\fR [default: 0]
+`\-v`: frequency response warp index \- a plain number, or `@path`
+.TP
+\fB\-\-delay\-warp\fR \fI<DELAY_WARP>\fR [default: 0]
+`\-o`: time delay response warp index \- a plain number, or `@path`
+.TP
+\fB\-\-band\-reject\fR
+`\-G`: invert the response (band\-reject instead of band\-pass)
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+
+.TP
+\fB\-\-time\-delay\-base\fR \fI<TIME_DELAY_BASE>\fR [default: 0]
+`\-j`: time delay base in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-time\-delay\-peak\fR \fI<TIME_DELAY_PEAK>\fR [default: 0]
+`\-J`: time delay peak in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-time\-delay\-control\fR \fI<TIME_DELAY_CONTROL>\fR [default: 1]
+`\-q`: time delay master control (0\-1) \- a plain number, or `@path`. Real default is `1` (fully engaged) \- the original tool\*(Aqs own `usage()` text claims `[0.]`, but its actual initializer sets `1.`; has no observable effect at `\-j`/`\-J`\*(Aqs own `0` defaults either way, but matters the moment either of those is set without also setting this. Reproduced here rather than "corrected" to `0` (see `pvc\-core::tools::filtdeviator`\*(Aqs doc comment, and `pvc delayfilter`\*(Aqs own `\-T` for the same kind of doc\-vs\-code mismatch)
+.TP
+\fB\-\-delay\-time\-scaler\fR \fI<DELAY_TIME_SCALER>\fR [default: 1]
+`\-@`: scales the effective delay used when resolving time\-varying parameters against a delayed bin \- a plain number, or `@path`
+.TP
+\fB\-\-decay\-time\-peak\fR \fI<DECAY_TIME_PEAK>\fR [default: 0]
+`\-/`: peak decay time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-decay\-time\-base\fR \fI<DECAY_TIME_BASE>\fR [default: 0]
+`\-:`: base decay time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-decay\-time\-control\fR \fI<DECAY_TIME_CONTROL>\fR [default: 1]
+`\-B`: decay time master control (0\-1) \- a plain number, or `@path`. Real default is `1` (fully engaged), same doc\-vs\-code mismatch as `\-q` above \- see that flag\*(Aqs doc comment
+.TP
+\fB\-\-freq\-dev\-base\fR \fI<FREQ_DEV_BASE>\fR [default: 0]
+`\-k`: base frequency deviation in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-peak\fR \fI<FREQ_DEV_PEAK>\fR [default: 0]
+`\-K`: peak frequency deviation in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-shift\-dev\-base\fR \fI<FREQ_SHIFT_DEV_BASE>\fR [default: 0]
+`\-u`: base frequency deviation shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-shift\-dev\-peak\fR \fI<FREQ_SHIFT_DEV_PEAK>\fR [default: 0]
+`\-U`: peak frequency deviation shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-control\fR \fI<FREQ_DEV_CONTROL>\fR [default: 1]
+`\-O`: frequency deviation master control (0\-1) \- a plain number, or `@path`
+.TP
+\fB\-\-freq\-dev\-mode\fR \fI<FREQ_DEV_MODE>\fR [default: 0]
+`\-E`: frequency deviation mode \- `0` (response\-driven, the default) or `@path` to a table (file mode). Random mode (`1`) is not supported \- see `pvc\-core::tools::filtdeviator`\*(Aqs doc comment
+.TP
+\fB\-\-normalization\-limit\fR \fI<NORMALIZATION_LIMIT>\fR [default: 0]
+`\-n`: per\-frame amplitude normalization limit in dB \- a plain number, or `@path`
+.TP
+\fB\-\-normalize\-to\-response\fR
+`\-x`: normalize each frame to match the filter response\*(Aqs own loudness instead of the (delayed) input sound\*(Aqs
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+`\-t`: oscillator resynthesis threshold in dB
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

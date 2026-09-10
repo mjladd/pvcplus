@@ -1,6 +1,5 @@
 ---
 source: crates/pvc-cli/tests/cli.rs
-assertion_line: 12
 expression: help
 ---
 A modern CLI for the PVCplus phase-vocoder toolkit.
@@ -13,6 +12,7 @@ Commands:
   preset               Manage presets (TOML files consumed by `pvc run`)
   run                  Run a preset, optionally overriding fields with `--set key=value`
   fn                   Control-function generators (the CARL/cmusic "GEN" family)
+  completions          Print a shell completion script to stdout
   pv                   Phase vocoder: analyze then resynthesize
   stretch              Time-stretch only - `pvc pv --stretch <factor>` with everything else at its default
   pitch                Pitch transposition only - `pvc pv --pitch <semitones>` with everything else at its default

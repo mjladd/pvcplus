@@ -1,0 +1,18 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-legacy 1  "pvc-legacy " 
+.SH NAME
+pvc\-legacy \- Run a legacy C tool directly (transition path)
+.SH SYNOPSIS
+\fBpvc\-legacy\fR <\fITOOL\fR> [\fIARGS\fR] 
+.SH DESCRIPTION
+Run a legacy C tool directly (transition path).
+.PP
+Executes `$PVC_LEGACY_BIN/<tool>` if that variable is set, else `/opt/pvc\-legacy/bin/<tool>` (where the Docker image installs the legacy build) \- for any tool that hasn\*(Aqt been ported to a native `pvc` subcommand yet. Put `\-\-` before the legacy tool\*(Aqs own flags (`pvc legacy plainpv \-\- \-N 2048`) to guarantee they reach the legacy tool rather than being read as one of pvc\*(Aqs own global flags \- none of the legacy tools\*(Aq single\-dash flags collide with `\-\-quiet`/`\-\-json`/`\-\-dry\-run` today, but `\-\-` makes that certain regardless.
+.SH OPTIONS
+.TP
+<\fITOOL\fR>
+Legacy tool name, e.g. `plainpv`, `pvanalysis`
+.TP
+[\fIARGS\fR]
+Arguments passed through unchanged to the legacy tool

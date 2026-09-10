@@ -1,0 +1,34 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-response-chordresponsemaker 1  "pvc-fn-response-chordresponsemaker " 
+.SH NAME
+pvc\-fn\-response\-chordresponsemaker \- Ports `chordresponsemaker` (`legacy/pvc_src/ chordresponsemaker.c`): a stack of harmonic\-partial tones, each with a triangular\- or rectangular\-windowed dB rolloff around its center frequency, from unordered sextuples `(pitch\-or\-Hz, num_partials, bandwidth, decibels, partial_spacing, db_rolloff_per_octave)`
+.SH SYNOPSIS
+\fBpvc\-fn\-response\-chordresponsemaker\fR [\fB\-\-fft\fR] [\fB\-\-sample\-rate\fR] <\fB\-\-partials\fR> [\fB\-\-accumulation\fR] [\fB\-\-band\-window\fR] [\fB\-\-mode\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Ports `chordresponsemaker` (`legacy/pvc_src/ chordresponsemaker.c`): a stack of harmonic\-partial tones, each with a triangular\- or rectangular\-windowed dB rolloff around its center frequency, from unordered sextuples `(pitch\-or\-Hz, num_partials, bandwidth, decibels, partial_spacing, db_rolloff_per_octave)`
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two)
+.TP
+\fB\-\-sample\-rate\fR \fI<SAMPLE_RATE>\fR [default: 44100]
+Sample rate in Hz. The real tool takes this from a `\-f <soundfile>` it opens only to read the sample rate (and doesn\*(Aqt even mention in its own `usage()` text, despite requiring it) \- this CLI just takes the number directly
+.TP
+\fB\-\-partials\fR \fI<PARTIALS>\fR
+ASCII data file of unordered sextuples: `pitch\-or\-Hz, num_partials, bandwidth, decibels, partial_spacing, db_rolloff_per_octave` (whitespace\-separated)
+.TP
+\fB\-\-accumulation\fR \fI<ACCUMULATION>\fR [default: peak]
+How overlapping partial windows combine at a bin
+.TP
+\fB\-\-band\-window\fR \fI<BAND_WINDOW>\fR [default: triangle]
+The dB rolloff shape around each partial
+.TP
+\fB\-\-mode\fR
+Bandpass (keep the tone shape) or band\-reject (invert it)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIOUTPUT\fR>
+

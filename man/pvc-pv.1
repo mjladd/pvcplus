@@ -1,0 +1,78 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-pv 1  "pvc-pv " 
+.SH NAME
+pvc\-pv \- Phase vocoder: analyze then resynthesize
+.SH SYNOPSIS
+\fBpvc\-pv\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-stretch\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-gain\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-warp\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-threshold\fR] [\fB\-\-filter\-type\fR] [\fB\-\-filter\-low\fR] [\fB\-\-filter\-high\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Phase vocoder: analyze then resynthesize.
+.PP
+Time\-stretch, pitch transposition, frequency shift, gain, spectrum warp, shelf EQ, and a brickwall frequency\-window filter. Ports `plainpv`\*(Aqs audio\-processing path (`legacy/pvc_src/ plainpv.c`) \- see `pvc\-core::tools::pv`\*(Aqs doc comment for exactly what\*(Aqs in and out of scope (its debug/display\-only flags aren\*(Aqt ported).
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+Analysis window length. Defaults to `2048` \- matching `plainpv`\*(Aqs own hardcoded default, which is *not* `2 * fft` despite looking that way for the common `\-\-fft 1024` case (confirmed against the real tool\*(Aqs own startup banner at `\-\-fft 2048`, which still reports window size 2048, not 4096). Pass `0` explicitly for the C\*(Aqs actual auto\-scaling rule (`2 * fft`, or larger still if needed to fit the resynthesis hop) \- that only ever triggers in the C via an explicit `\-M0` or negative override, never by default
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+Analysis/synthesis window shape
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+Analysis frames per second (sets the hop size)
+.TP
+\fB\-\-stretch\fR \fI<STRETCH>\fR [default: 1]
+Time\-stretch factor (`1.0` = unchanged)
+.TP
+\fB\-\-pitch\fR \fI<PITCH>\fR [default: 0]
+Pitch shift in semitones \- a plain number, or `@path` to a control file for a time\-varying shift
+.TP
+\fB\-\-freq\-shift\fR \fI<FREQ_SHIFT>\fR [default: 0]
+Frequency shift in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-gain\fR \fI<GAIN>\fR [default: 0]
+Gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+Amplitude envelope attack time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+Amplitude envelope release time in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-warp\fR \fI<WARP>\fR [default: 0]
+Spectrum magnitude warp index (`0` = no warp) \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+Low shelf EQ gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+High shelf EQ gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+Low shelf EQ frequency in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+High shelf EQ frequency in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-threshold\fR \fI<THRESHOLD>\fR [default: \-96]
+Oscillator resynthesis threshold in dB (bins quieter than this, relative to the frame\*(Aqs own peak, are skipped)
+.TP
+\fB\-\-filter\-type\fR \fI<FILTER_TYPE>\fR [default: bandpass]
+Brickwall frequency\-window filter mode
+.TP
+\fB\-\-filter\-low\fR \fI<FILTER_LOW>\fR [default: 0]
+Brickwall filter low frequency bound in Hz
+.TP
+\fB\-\-filter\-high\fR \fI<FILTER_HIGH>\fR [default: \-1]
+Brickwall filter high frequency bound in Hz (`\-1` = Nyquist)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

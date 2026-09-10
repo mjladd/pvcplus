@@ -1,0 +1,69 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-specflattracker 1  "pvc-specflattracker " 
+.SH NAME
+pvc\-specflattracker \- Spectral flatness tracker: a time\-series of the geometric\-to\- arithmetic mean ratio of each frame\*(Aqs bins over a detection band (near `1.0` for noise\-like spectra, near `0.0` for tonal ones), never audio
+.SH SYNOPSIS
+\fBpvc\-specflattracker\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-band\-octave\-pitchclass\fR] [\fB\-\-band\-low\fR] [\fB\-\-band\-high\fR] [\fB\-\-channel\-method\fR] [\fB\-\-method\fR] [\fB\-\-amplitude\-threshold\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-warp\fR] [\fB\-\-output\-rate\fR] [\fB\-\-output\-format\fR] [\fB\-\-output\-type\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Spectral flatness tracker: a time\-series of the geometric\-to\- arithmetic mean ratio of each frame\*(Aqs bins over a detection band (near `1.0` for noise\-like spectra, near `0.0` for tonal ones), never audio.
+.PP
+Ports `specflattracker`\*(Aqs audio\-processing path (`legacy/ pvc_src/specflattracker.c`); see `pvc\-core::tools:: specflattracker`\*(Aqs doc comment for why it reuses most of `pvc centroid`\*(Aqs two\-pass pipeline, plus a real pass\-2 interpolation quirk absent from `centroid` and reproduced faithfully here.
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-band\-octave\-pitchclass\fR
+
+.TP
+\fB\-\-band\-low\fR \fI<BAND_LOW>\fR [default: 0]
+
+.TP
+\fB\-\-band\-high\fR \fI<BAND_HIGH>\fR [default: \-1]
+`< 0` means Nyquist
+.TP
+\fB\-\-channel\-method\fR \fI<CHANNEL_METHOD>\fR [default: average]
+
+.TP
+\fB\-\-method\fR \fI<METHOD>\fR [default: amplitude]
+`\-m`: which per\-bin quantity feeds the flatness ratio
+.TP
+\fB\-\-amplitude\-threshold\fR \fI<AMPLITUDE_THRESHOLD>\fR [default: \-96]
+`\-c`: amplitude threshold in dB for excluding/flooring low\-valued bins. The real tool\*(Aqs own `usage()` text claims `\-200` as the default, but its actual variable initializer is `\-96.` \- this matches the code, not the usage text (see `pvc\-core::tools:: specflattracker`\*(Aqs doc comment)
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+`\-l`: trajectory ascent (attack) time
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+`\-L`: trajectory descent (release) time
+.TP
+\fB\-\-warp\fR \fI<WARP>\fR [default: 0]
+
+.TP
+\fB\-\-output\-rate\fR \fI<OUTPUT_RATE>\fR [default: 500]
+
+.TP
+\fB\-\-output\-format\fR \fI<OUTPUT_FORMAT>\fR [default: coefficient]
+
+.TP
+\fB\-\-output\-type\fR \fI<OUTPUT_TYPE>\fR [default: ascii]
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

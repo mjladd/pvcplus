@@ -1,0 +1,25 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-gen1 1  "pvc-fn-gen1 " 
+.SH NAME
+pvc\-fn\-gen1 \- gen1: piecewise\-linear envelope from explicit `(time, value)` breakpoints (`legacy/cmusic_gen/gen/gen1.c`)
+.SH SYNOPSIS
+\fBpvc\-fn\-gen1\fR <\fB\-L\fR|\fB\-\-length\fR> [\fB\-\-open\fR] <\fB\-\-point\fR> [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+gen1: piecewise\-linear envelope from explicit `(time, value)` breakpoints (`legacy/cmusic_gen/gen/gen1.c`)
+.SH OPTIONS
+.TP
+\fB\-L\fR, \fB\-\-length\fR \fI<LENGTH>\fR
+Output table length in samples
+.TP
+\fB\-\-open\fR
+Open curve (the default closes it \- see `gen1.c`\*(Aqs `\-o` flag)
+.TP
+\fB\-\-point\fR \fI<POINTS>\fR
+A breakpoint as `time,value`; repeat for each point (need at least two), e.g. `\-\-point 0,0 \-\-point 50,1 \-\-point 100,0`
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIOUTPUT\fR>
+Where to write the resulting table \- `.txt` for ASCII (one value per line), anything else for little\-endian f32 binary

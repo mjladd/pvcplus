@@ -1,0 +1,72 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-freqresponse 1  "pvc-freqresponse " 
+.SH NAME
+pvc\-freqresponse \- Analysis\-driven `.fr` frequency response: accumulates a sound file\*(Aqs spectrum (by average or peak amplitude, across all channels combined) into a response file, with formant detection and optional formant\-band normalization/companding
+.SH SYNOPSIS
+\fBpvc\-freqresponse\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-spectrum\-type\fR] [\fB\-\-weight\-average\fR] [\fB\-\-formant\-normalize\fR] [\fB\-\-formant\-warp\fR] [\fB\-\-freq\-low\fR] [\fB\-\-freq\-high\fR] [\fB\-\-formant\-floor\fR] [\fB\-\-formant\-threshold\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-no\-normalize\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Analysis\-driven `.fr` frequency response: accumulates a sound file\*(Aqs spectrum (by average or peak amplitude, across all channels combined) into a response file, with formant detection and optional formant\-band normalization/companding.
+.PP
+Ports `freqresponse`\*(Aqs audio\-processing path (`legacy/pvc_src/ freqresponse.c`); see `pvc\-core::tools::freqresponse`\*(Aqs doc comment for what\*(Aqs in and out of scope (plot/ASCII/binary formant report files aren\*(Aqt ported \- pure reporting).
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 2048]
+Analysis window length. `0` means auto (`2 * fft`); the C\*(Aqs own hardcoded default is a literal `2048`, matching `pv`\*(Aqs `\-\-window\-size` gotcha
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+Analysis window shape
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+Analysis frames per second (sets the hop size)
+.TP
+\fB\-\-spectrum\-type\fR \fI<SPECTRUM_TYPE>\fR [default: average]
+How frames accumulate into the response spectrum
+.TP
+\fB\-\-weight\-average\fR
+Weight the average toward louder frames (frame amplitude sum to the 5th power) \- only meaningful with `\-\-spectrum\-type average`
+.TP
+\fB\-\-formant\-normalize\fR
+Normalize the response according to its formant peaks; bins between formants get cross\-faded gain from the bounding formants
+.TP
+\fB\-\-formant\-warp\fR \fI<FORMANT_WARP>\fR [default: 0]
+Warp index for mid\-formant amplitude compression/expansion (`> 0` expands the dynamic range between formants, `< 0` compresses it). Applies even with `\-\-formant\-normalize` off \- see `pvc\-core::tools::freqresponse`\*(Aqs doc comment
+.TP
+\fB\-\-freq\-low\fR \fI<FREQ_LOW>\fR [default: 0]
+Low frequency limit for formant detection, in Hz
+.TP
+\fB\-\-freq\-high\fR \fI<FREQ_HIGH>\fR [default: 0]
+High frequency limit for formant detection, in Hz (`0` = Nyquist)
+.TP
+\fB\-\-formant\-floor\fR \fI<FORMANT_FLOOR>\fR [default: \-96]
+Minimum formant peak amplitude, in dB
+.TP
+\fB\-\-formant\-threshold\fR \fI<FORMANT_THRESHOLD>\fR [default: 0.5]
+Formant selection/rejection threshold, `0..1` \- higher values select fewer, stronger formants
+.TP
+\fB\-\-shelf\-low\-gain\fR \fI<SHELF_LOW_GAIN>\fR [default: 0]
+Low shelf EQ gain in dB
+.TP
+\fB\-\-shelf\-high\-gain\fR \fI<SHELF_HIGH_GAIN>\fR [default: 0]
+High shelf EQ gain in dB
+.TP
+\fB\-\-shelf\-low\-freq\fR \fI<SHELF_LOW_FREQ>\fR [default: 200]
+Low shelf EQ frequency in Hz
+.TP
+\fB\-\-shelf\-high\-freq\fR \fI<SHELF_HIGH_FREQ>\fR [default: 2000]
+High shelf EQ frequency in Hz
+.TP
+\fB\-\-no\-normalize\fR
+Skip EQ and its accompanying peak normalization entirely (inverted from the C\*(Aqs own `\-B`: `0` there means "EQ with normalization", i.e. the opposite of this flag\*(Aqs name)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

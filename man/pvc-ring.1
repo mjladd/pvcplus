@@ -1,0 +1,123 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-ring 1  "pvc-ring " 
+.SH NAME
+pvc\-ring \- Phase\-vocoder feedback reverberator/resonator: a delay network built out of spectral frames rather than time\-domain samples, combining an independently pitch/frequency\-shiftable copy of the dry source with a recirculating, EQ\*(Aqd and envelope\-gated feedback path. See `pvc\-core::tools::ring`\*(Aqs doc comment for real dead flags, a real swapped\-default bug reproduced faithfully, and what\*(Aqs out of scope (Phase 5\*(Aqs long tail)
+.SH SYNOPSIS
+\fBpvc\-ring\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-oscbank\-threshold\fR] [\fB\-\-master\-gain\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-feedback\-gain\fR] [\fB\-\-feedback\-freq\-shift\fR] [\fB\-\-feedback\-pitch\fR] [\fB\-\-feedback\-decay\fR] [\fB\-\-feedback\-threshold\fR] [\fB\-\-feedback\-threshold\-mode\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-input\-eq\-low\-gain\fR] [\fB\-\-input\-eq\-high\-gain\fR] [\fB\-\-input\-eq\-low\-freq\fR] [\fB\-\-input\-eq\-high\-freq\fR] [\fB\-\-loop\-eq\-decay\fR] [\fB\-\-loop\-balance\-limit\fR] [\fB\-\-loop\-eq\-low\-gain\fR] [\fB\-\-loop\-eq\-high\-gain\fR] [\fB\-\-loop\-eq\-low\-freq\fR] [\fB\-\-loop\-eq\-high\-freq\fR] [\fB\-\-output\-eq\-low\-gain\fR] [\fB\-\-output\-eq\-high\-gain\fR] [\fB\-\-output\-eq\-low\-freq\fR] [\fB\-\-output\-eq\-high\-freq\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Phase\-vocoder feedback reverberator/resonator: a delay network built out of spectral frames rather than time\-domain samples, combining an independently pitch/frequency\-shiftable copy of the dry source with a recirculating, EQ\*(Aqd and envelope\-gated feedback path. See `pvc\-core::tools::ring`\*(Aqs doc comment for real dead flags, a real swapped\-default bug reproduced faithfully, and what\*(Aqs out of scope (Phase 5\*(Aqs long tail).
+.PP
+Ports `ring`\*(Aqs audio\-processing path (`legacy/pvc_src/ring.c`).
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two)
+.TP
+\fB\-\-window\-size\fR \fI<WINDOW_SIZE>\fR [default: 0]
+Analysis/resynthesis window length. `0` means auto (`2 * fft`)
+.TP
+\fB\-\-window\fR \fI<WINDOW>\fR [default: hamming]
+
+.TP
+\fB\-\-frames\-per\-sec\fR \fI<FRAMES_PER_SEC>\fR [default: 200]
+
+.TP
+\fB\-\-time\-factor\fR \fI<TIME_FACTOR>\fR [default: 1]
+Time expansion/contraction factor (`1.0` = unchanged duration)
+.TP
+\fB\-\-begin\fR \fI<BEGIN>\fR [default: 0]
+`\-b`: begin time in seconds
+.TP
+\fB\-\-end\fR \fI<END>\fR [default: 0]
+`\-e`: end time in seconds (`0` = end of file)
+.TP
+\fB\-\-oscbank\-threshold\fR \fI<OSCBANK_THRESHOLD>\fR [default: \-96]
+`\-t`: oscillator\-bank resynthesis threshold, in dB
+.TP
+\fB\-\-master\-gain\fR \fI<MASTER_GAIN>\fR [default: 0]
+`\-A`: master (source + reverb) gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-source\-gain\fR \fI<SOURCE_GAIN>\fR [default: 0]
+`\-S`: source gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-source\-freq\-shift\fR \fI<SOURCE_FREQ_SHIFT>\fR [default: 0]
+`\-f`: source frequency shift adder, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-source\-pitch\fR \fI<SOURCE_PITCH>\fR [default: 0]
+`\-p`: source pitch transposition, in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-gain\fR \fI<FEEDBACK_GAIN>\fR [default: 0]
+`\-F`: reverb (feedback) gain in dB \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-freq\-shift\fR \fI<FEEDBACK_FREQ_SHIFT>\fR [default: 0]
+`\-H`: reverb frequency shift adder, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-pitch\fR \fI<FEEDBACK_PITCH>\fR [default: 0]
+`\-P`: reverb pitch transposition, in semitones \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-decay\fR \fI<FEEDBACK_DECAY>\fR [default: 0]
+`\-Z`: reverb (feedback delay line) decay time, in seconds \- `0` disables the loop entirely. A plain number, or `@path`
+.TP
+\fB\-\-feedback\-threshold\fR \fI<FEEDBACK_THRESHOLD>\fR [default: \-96]
+`\-z`: reverb (input) envelope\-follower gate threshold, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-feedback\-threshold\-mode\fR \fI<FEEDBACK_THRESHOLD_MODE>\fR [default: above]
+`\-V`: reverb threshold pass mode
+.TP
+\fB\-\-attack\fR \fI<ATTACK>\fR [default: 0]
+`\-l`: reverb (input) envelope attack time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-release\fR \fI<RELEASE>\fR [default: 0]
+`\-L`: reverb (input) envelope release time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-input\-eq\-low\-gain\fR \fI<INPUT_EQ_LOW_GAIN>\fR [default: 200]
+`\-O`: reverb (input) EQ low shelf gain, in dB \- a plain number, or `@path`. Defaults to `200`, not `0` \- see `pvc\-core::tools:: ring`\*(Aqs doc comment on the real swapped\-default bug this reproduces
+.TP
+\fB\-\-input\-eq\-high\-gain\fR \fI<INPUT_EQ_HIGH_GAIN>\fR [default: 0]
+`\-Y`: reverb (input) EQ high shelf gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-input\-eq\-low\-freq\fR \fI<INPUT_EQ_LOW_FREQ>\fR [default: 0]
+`\-d`: reverb (input) EQ low shelf frequency, in Hz \- a plain number, or `@path`. Defaults to `0`, not `200` \- see `pvc\-core::tools::ring`\*(Aqs doc comment
+.TP
+\fB\-\-input\-eq\-high\-freq\fR \fI<INPUT_EQ_HIGH_FREQ>\fR [default: 2000]
+`\-n`: reverb (input) EQ high shelf frequency, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-eq\-decay\fR \fI<LOOP_EQ_DECAY>\fR [default: 1]
+`\-T`: reverb (in\-loop feedback) EQ decay time, in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-balance\-limit\fR \fI<LOOP_BALANCE_LIMIT>\fR [default: 0]
+`\-E`: reverb (feedback) signal balance gain limiter level, `0` to `96` dB (`0` disables balancing entirely)
+.TP
+\fB\-\-loop\-eq\-low\-gain\fR \fI<LOOP_EQ_LOW_GAIN>\fR [default: 200]
+`\-X`: reverb (in\-loop feedback) EQ low shelf gain, in dB \- a plain number, or `@path`. Defaults to `200`, not `0` \- see `pvc\-core::tools::ring`\*(Aqs doc comment on the real swapped\-default bug this reproduces (the same one as `\-O`/`\-d`, independently present here too)
+.TP
+\fB\-\-loop\-eq\-high\-gain\fR \fI<LOOP_EQ_HIGH_GAIN>\fR [default: 0]
+`\-Q`: reverb (in\-loop feedback) EQ high shelf gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-loop\-eq\-low\-freq\fR \fI<LOOP_EQ_LOW_FREQ>\fR [default: 0]
+`\-U`: reverb (in\-loop feedback) EQ low shelf frequency, in Hz \- a plain number, or `@path`. Defaults to `0`, not `200` \- see `pvc\-core::tools::ring`\*(Aqs doc comment
+.TP
+\fB\-\-loop\-eq\-high\-freq\fR \fI<LOOP_EQ_HIGH_FREQ>\fR [default: 2000]
+`\-m`: reverb (in\-loop feedback) EQ high shelf frequency, in Hz \- a plain number, or `@path`
+.TP
+\fB\-\-output\-eq\-low\-gain\fR \fI<OUTPUT_EQ_LOW_GAIN>\fR [default: 200]
+`\-k`: reverb (output) EQ low shelf gain, in dB \- a plain number, or `@path`. Defaults to `200`, not `0` \- see `pvc\-core::tools:: ring`\*(Aqs doc comment on the real swapped\-default bug this reproduces (the same one as `\-O`/`\-d`, independently present here too)
+.TP
+\fB\-\-output\-eq\-high\-gain\fR \fI<OUTPUT_EQ_HIGH_GAIN>\fR [default: 0]
+`\-c`: reverb (output) EQ high shelf gain, in dB \- a plain number, or `@path`
+.TP
+\fB\-\-output\-eq\-low\-freq\fR \fI<OUTPUT_EQ_LOW_FREQ>\fR [default: 0]
+`\-s`: reverb (output) EQ low shelf frequency, in Hz \- a plain number, or `@path`. Defaults to `0`, not `200` \- see `pvc\-core::tools::ring`\*(Aqs doc comment
+.TP
+\fB\-\-output\-eq\-high\-freq\fR \fI<OUTPUT_EQ_HIGH_FREQ>\fR [default: 2000]
+`\-G`: reverb (output) EQ high shelf frequency, in Hz \- a plain number, or `@path`
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

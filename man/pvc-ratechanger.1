@@ -1,0 +1,75 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-ratechanger 1  "pvc-ratechanger " 
+.SH NAME
+pvc\-ratechanger \- Varispeed resampler: reads raw audio directly (no `.pva` analysis file first) and resynthesizes it at a possibly time\-varying playback rate and/or semitone shift, via windowed\-sinc summation, sample\-and\-hold/decimation, or linear interpolation
+.SH SYNOPSIS
+\fBpvc\-ratechanger\fR [\fB\-\-synthesis\-mode\fR] [\fB\-\-table\-lookup\fR] [\fB\-\-pi\-interpolation\-points\fR] [\fB\-\-truncation\-db\fR] [\fB\-\-duration\fR] [\fB\-\-synthesize\-duration\fR] [\fB\-\-channel\fR] [\fB\-\-normalize\fR] [\fB\-\-time\-origin\fR] [\fB\-\-rate\-in\fR] [\fB\-\-rate\-out\fR] [\fB\-\-semitones\-in\fR] [\fB\-\-semitones\-out\fR] [\fB\-\-gain\-in\fR] [\fB\-\-gain\-out\fR] [\fB\-\-window\-low\fR] [\fB\-\-window\-high\fR] [\fB\-\-new\-sample\-rate\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Varispeed resampler: reads raw audio directly (no `.pva` analysis file first) and resynthesizes it at a possibly time\-varying playback rate and/or semitone shift, via windowed\-sinc summation, sample\-and\-hold/decimation, or linear interpolation.
+.PP
+Ports `ratechanger` (`legacy/pvc_src/ratechanger.c`); see `pvc\-core::tools::ratechanger`\*(Aqs doc comment for what\*(Aqs in and out of scope, including a real, verified heap\-buffer\-overflow in the C\*(Aqs own default sinc\-table lookup (confirmed under ASan \- safely clamped here instead of reproduced).
+.SH OPTIONS
+.TP
+\fB\-\-synthesis\-mode\fR \fI<SYNTHESIS_MODE>\fR [default: sinc]
+`\-X`: per\-sample synthesis method
+.TP
+\fB\-\-table\-lookup\fR \fI<TABLE_LOOKUP>\fR [default: on]
+`\-t`: use the Blackman\-windowed sinc lookup table (fast) instead of computing `sin`/`cos` directly (slow). Only affects `\-\-synthesis\-mode sinc`
+.TP
+\fB\-\-pi\-interpolation\-points\fR \fI<PI_INTERPOLATION_POINTS>\fR [default: 100]
+`\-L`: lookup\-table interpolation points per sinc period
+.TP
+\fB\-\-truncation\-db\fR \fI<TRUNCATION_DB>\fR [default: \-60]
+`\-B`: sinc window truncation level in dB (must be `< 0`; typically `\-30` to `\-96`)
+.TP
+\fB\-\-duration\fR \fI<DURATION>\fR [default: 0]
+`\-d`: output duration in seconds. `0` (the default) triggers output\-duration synthesis regardless of `\-\-synthesize\-duration`, matching the C\*(Aqs own `if (outputDuration <= 0.) synthesizeOutputDuration = true;`
+.TP
+\fB\-\-synthesize\-duration\fR
+`\-D`: search for an output duration that synchronizes the completion of the rate\-change control functions with the end of the output, via an iterative convergence algorithm (see `pvc_core::tools::ratechanger::resolve_output_duration`). Always on when `\-\-duration` is `0` or unset, regardless of this flag
+.TP
+\fB\-\-channel\fR \fI<CHANNEL>\fR [default: 0]
+`\-C`: input channel to process, `1`\-based. `0` (the default) processes every input channel
+.TP
+\fB\-\-normalize\fR \fI<NORMALIZE>\fR [default: input]
+`\-n`: post\-synthesis normalization
+.TP
+\fB\-\-time\-origin\fR \fI<TIME_ORIGIN>\fR [default: 0]
+`\-O`: source time\-position origin in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-rate\-in\fR \fI<RATE_IN>\fR [default: 1]
+`\-r`: rate multiplier as a function of *input* sound time \- a plain number, or `@path`
+.TP
+\fB\-\-rate\-out\fR \fI<RATE_OUT>\fR [default: 1]
+`\-R`: rate multiplier as a function of *output* sound time \- a plain number, or `@path`
+.TP
+\fB\-\-semitones\-in\fR \fI<SEMITONES_IN>\fR [default: 0]
+`\-s`: semitone pitch shift as a function of *input* sound time \- a plain number, or `@path`
+.TP
+\fB\-\-semitones\-out\fR \fI<SEMITONES_OUT>\fR [default: 0]
+`\-S`: semitone pitch shift as a function of *output* sound time \- a plain number, or `@path`
+.TP
+\fB\-\-gain\-in\fR \fI<GAIN_IN>\fR [default: 0]
+`\-a`: amplitude envelope in dB as a function of *input* sound time \- a plain number, or `@path`
+.TP
+\fB\-\-gain\-out\fR \fI<GAIN_OUT>\fR [default: 0]
+`\-A`: amplitude envelope in dB as a function of *output* sound time \- a plain number, or `@path`
+.TP
+\fB\-\-window\-low\fR \fI<WINDOW_LOW>\fR [default: 0]
+`\-b`: input time window low boundary in seconds \- a plain number, or `@path`
+.TP
+\fB\-\-window\-high\fR \fI<WINDOW_HIGH>\fR [default: \-1]
+`\-e`: input time window high boundary in seconds (`<= 0` = end of input) \- a plain number, or `@path`
+.TP
+\fB\-\-new\-sample\-rate\fR \fI<NEW_SAMPLE_RATE>\fR [default: 0]
+`\-m`: impose a new sample rate on the output header (`<= 0`, the default, keeps the input\*(Aqs own sample rate). Does not itself resample \- only changes the output file\*(Aqs declared rate
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIINPUT\fR>
+
+.TP
+<\fIOUTPUT\fR>
+

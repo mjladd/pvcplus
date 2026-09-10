@@ -1,0 +1,28 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-gen2 1  "pvc-fn-gen2 " 
+.SH NAME
+pvc\-fn\-gen2 \- gen2: sum of sine and cosine harmonics (`legacy/cmusic_gen/gen/ gen2.c`). Named `\-\-sine`/`\-\-cosine` lists rather than the C\*(Aqs positional\-count argument, which has a real footgun (see `docs/dev/parameter\-inventory.md` §15): passing a count larger than the actual number of coefficients given reads uninitialized memory in the C. That\*(Aqs not representable here
+.SH SYNOPSIS
+\fBpvc\-fn\-gen2\fR <\fB\-L\fR|\fB\-\-length\fR> [\fB\-\-closed\fR] [\fB\-\-sine\fR] [\fB\-\-cosine\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+gen2: sum of sine and cosine harmonics (`legacy/cmusic_gen/gen/ gen2.c`). Named `\-\-sine`/`\-\-cosine` lists rather than the C\*(Aqs positional\-count argument, which has a real footgun (see `docs/dev/parameter\-inventory.md` §15): passing a count larger than the actual number of coefficients given reads uninitialized memory in the C. That\*(Aqs not representable here
+.SH OPTIONS
+.TP
+\fB\-L\fR, \fB\-\-length\fR \fI<LENGTH>\fR
+
+.TP
+\fB\-\-closed\fR
+Closed curve (gen2\*(Aqs default is open, unlike gen1/gen3/gen4/gen5)
+.TP
+\fB\-\-sine\fR \fI<SINE>\fR
+Sine harmonic amplitudes, lowest harmonic first (harmonic 1, 2, ...)
+.TP
+\fB\-\-cosine\fR \fI<COSINE>\fR
+Cosine harmonic amplitudes, `\-\-cosine` for harmonic 0 (DC) first
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIOUTPUT\fR>
+

@@ -84,6 +84,13 @@ pub enum Command {
         generator: FnCommand,
     },
 
+    /// Print a shell completion script to stdout.
+    ///
+    /// Source it directly, or write it to your shell's own completion
+    /// directory, e.g. `pvc completions zsh > ~/.zfunc/_pvc` (make sure
+    /// `~/.zfunc` is on `fpath` first).
+    Completions { shell: clap_complete::Shell },
+
     /// Phase vocoder: analyze then resynthesize.
     ///
     /// Time-stretch, pitch transposition, frequency shift, gain,

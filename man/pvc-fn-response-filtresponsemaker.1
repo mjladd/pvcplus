@@ -1,0 +1,28 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn-response-filtresponsemaker 1  "pvc-fn-response-filtresponsemaker " 
+.SH NAME
+pvc\-fn\-response\-filtresponsemaker \- Ports `filtresponsemaker` (`legacy/pvc_src/filtresponsemaker.c`): a "frequency gradient" response, linearly interpolated in dB between unordered `(frequency\-or\-octave.pitchclass, decibels)` breakpoints
+.SH SYNOPSIS
+\fBpvc\-fn\-response\-filtresponsemaker\fR [\fB\-\-fft\fR] <\fB\-\-breakpoints\fR> <\fB\-\-target\-sound\-file\fR> [\fB\-\-mode\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
+.SH DESCRIPTION
+Ports `filtresponsemaker` (`legacy/pvc_src/filtresponsemaker.c`): a "frequency gradient" response, linearly interpolated in dB between unordered `(frequency\-or\-octave.pitchclass, decibels)` breakpoints
+.SH OPTIONS
+.TP
+\fB\-\-fft\fR \fI<FFT>\fR [default: 1024]
+FFT size (must be a power of two)
+.TP
+\fB\-\-breakpoints\fR \fI<BREAKPOINTS>\fR
+ASCII data file of unordered breakpoint duples: each line (or whitespace\-separated pair) is `freq\-or\-octave.pitchclass, decibels`. Values `<= 12` are octave.pitchclass, otherwise Hz
+.TP
+\fB\-\-target\-sound\-file\fR \fI<TARGET_SOUND_FILE>\fR
+Sound file to take the sample rate from
+.TP
+\fB\-\-mode\fR
+Bandpass (keep the breakpoint shape) or band\-reject (invert it: `1.0 \- amplitude` at every bin)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIOUTPUT\fR>
+

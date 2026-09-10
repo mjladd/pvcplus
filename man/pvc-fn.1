@@ -1,0 +1,41 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-fn 1  "pvc-fn " 
+.SH NAME
+pvc\-fn \- Control\-function generators (the CARL/cmusic "GEN" family)
+.SH SYNOPSIS
+\fBpvc\-fn\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Control\-function generators (the CARL/cmusic "GEN" family)
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+pvc\-fn\-gen1(1)
+gen1: piecewise\-linear envelope from explicit `(time, value)` breakpoints (`legacy/cmusic_gen/gen/gen1.c`)
+.TP
+pvc\-fn\-gen2(1)
+gen2: sum of sine and cosine harmonics (`legacy/cmusic_gen/gen/ gen2.c`). Named `\-\-sine`/`\-\-cosine` lists rather than the C\*(Aqs positional\-count argument, which has a real footgun (see `docs/dev/parameter\-inventory.md` §15): passing a count larger than the actual number of coefficients given reads uninitialized memory in the C. That\*(Aqs not representable here
+.TP
+pvc\-fn\-gen3(1)
+gen3: piecewise\-linear envelope at evenly spaced breakpoints, given only their values (`legacy/cmusic_gen/gen/gen3.c`)
+.TP
+pvc\-fn\-gen4(1)
+gen4: like gen1, but each breakpoint carries its own transition shape (`legacy/cmusic_gen/gen/gen4.c`): `alpha = 0` linear, negative exponential, positive logarithmic
+.TP
+pvc\-fn\-gen5(1)
+gen5: sum of arbitrary `(harmonic, amplitude, phase)` partials (`legacy/cmusic_gen/gen/gen5.c`)
+.TP
+pvc\-fn\-gen6(1)
+gen6: uniform noise in `[\-1.0, 1.0)` (`legacy/cmusic_gen/gen/ gen6.c`), using the exact `rand()` sequence the C gets by never seeding one (glibc\*(Aqs default state, as if `srandom(1)` had been called) \- deterministic, not a fresh random table on every run
+.TP
+pvc\-fn\-plot(1)
+Plot a control/data file as a terminal sparkline \- replaces the legacy `showme`/`showmeb`/`showmed`/... family, whose actual job (confirmed by reading them: `reshape \-A1 $1 > /tmp/$USER`, then `gnuplot` on that file) is exactly "convert a binary or ASCII float file to something plottable, then plot it" \- not any of `reshape.c`\*(Aqs ~40 other transformation flags, none of which any script in this repo actually uses. No `gnuplot` dependency needed
+.TP
+pvc\-fn\-response(1)
+Synthesize a `.fr` frequency\-response file from a breakpoint or partial table, rather than analyzing a sound file (`pvc freqresponse` does that instead)
+.TP
+pvc\-fn\-help(1)
+Print this message or the help of the given subcommand(s)
