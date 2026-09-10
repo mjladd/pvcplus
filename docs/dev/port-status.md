@@ -78,6 +78,7 @@ file. Read the module doc comment for the current findings.
 | 7 | Filter/normalize and truncate/envelope/normalize orchestration for wall and reflection-order impulse responses | `94fe45a` |
 | 8 | Reflection-order convolution-sequence bookkeeping, presence-level balance math, and maximum speaker-to-listener/speaker-to-speaker distance search | `dd3ef9f` |
 | 9 | Channel-assignment selection for wall/reflection-order impulse response reads, and the wall pulse-mode default | `31f9571` |
+| 10 | Loop-assign, cast, and validation logic for the six channel-assignment/gainscale/presence-level data-file readers, plus a `pvc-io` reader for the on-disk file format they share | pending |
 
 Phase 6 also settled an open question from Phase 4: the wall
 channel-assignment and gainscale-level readers turned out to hold no pure
@@ -126,15 +127,45 @@ closes out almost all of the pure math left in `roomresponsemaker.c`.
 What remains is file I/O, subprocess orchestration, and CLI control flow,
 not more math for `pvc-core` to hold.
 
-Work still not started, after Phase 9 lands:
+Phase 6 had already looked at the wall channel-assignment and
+gainscale-level readers once. It found no pure math worth a separate
+port. Phase 10 looks again, at all six of these small readers together:
+the wall and reflection-order versions of channel assignments,
+gainscale levels, and presence levels. This time it finds a cleaner
+split. A file is already read into a string, with its comments already
+cut, before this arithmetic runs. Once that happens, the loop-assign
+arithmetic each reader does separates cleanly from the actual disk
+read. Phase 10 ports that arithmetic into `pvc-core`, along with each
+reader's own value casts and limit tests. It also adds the disk-read
+side in a new `pvc-io` module, `roomresponse_data`. That module reads a
+file, cuts its comments with the `cut_data_lines` function Phase 1
+already ported, and returns the raw numbers.
+
+Reading all six readers side by side this phase, rather than one at a
+time, turns up two more real bugs. First, the wall presence-level
+reader has its own loop-assign bug, separate from finding 29's already
+known truncation bug. It divides by a count already set to the number
+of walls, not the file's real number of values. So it never actually
+loops back to the start. It reads the file's real values once, then
+repeats the last one for every wall left over. This is finding 32 in
+the module's own doc comment. Second, the reflection-order gainscale
+reader never pads a short file back up to the number of reflection
+orders, unlike the wall version. A short file there gives a shorter
+table instead. Both bugs are reproduced on purpose, not fixed. That
+matches this project's usual choice for a real, confirmed, non-crashing
+bug.
+
+Work still not started, after Phase 10 lands:
 
 - The actual sound-file reads inside the wall/reflection-order
-  impulse-response readers, and the channel-assignment, presence-level,
-  and gainscale-level files that feed them.
+  impulse-response readers themselves. `pvc-io::audio::read_audio`
+  already covers the decode step. Only the channel-selection and
+  wall-pulse-default math around it is ported, in Phase 9.
 - The external shell-out pre-convolution pipeline in
   `preConvolveReflectionOrderImpulseResponsesWithIrconvolver` (finding 31).
   This is a subprocess-orchestration question, not a math one.
-- `main()`'s CLI control flow.
+- `main()`'s CLI control flow: which reader gets which file path, and
+  which default value applies for a missing path.
 - A golden test against the real oracle binary.
 
 The golden test is likely the hardest of these. This tool depends on

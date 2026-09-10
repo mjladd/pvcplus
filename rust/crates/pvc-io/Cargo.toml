@@ -8,6 +8,7 @@ rust-version.workspace = true
 description = "Audio, analysis-file (.pva), and control-file I/O for pvc. No libsndfile dependency."
 
 [dependencies]
+pvc-core = { path = "../pvc-core" }
 aifc = "0.7.0"
 flacenc = "0.5.1"
 hound = "3.5.1"

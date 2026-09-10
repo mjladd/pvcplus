@@ -1,7 +1,7 @@
 //! Ports `roomresponsemaker.c` (9318 lines, the largest and most
 //! structurally distinct tool in this project): a recursive image-source
 //! polygonal-room acoustics engine, not a phase-vocoder filter/resynthesis
-//! tool like every other Phase 5 tool. **This module is now through Phase 6
+//! tool like every other Phase 5 tool. **This module is now through Phase 10
 //! of a multi-phase port.**
 //!
 //! **Phase 1** covered the room/speaker/listener geometry layer: room
@@ -158,21 +158,55 @@
 //! has ported). Every other line in both functions is `sf_open`/`sf_seek`/
 //! `sf_read_float`/bounds-check-then-`exit` - real file I/O and real
 //! process control, left to `pvc-cli`/`pvc-io` like every other reader in
-//! this module. This closes out essentially all of `roomresponsemaker.c`'s
-//! extractable pure math - the module doc comment's own "still not
-//! covered" list below is now entirely file I/O, subprocess orchestration,
-//! and CLI control flow, not math this crate could hold.
+//! this module.
+//!
+//! **Phase 10** (this update) revisits the six small "get the per-wall/
+//! per-reflection-order scaler table" readers Phase 6 had already looked
+//! at once and called "entirely `fopen`/`fscanf`-driven with no separable
+//! pure-math piece" - a fair read of the C's own control flow, which really
+//! does interleave the loop-assign arithmetic with `rewind()` calls on an
+//! open `FILE*`, but not the only possible shape for a *port*: once the
+//! file's already been read to a string and comment-cut (see
+//! [`cut_data_lines`], already ported in Phase 1), the loop-assign
+//! arithmetic separates cleanly from the actual disk read after all. This
+//! phase ports that arithmetic - and the value casts/validation each
+//! reader layers on top of it - for all six:
+//! [`wall_channel_assignments_from_values`]/[`wall_channel_assignments_default`]
+//! (`getWallImpulseResponseChannelAssignments`),
+//! [`reflection_order_channel_assignments_from_values`]
+//! (`getReflectionOrderImpulseResponseChannelAssignments`, no default - see
+//! its own doc comment),
+//! [`wall_decibel_gainscale_levels_from_values`]/[`wall_decibel_gainscale_levels_default`]
+//! (`getWallDecibelGainscaleLevels`),
+//! [`reflection_order_decibel_gainscale_levels_from_values`]/[`reflection_order_decibel_gainscale_levels_default`]
+//! (`getReflectionOrderDecibelGainscaleLevels`),
+//! [`wall_impulse_response_presence_levels_from_values`]/[`wall_impulse_response_presence_levels_default`]
+//! (`getWallImpulseResponsePresenceLevels`), and
+//! [`reflection_order_impulse_response_presence_levels_from_values`]
+//! (`getReflectionOrderImpulseResponsePresenceLevels`, no default). The
+//! shared loop-assign shape itself is [`loop_assign_to_count`] - except for
+//! the wall presence-level reader, which turns out to have its own,
+//! previously-unnoticed loop-assign bug distinct from finding 29's already-
+//! documented truncation asymmetry: see **finding 32**, and
+//! [`clamp_extra_slots_to_last_value`]. A second real, confirmed asymmetry
+//! surfaced by reading all six side by side rather than one at a time: the
+//! reflection-order gainscale reader never pads a short file back up to
+//! `high_order_limit` at all, unlike every other reader here - see
+//! [`reflection_order_decibel_gainscale_levels_from_values`]'s own doc
+//! comment. The actual disk read, `cut_data_lines` invocation, and
+//! whitespace-float parsing that feeds these functions their `values`
+//! slice, plus the "was a file even specified" decision that picks a
+//! `*_default` function instead, remain `pvc-cli`/`pvc-io`'s job, matching
+//! this module's usual convention; see `pvc-io::roomresponse_data` for that
+//! side.
 //!
 //! **What's still not covered, and why**: the actual sound-file reads
 //! inside `readInWallImpulseResponses()`/`readInReflectionOrderImpulseResponses()`
 //! (real file I/O, belongs with `pvc-cli`/`pvc-io` - `pvc-io::audio::read_audio`
-//! already covers the decode step), `getWallImpulseResponseChannelAssignments`/
-//! `getReflectionOrderImpulseResponseChannelAssignments`/
-//! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`/
-//! `getWallImpulseResponsePresenceLevels`/`getReflectionOrderImpulseResponsePresenceLevels`
-//! (all pure file I/O, same convention - see finding 29 for a real bug a
-//! future `pvc-io` reader for the wall variant needs to decide whether to
-//! reproduce), `preConvolveReflectionOrderImpulseResponsesWithIrconvolver`
+//! already covers the decode step), and the disk-read/parse glue for the
+//! six scaler-table readers Phase 10 covers the arithmetic for (also
+//! `pvc-cli`/`pvc-io`'s job - see `pvc-io::roomresponse_data`),
+//! `preConvolveReflectionOrderImpulseResponsesWithIrconvolver`
 //! (see finding 31 - not pure math at all, so there is nothing here for a
 //! future phase to port other than the orchestration itself),
 //! `makeIR_DataSpace` (a `static bool first`-gated alloc-or-zero for a
@@ -495,6 +529,33 @@
 //!     A Rust port of this behaviour is a subprocess-orchestration
 //!     question for a future CLI-wiring phase, not a math one - there is
 //!     no formula here to extract into `pvc-core`.
+//!
+//! 32. **A second, previously-unnoticed real bug in
+//!     `getWallImpulseResponsePresenceLevels()` (lines 8841-8875), distinct
+//!     from finding 29's already-documented `(int) temp` truncation**: the
+//!     function's own loop-assign rewind test (`if( (i %
+//!     numberOfWallImpulseResponsePresenceLevels) == 0 ) rewind( data ) ;`,
+//!     line 8864) divides by `numberOfWallImpulseResponsePresenceLevels`,
+//!     but that variable has already been unconditionally overwritten to
+//!     `numberOfWalls` two lines earlier (line 8853) - *before* the read
+//!     loop runs, not the file's own real entry count `k`. Since `i` never
+//!     reaches `numberOfWalls` inside a loop bounded by `numberOfWalls`,
+//!     `i % numberOfWalls` is `0` only at `i = 0`, so the loop never
+//!     rewinds a second time: it reads the file's own `k` real values
+//!     sequentially, then keeps calling `fscanf` on an exhausted stream for
+//!     every remaining wall. A failed `%f` conversion leaves its target
+//!     unmodified per the C standard, so those extra walls all silently
+//!     repeat the file's *last* value - not a loop back to the first, as
+//!     the function's own stderr message ("FILE LEVELS WILL BE
+//!     LOOP-ASSIGNED TO REMAINING WALLS, AS NEEDED") promises, and not what
+//!     every other loop-assigning reader in this module does (each of the
+//!     other five correctly divides by the file's real count `k`, not a
+//!     count that's already been overwritten - confirmed by re-reading all
+//!     six side by side, not just this one in isolation). Reproduced
+//!     faithfully in [`clamp_extra_slots_to_last_value`] rather than
+//!     silently "fixed" to loop-assign like its siblings, matching this
+//!     project's established convention for a confirmed, deterministic
+//!     (not undefined-behaviour) bug.
 
 /// A 2D point in feet (this tool's native unit - see `usage()`'s "All
 /// distances are expressed in feet").
@@ -3564,6 +3625,273 @@ pub fn make_wall_pulse_impulse_responses(
         .collect()
 }
 
+/// Loop-assigns `values` to fill exactly `target_count` slots by cycling
+/// through `values` (`values[i % values.len()]`) - the correctly-
+/// implemented shape of the "loop-assign across N walls/orders" pattern
+/// used by `getWallImpulseResponseChannelAssignments()` (line 7122, `i %
+/// k`), `getWallDecibelGainscaleLevels()` (line 7203, `i % k`),
+/// `getReflectionOrderImpulseResponseChannelAssignments()` (line 8323, `i %
+/// k`), and `getReflectionOrderImpulseResponsePresenceLevels()` (line
+/// 9200, `i % k`): all four divide by the file's own real entry count `k`
+/// before that count gets overwritten by the caller's own target count, so
+/// all four loop-assign correctly. Contrast
+/// [`clamp_extra_slots_to_last_value`], the one reader in this module that
+/// does not - see finding 32.
+///
+/// Returns an empty `Vec` if `values` is empty, since the C's own `i % k`
+/// with `k == 0` is undefined behaviour this port has no reason to
+/// reproduce - every caller already rejects an empty file before reaching
+/// this point.
+pub fn loop_assign_to_count(values: &[f32], target_count: usize) -> Vec<f32> {
+    if values.is_empty() {
+        return Vec::new();
+    }
+    (0..target_count)
+        .map(|i| values[i % values.len()])
+        .collect()
+}
+
+/// Ports `getWallImpulseResponsePresenceLevels()`'s own read loop (lines
+/// 8841-8875) - **finding 32, a confirmed loop-assign bug**, not the
+/// correctly-cycling pattern [`loop_assign_to_count`] gives every other
+/// reader in this module. The C sets
+/// `numberOfWallImpulseResponsePresenceLevels = numberOfWalls` (line 8853)
+/// *before* the read loop runs, then the loop's own rewind test divides by
+/// that same, already-overwritten variable (`i %
+/// numberOfWallImpulseResponsePresenceLevels`, line 8864) instead of the
+/// file's real entry count `k`. For `i` in `1..numberOfWalls`, `i %
+/// numberOfWalls` is never `0` again after `i = 0`, so the loop never
+/// actually rewinds a second time - it reads the file's own `k` real
+/// values sequentially, then keeps calling `fscanf` on an exhausted stream
+/// for the remaining `target_count - k` walls. A failed `%f` conversion
+/// leaves its target unmodified per the C standard, so every one of those
+/// extra slots silently repeats the file's *last* value rather than
+/// cycling back to its first, despite this function's own stderr message
+/// promising "FILE LEVELS WILL BE LOOP-ASSIGNED TO REMAINING WALLS, AS
+/// NEEDED." Confirmed by tracing which variable each line actually reads
+/// and writes, not by running the binary - this is a pure control-flow
+/// fact, not one that needs a golden-test oracle. Contrast this reader's
+/// own reflection-order sibling,
+/// `getReflectionOrderImpulseResponsePresenceLevels()`, which uses
+/// [`loop_assign_to_count`]'s correct `i % k` shape. Reproduced here
+/// rather than silently fixed, matching this project's established
+/// convention for a confirmed, deterministic (not undefined-behaviour)
+/// real bug.
+///
+/// Returns an empty `Vec` if `values` is empty, for the same reason as
+/// [`loop_assign_to_count`].
+pub fn clamp_extra_slots_to_last_value(values: &[f32], target_count: usize) -> Vec<f32> {
+    if values.is_empty() {
+        return Vec::new();
+    }
+    let last = values.len() - 1;
+    (0..target_count).map(|i| values[i.min(last)]).collect()
+}
+
+/// Ports `getWallImpulseResponseChannelAssignments()`'s own read loop
+/// (lines 7061-7146) once its input file has already been comment-cut
+/// (see [`cut_data_lines`]) and parsed into `values` - this module's usual
+/// "no I/O, takes already-read content" convention. Loop-assigns to
+/// `number_of_walls` slots via [`loop_assign_to_count`], truncates each
+/// value to an `int` (`(int) temp`, matching the source's own `// %%%`-
+/// marked cast), and rejects (as `Err`, in place of the C's own
+/// `exit(EXIT_FAILURE)`) any assignment `<= 0` - "CHANNELS ARE NUMBERED
+/// FROM CHANNEL 1."
+///
+/// The C's own "no file specified" default (every wall assigned to
+/// channel 1) is not this function's concern - see
+/// [`wall_channel_assignments_default`].
+pub fn wall_channel_assignments_from_values(
+    values: &[f32],
+    number_of_walls: usize,
+) -> Result<Vec<i32>, String> {
+    if values.is_empty() {
+        return Err("wall channel assignments file has no values".to_string());
+    }
+    loop_assign_to_count(values, number_of_walls)
+        .into_iter()
+        .map(|v| {
+            let assignment = v as i32;
+            if assignment <= 0 {
+                Err(format!(
+                    "wall impulse response channel assignment {assignment} is invalid: \
+                     channels are numbered from channel 1"
+                ))
+            } else {
+                Ok(assignment)
+            }
+        })
+        .collect()
+}
+
+/// The C's own "no file specified" default for wall channel assignments
+/// (lines 7074-7078): every wall assigned to channel `1`.
+pub fn wall_channel_assignments_default(number_of_walls: usize) -> Vec<i32> {
+    vec![1; number_of_walls]
+}
+
+/// Ports `getReflectionOrderImpulseResponseChannelAssignments()`'s own
+/// read loop (lines 8258-8354) once its input file has already been
+/// comment-cut and parsed into `values`. Same shape as
+/// [`wall_channel_assignments_from_values`] - loop-assign via
+/// [`loop_assign_to_count`], truncate to `int`, reject `<= 0` - but
+/// against `high_order_limit` instead of `number_of_walls`. Unlike its
+/// wall sibling, the real C has no "no file specified" default for this
+/// reader at all: it hard-exits ("BUT CHANNEL ASSIGNMENTS FILE HAS NOT
+/// BEEN SPECIFIED") whenever reflection-order impulse responses are on and
+/// no file was given, so there is no default-values function paired with
+/// this one - the caller must already have a non-empty file.
+pub fn reflection_order_channel_assignments_from_values(
+    values: &[f32],
+    high_order_limit: usize,
+) -> Result<Vec<i32>, String> {
+    if values.is_empty() {
+        return Err("reflection order channel assignments file has no values".to_string());
+    }
+    loop_assign_to_count(values, high_order_limit)
+        .into_iter()
+        .map(|v| {
+            let assignment = v as i32;
+            if assignment <= 0 {
+                Err(format!(
+                    "reflection order impulse response channel assignment {assignment} is \
+                     invalid: channels are numbered from channel 1"
+                ))
+            } else {
+                Ok(assignment)
+            }
+        })
+        .collect()
+}
+
+/// Ports `getWallDecibelGainscaleLevels()`'s own read loop (lines
+/// 7148-7218) once its input file has already been comment-cut and parsed
+/// into `values`: loop-assigns to `number_of_walls` slots via
+/// [`loop_assign_to_count`], with no cast (the C reads straight into its
+/// own `float` array here, unlike the two channel-assignment readers
+/// above) and no value validation (the C never rejects any dB value in
+/// this reader).
+pub fn wall_decibel_gainscale_levels_from_values(
+    values: &[f32],
+    number_of_walls: usize,
+) -> Vec<f32> {
+    loop_assign_to_count(values, number_of_walls)
+}
+
+/// The C's own "no file specified" default for wall gainscale levels
+/// (lines 7157-7163): unity gain (`0.` dB) for every wall.
+pub fn wall_decibel_gainscale_levels_default(number_of_walls: usize) -> Vec<f32> {
+    vec![0.0; number_of_walls]
+}
+
+/// Ports `getReflectionOrderDecibelGainscaleLevels()`'s own read loop
+/// (lines 8556-8630) once its input file has already been comment-cut and
+/// parsed into `values` - a real, confirmed asymmetry from its wall
+/// sibling above: this reader never pads a short file back up to
+/// `high_order_limit` at all.
+/// `numberOfReflectionOrderDecibelGainscaleLevels` is set to `k` itself
+/// whenever `k <= high_order_limit` (line 8603 - only the `k >
+/// high_order_limit` branch clamps, to `high_order_limit`, line 8600), and
+/// the read loop right after (`for i in
+/// 0..numberOfReflectionOrderDecibelGainscaleLevels`, no modulo at all,
+/// line 8613) walks straight through the file with no rewind at all. So a
+/// file shorter than `high_order_limit` yields a *shorter array*, not a
+/// padded one - matching [`reflection_order_gainscale_amplitude`]'s own
+/// `.min()` clamp against the table's real length (already ported in
+/// Phase 3), which depends on exactly this "may be shorter than the
+/// natural count" possibility to index correctly.
+pub fn reflection_order_decibel_gainscale_levels_from_values(
+    values: &[f32],
+    high_order_limit: usize,
+) -> Vec<f32> {
+    values[..values.len().min(high_order_limit)].to_vec()
+}
+
+/// The C's own "no file specified" default for reflection-order gainscale
+/// levels (lines 8570-8574): a *single* `0.` dB entry, not one per order -
+/// [`reflection_order_gainscale_amplitude`]'s own `.min(len)` clamp
+/// already makes a length-1 table behave correctly for every order.
+pub fn reflection_order_decibel_gainscale_levels_default() -> Vec<f32> {
+    vec![0.0]
+}
+
+/// Ports `getWallImpulseResponsePresenceLevels()`'s own read loop (lines
+/// 8802-8888) once its input file has already been comment-cut and parsed
+/// into `values`: [`clamp_extra_slots_to_last_value`] (not
+/// [`loop_assign_to_count`] - see finding 32) to `number_of_walls` slots,
+/// truncated to `int` (matching finding 29's already-documented `(int)
+/// temp` cast), and rejects (`Err`) any level `> 0.` - "WALL IMPULSE
+/// RESPONSE PRESENCE LEVELS MUST BE 0 dB OR LESS."
+pub fn wall_impulse_response_presence_levels_from_values(
+    values: &[f32],
+    number_of_walls: usize,
+) -> Result<Vec<i32>, String> {
+    if values.is_empty() {
+        return Err("wall impulse response presence levels file has no values".to_string());
+    }
+    clamp_extra_slots_to_last_value(values, number_of_walls)
+        .into_iter()
+        .map(|v| {
+            if v > 0.0 {
+                Err(format!(
+                    "wall impulse response presence level {v} dB is invalid: presence levels \
+                     must be 0 dB or less"
+                ))
+            } else {
+                Ok(v as i32)
+            }
+        })
+        .collect()
+}
+
+/// The C's own "no file specified" default for wall impulse response
+/// presence levels (lines 8812-8817): full presence (`0.` dB) for every
+/// wall.
+pub fn wall_impulse_response_presence_levels_default(number_of_walls: usize) -> Vec<i32> {
+    vec![0; number_of_walls]
+}
+
+/// Ports `getReflectionOrderImpulseResponsePresenceLevels()`'s own read
+/// loop (lines 9140-9211) once its input file has already been
+/// comment-cut and parsed into `values`: [`loop_assign_to_count`] (the
+/// correctly-cycling sibling of
+/// [`wall_impulse_response_presence_levels_from_values`]'s own
+/// [`clamp_extra_slots_to_last_value`] - see finding 32) to
+/// `high_order_limit` slots, stored as `float` with no cast (also see
+/// finding 29), and rejects (`Err`) any level `> 0.` - "REFLECTION ORDER
+/// IMPULSE RESPONSE PRESENCE LEVELS MUST BE 0 dB OR LESS."
+///
+/// The real C has no numeric default here at all when no file is
+/// specified: it just turns `useROIRpresenceLevelsFlag` off (line 9159),
+/// which gates the whole balancing step
+/// ([`balance_reflection_order_impulse_responses_against_pulse_using_presence`])
+/// off entirely - matching
+/// [`reflection_order_channel_assignments_from_values`]'s own "no default"
+/// note.
+pub fn reflection_order_impulse_response_presence_levels_from_values(
+    values: &[f32],
+    high_order_limit: usize,
+) -> Result<Vec<f32>, String> {
+    if values.is_empty() {
+        return Err(
+            "reflection order impulse response presence levels file has no values".to_string(),
+        );
+    }
+    loop_assign_to_count(values, high_order_limit)
+        .into_iter()
+        .map(|level| {
+            if level > 0.0 {
+                Err(format!(
+                    "reflection order impulse response presence level {level} dB is invalid: \
+                     presence levels must be 0 dB or less"
+                ))
+            } else {
+                Ok(level)
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5214,5 +5542,136 @@ mod tests {
     fn make_wall_pulse_impulse_responses_zero_frames_does_not_panic() {
         let out = make_wall_pulse_impulse_responses(2, 0);
         assert_eq!(out, vec![Vec::<f32>::new(), Vec::<f32>::new()]);
+    }
+
+    #[test]
+    fn loop_assign_to_count_cycles_a_short_file_back_to_its_start() {
+        let got = loop_assign_to_count(&[10.0, 20.0, 30.0], 7);
+        assert_eq!(got, vec![10.0, 20.0, 30.0, 10.0, 20.0, 30.0, 10.0]);
+    }
+
+    #[test]
+    fn loop_assign_to_count_truncates_a_longer_file() {
+        let got = loop_assign_to_count(&[10.0, 20.0, 30.0], 2);
+        assert_eq!(got, vec![10.0, 20.0]);
+    }
+
+    #[test]
+    fn loop_assign_to_count_empty_input_is_empty_output() {
+        assert_eq!(loop_assign_to_count(&[], 5), Vec::<f32>::new());
+    }
+
+    #[test]
+    fn clamp_extra_slots_to_last_value_repeats_the_last_entry_not_the_first() {
+        // Finding 32: the wall presence-level reader's own loop-assign bug -
+        // this must NOT match loop_assign_to_count's cycling behavior.
+        let got = clamp_extra_slots_to_last_value(&[10.0, 20.0, 30.0], 6);
+        assert_eq!(got, vec![10.0, 20.0, 30.0, 30.0, 30.0, 30.0]);
+    }
+
+    #[test]
+    fn clamp_extra_slots_to_last_value_truncates_a_longer_file() {
+        let got = clamp_extra_slots_to_last_value(&[10.0, 20.0, 30.0], 2);
+        assert_eq!(got, vec![10.0, 20.0]);
+    }
+
+    #[test]
+    fn wall_channel_assignments_loop_assigns_and_casts_to_int() {
+        let got = wall_channel_assignments_from_values(&[2.0, 1.0], 3).unwrap();
+        assert_eq!(got, vec![2, 1, 2]);
+    }
+
+    #[test]
+    fn wall_channel_assignments_rejects_channel_zero() {
+        let err = wall_channel_assignments_from_values(&[0.0], 1).unwrap_err();
+        assert!(err.contains("channel 1"));
+    }
+
+    #[test]
+    fn wall_channel_assignments_default_is_channel_one_for_every_wall() {
+        assert_eq!(wall_channel_assignments_default(3), vec![1, 1, 1]);
+    }
+
+    #[test]
+    fn reflection_order_channel_assignments_rejects_empty_file() {
+        let err = reflection_order_channel_assignments_from_values(&[], 4).unwrap_err();
+        assert!(err.contains("no values"));
+    }
+
+    #[test]
+    fn reflection_order_channel_assignments_loop_assigns() {
+        let got = reflection_order_channel_assignments_from_values(&[3.0], 3).unwrap();
+        assert_eq!(got, vec![3, 3, 3]);
+    }
+
+    #[test]
+    fn wall_decibel_gainscale_levels_loop_assigns_without_casting() {
+        let got = wall_decibel_gainscale_levels_from_values(&[-3.5], 3);
+        assert_eq!(got, vec![-3.5, -3.5, -3.5]);
+    }
+
+    #[test]
+    fn wall_decibel_gainscale_levels_default_is_unity_gain() {
+        assert_eq!(wall_decibel_gainscale_levels_default(2), vec![0.0, 0.0]);
+    }
+
+    #[test]
+    fn reflection_order_gainscale_levels_shrinks_instead_of_padding() {
+        // Real asymmetry vs. the wall reader: a short file yields a SHORT
+        // array, not a loop-assigned, full-length one.
+        let got = reflection_order_decibel_gainscale_levels_from_values(&[-6.0, -3.0], 5);
+        assert_eq!(got, vec![-6.0, -3.0]);
+    }
+
+    #[test]
+    fn reflection_order_gainscale_levels_truncates_a_longer_file() {
+        let got = reflection_order_decibel_gainscale_levels_from_values(&[-6.0, -3.0, -1.0], 2);
+        assert_eq!(got, vec![-6.0, -3.0]);
+    }
+
+    #[test]
+    fn reflection_order_gainscale_levels_default_is_one_unity_gain_entry() {
+        assert_eq!(
+            reflection_order_decibel_gainscale_levels_default(),
+            vec![0.0]
+        );
+    }
+
+    #[test]
+    fn wall_presence_levels_clamps_to_last_value_and_casts_to_int() {
+        let got = wall_impulse_response_presence_levels_from_values(&[-6.4, -3.2], 4).unwrap();
+        // -6 and -3 from truncating -6.4/-3.2 toward zero, then the LAST
+        // value (-3) repeats - not a loop back to -6.
+        assert_eq!(got, vec![-6, -3, -3, -3]);
+    }
+
+    #[test]
+    fn wall_presence_levels_rejects_positive_db() {
+        let err = wall_impulse_response_presence_levels_from_values(&[0.5], 1).unwrap_err();
+        assert!(err.contains("0 dB or less"));
+    }
+
+    #[test]
+    fn wall_presence_levels_default_is_full_presence() {
+        assert_eq!(
+            wall_impulse_response_presence_levels_default(3),
+            vec![0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn reflection_order_presence_levels_loop_assigns_without_casting() {
+        let got = reflection_order_impulse_response_presence_levels_from_values(&[-6.4, -3.2], 4)
+            .unwrap();
+        // Unlike the wall reader, this cycles back to the start and keeps
+        // the fractional dB value instead of truncating it.
+        assert_eq!(got, vec![-6.4, -3.2, -6.4, -3.2]);
+    }
+
+    #[test]
+    fn reflection_order_presence_levels_rejects_positive_db() {
+        let err =
+            reflection_order_impulse_response_presence_levels_from_values(&[0.1], 1).unwrap_err();
+        assert!(err.contains("0 dB or less"));
     }
 }
