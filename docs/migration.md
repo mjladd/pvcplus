@@ -104,3 +104,5 @@ name: `impulseresponse`, `irconvolver`, `irconvolvesequencer`,
 
 SuperCollider scripts under `legacy/supercollider_scripts/` are
 deprecated. Use a [preset](presets.md) with `pvc run --set` instead.
+See [legacy/supercollider_scripts/DEPRECATED.md](../legacy/supercollider_scripts/DEPRECATED.md)
+for the full replacement guide.
