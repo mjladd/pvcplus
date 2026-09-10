@@ -5,14 +5,47 @@ This document tracks progress against
 after each tool lands, not before. Do not restate the plan here. Link to
 the plan section instead.
 
-## Phases 0 to 4
+## Phases 0 to 3
 
-Phases 0 to 4 are complete. The legacy C build runs on CMake inside a
+Phases 0 to 3 are complete. The legacy C build runs on CMake inside a
 pinned Docker image. The golden-file harness records C oracle output and
 compares every Rust port against it. The Rust workspace (`pvc-core`,
 `pvc-io`, `pvc-cli`) exists. All ten core tools from the Phase 3 table are
 ported. CI runs fmt, clippy, the full test suite, and the golden harness
 on every push.
+
+## Phase 4 (user-friendliness layer)
+
+All seven items in the plan's own Phase 4 list are complete and merged,
+as of 2026-09-10.
+
+| Item | Scope | PR |
+|---|---|---|
+| 4.1 Docs site | Split the README into `docs/`: getting started, concepts, migration table, presets guide, and one page per tool | #49 |
+| 4.2 Examples | `examples/presets/` and `make demo` | #50 |
+| 4.3 Run summary and `--json` | Duration, peak level, and clipping printed after every run | #51 |
+| 4.4 Distribution | `pvc` now ships in the Docker image. A GHCR release workflow builds and pushes it on a version tag | #52 |
+| 4.5 Completions and man pages | `pvc completions <shell>`. Man pages for every subcommand live under `man/` | #53 |
+| 4.6 Migration helper | `pvc migrate-script` turns an old `S.*` script into a preset | #54 |
+| 4.7 Tutorial | `docs/tutorial.md`, a full walkthrough | #55 |
+
+Two real bugs surfaced during this phase, found by running every
+example before writing it down, not by a dedicated bug hunt. First,
+`pvc run <preset.toml>` never executed anything at all before PR #49.
+It always failed outside `--dry-run`, even for a fully-working tool
+like `pv`. Second, `ring`'s own low-shelf EQ gain default (`200` dB) is
+a known, deliberately-reproduced C bug. Turn its feedback loop on, and
+the tool's own output goes completely silent, not just too loud as the
+earlier finding said. This second bug was already
+shipped in two places, the `ring` doc page's own example and the
+`make demo` preset, and PR #55 fixed both.
+
+The plan's own Phase 4 scope included a progress bar alongside the run
+summary. That part is deliberately not done. A real progress bar needs
+callback hooks threaded through every tool's own processing loop in
+`pvc-core`. That code is already verified against the C oracle. The
+repo owner chose to skip the progress bar, given its small benefit
+against that risk.
 
 ## Phase 5 (long tail)
 
@@ -50,7 +83,38 @@ The plan flags `roomresponsemaker` and `roomresponsesequencer` as
 "consider leaving legacy-only." The plan also says, in a separate
 section: do not port `roomresponsemaker` unless someone asks. The repo
 owner asked. Work on it continues by that explicit request, not because
-the plan requires it.
+the plan requires it. As of 2026-09-10, work is paused on purpose, in
+favor of Phase 4. Phases 1 to 10 below are merged to `main`. An
+eleventh phase (the sound-file side of the wall/reflection-order
+impulse-response readers) exists on a local branch, not yet pushed or
+opened as a pull request.
+
+## Remaining work
+
+Everything below is what is left against the plan, as of 2026-09-10.
+
+- **`roomresponsemaker`**: paused mid-port. All the pure math and file
+  parsing are done. Still missing: the external shell-out
+  pre-convolution pipeline, `main()`'s own CLI control flow, and a
+  golden test against the real oracle binary. See the phase list
+  below.
+- **`roomresponsesequencer`**: not started. Both tools are optional
+  under the plan's own "consider leaving legacy-only" note.
+- **Repo rename**: the plan's decision 7 approves renaming this
+  repository from `docker-pvcplus` to `pvcplus`. Nobody did this yet.
+- **SuperCollider scripts**: the plan's decision 5 calls these
+  deprecated, pointing users to `pvc run --set`/presets instead, and
+  asks for `legacy/supercollider_scripts/DEPRECATED.md` to say so. That
+  file does not exist yet.
+- **Performance benchmark**: the plan's own validation section asks
+  for a documented comparison of `pvc pv --stretch 2` against legacy
+  `plainpv` on a 60-second file, saved to `docs/dev/bench.md`. A
+  `criterion` benchmark suite already exists
+  (`rust/crates/pvc-core/benches/pvoc.rs`). Nobody wrote the actual
+  comparison against the legacy binary, or the document, yet.
+- **GHCR image**: the release workflow from Phase 4.4 is ready. Nobody
+  pushed a version tag yet, so no image exists at
+  `ghcr.io/mjladd/pvcplus`.
 
 ## roomresponsemaker sub-phases
 
