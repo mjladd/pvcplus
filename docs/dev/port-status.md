@@ -73,13 +73,24 @@ file. Read the module doc comment for the current findings.
 | 2 | Recursive image-source reflection-path search | `63007de` |
 | 3 | Per-reflection amplitude and delay-time math | `928df9a` |
 | 4 | Impulse-response convolution and filtering math | `8971113` |
-| 5 | Direct-sound pulse path and speaker-dispersion math | in progress |
+| 5 | Direct-sound pulse path and speaker-dispersion math | `91faa8d` |
+| 6 | Wall/reflection-order impulse-response cache bookkeeping (the longest-cached-prefix search a new reflection reuses instead of recomputing a shared convolution chain) | in progress |
 
-Work still not started, after Phase 5 lands:
+Phase 6 also settled an open question from Phase 4: the wall
+channel-assignment and gainscale-level readers turned out to hold no pure
+math worth a separate port. Both are pure file parsing, so they stay
+deferred to `pvc-cli`/`pvc-io`. The C's own manual cache memory-growth
+code has no Rust equivalent to write at all, since a `Vec`-backed cache
+grows on its own.
 
-- The file I/O layer that reads, writes, and caches per-wall and
+Work still not started, after Phase 6 lands:
+
+- The actual file I/O that reads and writes per-wall and
   per-reflection-order impulse-response files.
-- Presence-level and memory-growth bookkeeping.
+- The filter-and-normalize and truncate-envelope-and-normalize
+  orchestration functions. These mostly call already-ported math in
+  sequence, deferred to their own phase rather than folded into Phase 6.
+- Presence-level bookkeeping.
 - `main()`'s CLI control flow.
 - A golden test against the real oracle binary.
 

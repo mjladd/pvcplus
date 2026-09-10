@@ -1,7 +1,7 @@
 //! Ports `roomresponsemaker.c` (9318 lines, the largest and most
 //! structurally distinct tool in this project): a recursive image-source
 //! polygonal-room acoustics engine, not a phase-vocoder filter/resynthesis
-//! tool like every other Phase 5 tool. **This module is now through Phase 5
+//! tool like every other Phase 5 tool. **This module is now through Phase 6
 //! of a multi-phase port.**
 //!
 //! **Phase 1** covered the room/speaker/listener geometry layer: room
@@ -65,26 +65,59 @@
 //! functions this dependency chain touches turned out to be entirely dead
 //! and are not ported at all - see findings 21-22.
 //!
-//! **What's still not covered, and why**: the actual wall/reflection-order
-//! impulse-response *file* cache-and-convolve engine, namely
-//! `readInWallImpulseResponses`/`readInReflectionOrderImpulseResponses`,
-//! `recallIR`/`addToIRfileCodes` (the file-based memoization these
-//! functions' own callers use `compare_wall_sequences`'s sort order to
-//! drive), `filterAndNormalizeImpulseResponseNow`/`filterAndNormalize*`
-//! (the very code Phase 4's finding 14 says needs to renormalize
-//! [`convolve_two_arrays`]'s `1/N`-scaled output), and `getWallImpulseResponseChannelAssignments`/
+//! **Phase 6** (this update) covers the wall/reflection-order
+//! impulse-response *cache bookkeeping* - the part of the file
+//! cache-and-convolve engine that is pure logic rather than file I/O:
+//! [`WallResponseCache`] (`addToIRfileCodes`/`testSequence`/`recallIR`,
+//! lines ~7580-7717 - the longest-cached-prefix search a new reflection's
+//! wall sequence reuses instead of recomputing a shared convolution chain
+//! from scratch) and [`wall_impulse_response_cropped_size`]
+//! (`findWallImpulseResponsesCroppedSize`, lines ~6585-6623, reusing Phase
+//! 4's [`find_peak_amp`]/[`crop_end_for_silence`]/
+//! [`smooth_release_of_cropped_end`]). `getWallImpulseResponseChannelAssignments`/
+//! `getWallDecibelGainscaleLevels` (lines ~7061-7218) were read in full
+//! this phase to settle Phase 4's open question about whether either
+//! holds pure math worth extracting - both turned out to be entirely
+//! `fopen`/`fscanf`-driven with no separable pure-math piece (even their
+//! own "loop-assign across N walls" indexing is inline in the same read
+//! loop), so neither is ported; they stay deferred to `pvc-cli`/`pvc-io`
+//! alongside `readInWallImpulseResponses`/`readInReflectionOrderImpulseResponses`.
+//! The C's own manual memory-growth machinery for the cache
+//! (`makeOrIncreaseMemorySpaceForSavedWallReflectionPatterns()`) has no
+//! Rust equivalent to port at all - see [`WallResponseCache`]'s own doc
+//! comment for why a `Vec`-backed cache makes the question moot.
+//!
+//! **What's still not covered, and why**: `readInWallImpulseResponses`/
+//! `readInReflectionOrderImpulseResponses` (real file I/O, belongs with
+//! `pvc-cli`/`pvc-io`), `getWallImpulseResponseChannelAssignments`/
 //! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`
-//! (all three genuinely file-driven, `fopen`/`fscanf` in the C, unlike
-//! everything else read so far), is still not started; it's real file I/O
-//! and belongs with `pvc-cli`/`pvc-io`. `makeSpaceReflectionCoordinates` is
-//! pure geometry with no I/O, but its only consumer
+//! (settled this phase - see above), `filterAndNormalizeImpulseResponseNow`/
+//! `filterAndNormalizeWallImpulseResponses`/`filterAndNormalizeReflectionOrderImpulseResponses(PostConvolution)`/
+//! `truncateEnvelopeAndNormalizeWallImpulseResponses`/`truncateEnvelopeAndNormalizeReflectionOrderImpulseResponses`
+//! (orchestration functions that mostly just call already-ported Phase 4
+//! math in sequence - the very code Phase 4's finding 14 says needs to
+//! renormalize [`convolve_two_arrays`]'s `1/N`-scaled output - deferred to
+//! a Phase 7 rather than crammed into this one), and the ~750 lines of
+//! functions near the end of the file not yet read by any phase
+//! (`getReflectionOrderDecibelGainscaleLevels`,
+//! `findreflectionOrderCVOrderSequences`,
+//! `makeOrIncreaseMemorySpaceForSavedWallReflectionPatterns`,
+//! `getWallImpulseResponsePresenceLevels`,
+//! `balanceWallImpulseResponseAgainstPulseUsingPresence`,
+//! `balanceROimpulseResponseAgainstPulseUsingPresence`,
+//! `preConvolveReflectionOrderImpulseResponsesWithIrconvolver`,
+//! `truncateCVOrderSequences`, `makeIR_DataSpace`,
+//! `getReflectionOrderImpulseResponsePresenceLevels`,
+//! `findMaximumSpeakerToListenerDistance`,
+//! `findMaximumSpeakerToSpeakerDistance`). `makeSpaceReflectionCoordinates`
+//! is pure geometry with no I/O, but its only consumer
 //! (`reflectionSoundPathCoordinates`, confirmed via its single call site at
 //! line ~3119 inside `mirrorPolygonCoordinatesAroundAllSides()`) is
 //! plot-file output, not audio math - deferred to whichever later phase
 //! handles plotting. CLI wiring (`main()`'s own control flow) is also
 //! still not started, so `crack()` flag cross-referencing remains deferred
 //! to that later phase - see finding 19 for a real bug in that control
-//! flow, confirmed this phase by finally reading `main()`'s actual
+//! flow, confirmed in Phase 5 by finally reading `main()`'s actual
 //! statement order around it.
 //!
 //! **`pvc-core` does no I/O of its own** (matching `tools::chordmapperplus`'s
@@ -295,6 +328,19 @@
 //!     (confirmed dead itself - see the Phase 5 module-doc paragraph
 //!     above), never by the real, live
 //!     `writeDirectSourcePulsesIntoImpulseResponse()`. Not ported.
+//!
+//! 25. See [`WallResponseCache::recall`]'s own doc comment:
+//!     `recallIR()` never shrinks its caller's working buffer back down to
+//!     the recalled response's own true length, so a cache hit against a
+//!     shorter previously-cached sequence silently reintroduces trailing
+//!     zero padding into later filter/crop/peak-amp math.
+//!
+//! 26. See [`wall_impulse_response_cropped_size`]'s own doc comment:
+//!     `findWallImpulseResponsesCroppedSize()` truncates `findPeakAmp()`'s
+//!     real `float` return into an `int` local, collapsing the crop
+//!     threshold to `0.0` for virtually all real audio (any peak sample
+//!     magnitude below exactly `1.0`) and degrading "crop below some
+//!     fraction of the peak" into "crop trailing negative samples."
 
 /// A 2D point in feet (this tool's native unit - see `usage()`'s "All
 /// distances are expressed in feet").
@@ -2768,6 +2814,171 @@ pub fn make_direct_sound_speaker_amplitudes(
     }
 }
 
+// ---------------------------------------------------------------------
+// Phase 6: wall/reflection-order impulse-response cache bookkeeping
+// ---------------------------------------------------------------------
+
+/// One previously-computed (and already filtered/normalized, by whatever
+/// processing ran before it was cached) impulse response, keyed by the
+/// exact wall-index sequence (or, for a reflection-order sub-response,
+/// the same negative-encoding [`ReflectionPath`]'s own callers use) that
+/// produced it.
+#[derive(Debug, Clone)]
+pub struct CachedWallResponse {
+    pub sequence: Vec<i32>,
+    pub data: Vec<f32>,
+}
+
+/// Ports the file-based memoization `addToIRfileCodes()`/`testSequence()`/
+/// `recallIR()` implement together (lines ~7580-7717): as reflections are
+/// processed in an order where longer wall sequences share leading
+/// prefixes with shorter ones already computed, this cache lets a new
+/// reflection's convolution chain start from the longest already-cached
+/// prefix instead of recomputing it from scratch.
+///
+/// This is a pure in-memory cache, not a file cache despite the C's own
+/// name (`fileIRCollection*`) - the C never actually writes these to disk
+/// either; "file" refers to the *sequence-of-walls* the tool elsewhere
+/// calls an "IR file code", not an OS file. The C's own manual capacity
+/// doubling (`makeOrIncreaseMemorySpaceForSavedWallReflectionPatterns()`,
+/// growing `fileIRCollectionData` by a fixed 10,000,000-float chunk once
+/// `numberOfSavedIResponses` reaches its pre-allocated cap) is entirely
+/// subsumed by `Vec::push`'s own growth and is intentionally not ported -
+/// there is no behavior left for it to reproduce once the backing store is
+/// a `Vec`.
+#[derive(Debug, Clone, Default)]
+pub struct WallResponseCache {
+    entries: Vec<CachedWallResponse>,
+}
+
+impl WallResponseCache {
+    pub fn new() -> Self {
+        WallResponseCache {
+            entries: Vec::new(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Ports `addToIRfileCodes()`'s own bookkeeping (the actual data-copy
+    /// half; the memory-growth half is moot, see the struct doc comment).
+    pub fn insert(&mut self, sequence: Vec<i32>, data: Vec<f32>) {
+        self.entries.push(CachedWallResponse { sequence, data });
+    }
+
+    /// Ports the search loop at lines ~4594-4602 together with
+    /// `testSequence()` (lines ~7640-7691): tries the *whole* sequence
+    /// first, then its length-minus-one prefix, and so on down to a
+    /// single-wall prefix, returning the first `(prefix_len, cache_index)`
+    /// for which some cached entry's own stored sequence is *exactly*
+    /// `prefix_len` elements long and matches `sequence[..prefix_len]`
+    /// element-for-element. A cached entry longer than `prefix_len` is
+    /// never considered a match at that length - `testSequence()` checks
+    /// `numberOfTestWalls == fileIRCollectionCodeLengths[i]` (equality),
+    /// not `>=`. Returns `None` if not even a single-wall prefix is cached
+    /// (matching the C's own `numberOfTestWalls > 0` loop guard - length 0
+    /// is never tried).
+    pub fn find_longest_cached_prefix(&self, sequence: &[i32]) -> Option<(usize, usize)> {
+        for prefix_len in (1..=sequence.len()).rev() {
+            let prefix = &sequence[..prefix_len];
+            if let Some(index) = self
+                .entries
+                .iter()
+                .position(|e| e.sequence.len() == prefix_len && e.sequence == prefix)
+            {
+                return Some((prefix_len, index));
+            }
+        }
+        None
+    }
+
+    /// Ports `recallIR()` (lines ~7693-7717), including its own real
+    /// quirk (**finding 25**): the C never shrinks the caller's working
+    /// buffer down to the recalled response's own true length. When the
+    /// cached data is shorter than `carried_over_buffer_len` (the C's own
+    /// `impulseResponseNowMemorySize`, a *leftover* value from whatever
+    /// the buffer's high-water mark happened to be from earlier
+    /// processing, not derived from this cache lookup at all), the C
+    /// zero-pads the tail out to that leftover length rather than
+    /// reporting the shorter true length - and every downstream consumer
+    /// (`filterAndNormalizeImpulseResponseNow`'s own
+    /// `lengthOfAudioArrayForFilter = impulseResponseNowMemorySize`,
+    /// `findPeakAmp(impulseResponseNow, impulseResponseNowMemorySize)`,
+    /// etc.) reads that padded length, not the recalled response's real
+    /// one. A cache hit against a *shorter* previously-cached sequence
+    /// than what most recently occupied the working buffer therefore
+    /// silently reintroduces trailing zero padding into later
+    /// filter/crop/peak-amp math. Returns `(padded_data, true_length)` so
+    /// callers can choose to reproduce this (use `padded_data` as-is) or
+    /// use the real length instead (`&padded_data[..true_length]`).
+    pub fn recall(&self, cache_index: usize, carried_over_buffer_len: usize) -> (Vec<f32>, usize) {
+        let entry = &self.entries[cache_index];
+        let true_length = entry.data.len();
+        let mut data = entry.data.clone();
+        if true_length < carried_over_buffer_len {
+            data.resize(carried_over_buffer_len, 0.0);
+        }
+        (data, true_length)
+    }
+}
+
+/// Ports `findWallImpulseResponsesCroppedSize()` for a single wall's
+/// already-loaded impulse response (lines ~6585-6623): when
+/// `no_crop_impulse_responses` is set, the response's own full length
+/// passes through unchanged; otherwise the response is cropped to its own
+/// peak-relative silence threshold via [`find_peak_amp`]/
+/// [`crop_end_for_silence`], then [`smooth_release_of_cropped_end`] fades
+/// the newly-cropped tail (mutating `data` in place, matching the C's own
+/// in-place fade).
+///
+/// **Finding 26**: the C's own `peakAmp` local is declared `int`, not
+/// `float`, silently truncating `findPeakAmp()`'s real (`float`) return
+/// value to zero for every wall response whose peak sample magnitude is
+/// below `1.0` - true of essentially all real audio, since a sample
+/// magnitude of exactly `1.0` only happens at hard clipping. The crop
+/// threshold (`peakAmp * dB_to_amp(endCropDecibelThreshold)`) therefore
+/// collapses to `0.0` in the overwhelmingly common case, so
+/// `cropEndForSilence`'s own `array[index] < threshold` test degenerates
+/// into "is this sample negative" rather than "is this sample below some
+/// fraction of the peak" - cropping stops at the last *non-negative*
+/// trailing sample instead of the last sample above a real silence floor.
+/// This port keeps `find_peak_amp`'s real `f32` return and does not
+/// reproduce the truncation, since the C's own behavior here depends on
+/// on which side of an accidental `int` cast a sample distribution
+/// happens to fall, not on any value a caller controls - reproducing it
+/// exactly would only be reproducing the *particular* wrong answer this
+/// specific input distribution produces, not a testable contract.
+pub fn wall_impulse_response_cropped_size(
+    data: &mut [f32],
+    no_crop_impulse_responses: bool,
+    end_crop_decibel_threshold: f32,
+    end_crop_release_time_seconds: f32,
+    output_sample_rate: f32,
+    db_to_amp: &crate::units::DbToAmp,
+) -> usize {
+    if no_crop_impulse_responses {
+        return data.len();
+    }
+
+    let peak_amp = find_peak_amp(data);
+    let threshold = peak_amp * db_to_amp.convert(end_crop_decibel_threshold);
+    let cropped_size = crop_end_for_silence(data, threshold);
+
+    smooth_release_of_cropped_end(
+        &mut data[..cropped_size],
+        end_crop_release_time_seconds,
+        output_sample_rate,
+    );
+
+    cropped_size
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4025,5 +4236,93 @@ mod tests {
             "symmetric setup should give equal amplitudes, got {:?}",
             amps
         );
+    }
+
+    #[test]
+    fn wall_response_cache_starts_empty() {
+        let cache = WallResponseCache::new();
+        assert!(cache.is_empty());
+        assert_eq!(cache.find_longest_cached_prefix(&[0, 1, 2]), None);
+    }
+
+    #[test]
+    fn wall_response_cache_finds_exact_single_entry() {
+        let mut cache = WallResponseCache::new();
+        cache.insert(vec![3, 1], vec![1.0, 2.0, 3.0]);
+        assert_eq!(cache.find_longest_cached_prefix(&[3, 1]), Some((2, 0)));
+    }
+
+    #[test]
+    fn wall_response_cache_prefers_longest_matching_prefix() {
+        let mut cache = WallResponseCache::new();
+        // Built up incrementally, the way addToIRfileCodes() is actually
+        // called: one entry per prefix length as a sequence grows.
+        cache.insert(vec![5], vec![1.0]);
+        cache.insert(vec![5, 2], vec![1.0, 2.0]);
+        cache.insert(vec![5, 2, 7], vec![1.0, 2.0, 3.0]);
+
+        // A new sequence sharing the [5, 2] prefix but diverging after it
+        // should match at length 2, not 1 or 3.
+        assert_eq!(cache.find_longest_cached_prefix(&[5, 2, 9]), Some((2, 1)));
+    }
+
+    #[test]
+    fn wall_response_cache_no_match_returns_none() {
+        let mut cache = WallResponseCache::new();
+        cache.insert(vec![1, 2], vec![1.0, 2.0]);
+        assert_eq!(cache.find_longest_cached_prefix(&[9, 9]), None);
+    }
+
+    #[test]
+    fn wall_response_cache_requires_exact_length_match() {
+        // A stored sequence of length 3 must not satisfy a length-2 test,
+        // matching testSequence()'s own equality (not >=) check.
+        let mut cache = WallResponseCache::new();
+        cache.insert(vec![4, 4, 4], vec![9.0, 9.0, 9.0]);
+        assert_eq!(cache.find_longest_cached_prefix(&[4, 4]), None);
+    }
+
+    #[test]
+    fn wall_response_cache_recall_returns_true_length_when_no_padding_needed() {
+        let mut cache = WallResponseCache::new();
+        cache.insert(vec![1], vec![1.0, 2.0, 3.0]);
+        let (data, true_length) = cache.recall(0, 1);
+        assert_eq!(true_length, 3);
+        assert_eq!(data, vec![1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn wall_response_cache_recall_zero_pads_to_carried_over_buffer_len() {
+        // Finding 25: recallIR() never shrinks the working buffer back
+        // down to the recalled response's own true length.
+        let mut cache = WallResponseCache::new();
+        cache.insert(vec![1], vec![1.0, 2.0]);
+        let (data, true_length) = cache.recall(0, 5);
+        assert_eq!(true_length, 2);
+        assert_eq!(data, vec![1.0, 2.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn wall_impulse_response_cropped_size_passes_through_when_crop_disabled() {
+        let mut data = vec![0.5, 0.0, 0.0, 0.0];
+        let size =
+            wall_impulse_response_cropped_size(&mut data, true, -96.0, 0.01, 44100.0, &db_to_amp());
+        assert_eq!(size, 4);
+    }
+
+    #[test]
+    fn wall_impulse_response_cropped_size_crops_trailing_silence() {
+        // Peak is 1.0 so findPeakAmp's real f32 value and its buggy C
+        // int-truncated counterpart happen to agree here; the threshold
+        // is exactly 0 at -inf dB (unity dB_to_amp is never reached), so
+        // pick a modest threshold and a clearly-above/clearly-below split.
+        let mut data = vec![1.0, 1.0, 0.0001, 0.0001, 0.0001];
+        let size =
+            wall_impulse_response_cropped_size(&mut data, false, -60.0, 0.0, 44100.0, &db_to_amp());
+        assert_eq!(size, 2);
+    }
+
+    fn db_to_amp() -> DbToAmp {
+        DbToAmp::new()
     }
 }
