@@ -710,6 +710,7 @@ dependencies = [
  "aifc",
  "flacenc",
  "hound",
+ "pvc-core",
  "symphonia",
  "thiserror",
 ]

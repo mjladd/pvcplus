@@ -26,6 +26,7 @@ pub mod ratechanger;
 pub mod ring;
 pub mod ringfilter;
 pub mod ringtvfilter;
+pub mod roomresponsemaker;
 pub mod specflattracker;
 pub mod spectralextractor;
 pub mod spectrummapper;
