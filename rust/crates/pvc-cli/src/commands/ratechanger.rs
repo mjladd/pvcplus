@@ -14,7 +14,7 @@ use crate::cli::RatechangerArgs;
 /// itself uses for every normalization mode but `Input`.
 const NEAR_FULL_SCALE: f32 = 32767.0 / 32768.0;
 
-pub fn run(args: &RatechangerArgs) -> Result<()> {
+pub fn run(args: &RatechangerArgs, json: bool, quiet: bool) -> Result<()> {
     anyhow::ensure!(
         args.truncation_db < 0.0,
         "--truncation-db must be < 0 (got {})",
@@ -161,5 +161,7 @@ pub fn run(args: &RatechangerArgs) -> Result<()> {
         channels: out_channels,
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
-        .with_context(|| format!("writing {}", args.output.display()))
+        .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
+    Ok(())
 }

@@ -6,7 +6,7 @@ use pvc_core::tools::spectwarper::{process_channel, SpectwarpParams};
 
 use crate::cli::SpectwarpArgs;
 
-pub fn run(args: &SpectwarpArgs) -> Result<()> {
+pub fn run(args: &SpectwarpArgs, json: bool, quiet: bool) -> Result<()> {
     let audio = pvc_io::read_audio(&args.input)
         .with_context(|| format!("reading {}", args.input.display()))?;
 
@@ -82,5 +82,6 @@ pub fn run(args: &SpectwarpArgs) -> Result<()> {
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
         .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
     Ok(())
 }

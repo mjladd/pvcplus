@@ -7,7 +7,7 @@ use pvc_core::tools::filtdeviator::{process_channel, FiltdeviatorParams};
 
 use crate::cli::FiltdeviatorArgs;
 
-pub fn run(args: &FiltdeviatorArgs) -> Result<()> {
+pub fn run(args: &FiltdeviatorArgs, json: bool, quiet: bool) -> Result<()> {
     let audio = pvc_io::read_audio(&args.input)
         .with_context(|| format!("reading {}", args.input.display()))?;
     let (response_amps, analysis_n) = pvc_io::read_fr_amplitudes(&args.response)
@@ -142,5 +142,7 @@ pub fn run(args: &FiltdeviatorArgs) -> Result<()> {
         channels: out_channels,
     };
     pvc_io::write_wav(&args.output, &out_buffer, pvc_io::SampleFormat::I16)
-        .with_context(|| format!("writing {}", args.output.display()))
+        .with_context(|| format!("writing {}", args.output.display()))?;
+    crate::summary::RunSummary::from_buffer(&args.output, &out_buffer).print(json, quiet);
+    Ok(())
 }
