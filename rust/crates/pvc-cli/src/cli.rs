@@ -84,6 +84,18 @@ pub enum Command {
         generator: FnCommand,
     },
 
+    /// Migrates a legacy `S.*` shell script's own variable block into a
+    /// preset TOML for `pvc run`, printed to stdout.
+    ///
+    /// Only `S.plainpv`-shaped scripts (`pvroutine=plainpv`) are mapped
+    /// today - see `pvc-cli::migrate`'s doc comment. Any variable with
+    /// no `pvc pv` equivalent is listed in a trailing comment rather
+    /// than silently dropped.
+    MigrateScript {
+        /// Path to the legacy `S.*` script to migrate.
+        script: PathBuf,
+    },
+
     /// Print a shell completion script to stdout.
     ///
     /// Source it directly, or write it to your shell's own completion

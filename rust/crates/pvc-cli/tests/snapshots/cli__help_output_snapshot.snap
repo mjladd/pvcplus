@@ -12,6 +12,7 @@ Commands:
   preset               Manage presets (TOML files consumed by `pvc run`)
   run                  Run a preset, optionally overriding fields with `--set key=value`
   fn                   Control-function generators (the CARL/cmusic "GEN" family)
+  migrate-script       Migrates a legacy `S.*` shell script's own variable block into a preset TOML for `pvc run`, printed to stdout
   completions          Print a shell completion script to stdout
   pv                   Phase vocoder: analyze then resynthesize
   stretch              Time-stretch only - `pvc pv --stretch <factor>` with everything else at its default

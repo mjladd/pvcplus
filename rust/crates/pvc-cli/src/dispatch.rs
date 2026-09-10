@@ -24,6 +24,8 @@ pub fn execute(command: Command, json: bool, dry_run: bool, quiet: bool) -> anyh
 
         Command::Fn { generator } => commands::gen::run(generator),
 
+        Command::MigrateScript { script } => commands::migrate_script::run(&script),
+
         Command::Completions { shell } => {
             commands::completions::run(shell);
             Ok(())

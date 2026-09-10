@@ -1,0 +1,18 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH pvc-migrate-script 1  "pvc-migrate-script " 
+.SH NAME
+pvc\-migrate\-script \- Migrates a legacy `S.*` shell script\*(Aqs own variable block into a preset TOML for `pvc run`, printed to stdout
+.SH SYNOPSIS
+\fBpvc\-migrate\-script\fR [\fB\-h\fR|\fB\-\-help\fR] <\fISCRIPT\fR> 
+.SH DESCRIPTION
+Migrates a legacy `S.*` shell script\*(Aqs own variable block into a preset TOML for `pvc run`, printed to stdout.
+.PP
+Only `S.plainpv`\-shaped scripts (`pvroutine=plainpv`) are mapped today \- see `pvc\-cli::migrate`\*(Aqs doc comment. Any variable with no `pvc pv` equivalent is listed in a trailing comment rather than silently dropped.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fISCRIPT\fR>
+Path to the legacy `S.*` script to migrate
