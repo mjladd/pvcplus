@@ -60,6 +60,58 @@ impl Preset {
         map.insert(key.to_string(), value);
         Ok(())
     }
+
+    /// Builds the `pvc <tool> [flags...] <input> <output>` argument list
+    /// this preset resolves to, for `Cli::try_parse_from` to parse the
+    /// same way it would parse real command-line input - see
+    /// `commands::run`'s own doc comment for why reusing `Cli`'s parser
+    /// this way, rather than hand-mapping each preset field onto each
+    /// tool's own args struct, is the whole point.
+    ///
+    /// Every `[params]` key must already be the snake_case spelling of a
+    /// real flag name (`frames_per_sec` for `--frames-per-sec`,
+    /// `shelf_low_gain` for `--shelf-low-gain`), matching clap's own
+    /// kebab-case derivation - there is no separate name-mapping table,
+    /// so a preset field that does not match a real flag name surfaces
+    /// as a plain "unexpected argument" error from `Cli::try_parse_from`,
+    /// not a silently-ignored field. A boolean `true` value becomes a
+    /// bare `--flag` (for switch-style flags); `false` omits the flag
+    /// entirely, which only gives the right answer for a switch whose
+    /// own default is `false` - this preset format has no way to force a
+    /// `true`-by-default switch back off.
+    pub fn to_cli_args(&self, program: &str) -> Vec<String> {
+        let mut args = vec![program.to_string(), self.tool.clone()];
+        if let Some(toml::Value::Table(params)) = self.tables.get("params") {
+            for (key, value) in params {
+                let flag = format!("--{}", key.replace('_', "-"));
+                match value {
+                    toml::Value::Boolean(true) => args.push(flag),
+                    toml::Value::Boolean(false) => {}
+                    other => {
+                        args.push(flag);
+                        args.push(toml_value_to_arg(other));
+                    }
+                }
+            }
+        }
+        if let Some(input) = &self.input {
+            args.push(input.clone());
+        }
+        if let Some(output) = &self.output {
+            args.push(output.clone());
+        }
+        args
+    }
+}
+
+fn toml_value_to_arg(value: &toml::Value) -> String {
+    match value {
+        toml::Value::String(s) => s.clone(),
+        toml::Value::Integer(i) => i.to_string(),
+        toml::Value::Float(f) => f.to_string(),
+        toml::Value::Boolean(b) => b.to_string(),
+        other => other.to_string(),
+    }
 }
 
 fn parse_value(raw: &str) -> toml::Value {
@@ -95,15 +147,13 @@ input = "in.wav"
 output = "out.wav"
 
 [params]
-fft = 2048              # FFT size (power of two)
+fft = 2048               # FFT size (power of two)
 window = "kaiser8"       # hamming | rectangular | blackman | bartlett | kaiser<4-12> | blackman_harris | nuttall | blackman_nuttall | flat_top
 frames_per_sec = 400     # analysis frames per second (sets the hop size)
 stretch = 1.0            # time-stretch factor (1.0 = unchanged)
-pitch = 0.0              # pitch transposition in semitones; accepts "@path" for a time-varying control function
-
-[shelf_eq]
-low_gain_db = 0
-low_freq = 500
+pitch = 0.0              # pitch transposition in semitones - accepts "@path" for a time-varying control function
+shelf_low_gain = 0       # low shelf EQ gain in dB
+shelf_low_freq = 500     # low shelf EQ frequency in Hz
 "#;
 
 /// Example presets bundled under `examples/presets/` (relative to the
@@ -179,5 +229,75 @@ mod tests {
     #[test]
     fn init_template_for_unknown_tool_errors() {
         assert!(init_template("nonexistent-tool").is_err());
+    }
+
+    #[test]
+    fn to_cli_args_builds_flags_input_and_output_in_order() {
+        let preset: Preset = toml::from_str(
+            r#"
+            tool = "pv"
+            input = "in.wav"
+            output = "out.wav"
+            [params]
+            fft = 2048
+            stretch = 1.5
+            window = "kaiser8"
+            "#,
+        )
+        .unwrap();
+        let args = preset.to_cli_args("pvc");
+        assert_eq!(args[0], "pvc");
+        assert_eq!(args[1], "pv");
+        assert_eq!(args[args.len() - 2], "in.wav");
+        assert_eq!(args[args.len() - 1], "out.wav");
+        // Flag order follows BTreeMap key order (alphabetical), not
+        // insertion order - assert presence, not position.
+        assert!(args.windows(2).any(|w| w == ["--fft", "2048"]));
+        assert!(args.windows(2).any(|w| w == ["--stretch", "1.5"]));
+        assert!(args.windows(2).any(|w| w == ["--window", "kaiser8"]));
+    }
+
+    #[test]
+    fn to_cli_args_bool_true_is_a_bare_flag_false_is_omitted() {
+        let preset: Preset = toml::from_str(
+            r#"
+            tool = "sometool"
+            [params]
+            on_flag = true
+            off_flag = false
+            "#,
+        )
+        .unwrap();
+        let args = preset.to_cli_args("pvc");
+        assert!(args.contains(&"--on-flag".to_string()));
+        assert!(!args.contains(&"--off-flag".to_string()));
+    }
+
+    #[test]
+    fn to_cli_args_omits_input_output_when_absent() {
+        let preset = Preset {
+            tool: "pv".to_string(),
+            ..Default::default()
+        };
+        let args = preset.to_cli_args("pvc");
+        assert_eq!(args, vec!["pvc".to_string(), "pv".to_string()]);
+    }
+
+    #[test]
+    fn pv_template_round_trips_through_cli_parsing() {
+        // The template's own [params] keys must be real pv flag names -
+        // this is the regression test for the shelf_eq-vs-shelf-low-gain
+        // mismatch that made every `pvc run` on the bundled `pv` preset
+        // fail before this test existed.
+        use crate::cli::Cli;
+        use clap::Parser;
+
+        let template = init_template("pv").unwrap();
+        let preset: Preset = toml::from_str(template).unwrap();
+        let args = preset.to_cli_args("pvc");
+        let cli = Cli::try_parse_from(&args).unwrap_or_else(|e| {
+            panic!("pv template did not parse as valid pv args: {e}\nargs: {args:?}")
+        });
+        assert!(matches!(cli.command, crate::cli::Command::Pv(_)));
     }
 }
