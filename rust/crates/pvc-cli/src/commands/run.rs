@@ -1,17 +1,26 @@
 //! `pvc run <preset.toml> [--set key=value ...]`.
 //!
-//! No tool is wired up to actually execute yet - that lands per-tool in
-//! Phase 3, alongside each tool's port. Until then, `run` still does the
-//! genuinely useful part: load the preset, apply overrides, and print the
-//! fully resolved parameter set (this *is* `--dry-run`'s whole job, so
-//! `run` without `--dry-run` does the same resolution and then reports
-//! that execution isn't available yet, pointing at `pvc legacy` as the
-//! transition path).
+//! Loads the preset, applies any `--set` overrides, prints the fully
+//! resolved parameter set (unless `--quiet`), and then - unless
+//! `--dry-run` - actually runs the resolved tool.
+//!
+//! Running reuses the exact same argument parser and dispatch table as
+//! `pvc <tool> ...` typed directly: [`Preset::to_cli_args`] turns the
+//! resolved preset into the argument list `Cli::try_parse_from` would see
+//! from a real command line (`pvc <tool> --flag value ... <input>
+//! <output>`), and [`crate::dispatch::execute`] then runs it exactly the
+//! way `main` does. This means a preset can only ever drive a tool
+//! through the flags that tool's own `clap` struct already accepts - no
+//! separate, easy-to-drift mapping table between preset field names and
+//! real flags to maintain.
 
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use clap::Parser;
 
+use crate::cli::Cli;
+use crate::dispatch;
 use crate::preset::Preset;
 
 pub fn run(
@@ -38,9 +47,14 @@ pub fn run(
         return Ok(());
     }
 
-    anyhow::bail!(
-        "running tool {:?} isn't wired up yet - `pvc run` gains real execution in Phase 3 as each tool is ported; use `pvc legacy {}` in the meantime",
-        preset.tool,
-        preset.tool
-    );
+    let args = preset.to_cli_args("pvc");
+    let cli = Cli::try_parse_from(&args).with_context(|| {
+        format!(
+            "preset {} resolved to invalid arguments for tool {:?}: {}",
+            preset_path.display(),
+            preset.tool,
+            args.join(" ")
+        )
+    })?;
+    dispatch::execute(cli.command, json, dry_run, quiet)
 }
