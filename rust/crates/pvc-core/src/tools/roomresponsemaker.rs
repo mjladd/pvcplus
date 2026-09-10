@@ -140,9 +140,34 @@
 //! been read yet; this phase closes that loop). Finding 30 confirms Phase
 //! 3's own choice there was already correct.
 //!
-//! **What's still not covered, and why**: `readInWallImpulseResponses`/
-//! `readInReflectionOrderImpulseResponses` (real file I/O, belongs with
-//! `pvc-cli`/`pvc-io`), `getWallImpulseResponseChannelAssignments`/
+//! **Phase 9** (this update) reads `readInWallImpulseResponses()`/
+//! `readInReflectionOrderImpulseResponses()` (lines 6453-6583, 8126-8254)
+//! in full and extracts the two pieces of them that are not file I/O:
+//! [`select_impulse_response_channels_by_assignment`] (the shared shape of
+//! both functions' own "for each assigned channel, copy that source
+//! channel's already-decoded samples into this wall/order's own slot"
+//! loop - `pvc-io::audio::read_audio` already returns de-interleaved
+//! `Vec<Vec<f32>>` per channel, so there is no interleave/de-interleave
+//! step left to port here at all, only the assignment-driven selection)
+//! and [`make_wall_pulse_impulse_responses`] (`readInWallImpulseResponses()`'s
+//! own "WALL IMPULSE RESPONSES IS OFF" branch, lines 6472-6499 - unlike its
+//! reflection-order sibling, which hard-exits when off, the wall version
+//! synthesizes a trivial per-channel unit pulse instead of reading a file
+//! at all, so this one small branch is pure math in the C itself, not
+//! merely extractable-in-hindsight math like everything else this module
+//! has ported). Every other line in both functions is `sf_open`/`sf_seek`/
+//! `sf_read_float`/bounds-check-then-`exit` - real file I/O and real
+//! process control, left to `pvc-cli`/`pvc-io` like every other reader in
+//! this module. This closes out essentially all of `roomresponsemaker.c`'s
+//! extractable pure math - the module doc comment's own "still not
+//! covered" list below is now entirely file I/O, subprocess orchestration,
+//! and CLI control flow, not math this crate could hold.
+//!
+//! **What's still not covered, and why**: the actual sound-file reads
+//! inside `readInWallImpulseResponses()`/`readInReflectionOrderImpulseResponses()`
+//! (real file I/O, belongs with `pvc-cli`/`pvc-io` - `pvc-io::audio::read_audio`
+//! already covers the decode step), `getWallImpulseResponseChannelAssignments`/
+//! `getReflectionOrderImpulseResponseChannelAssignments`/
 //! `getWallDecibelGainscaleLevels`/`getReflectionOrderDecibelGainscaleLevels`/
 //! `getWallImpulseResponsePresenceLevels`/`getReflectionOrderImpulseResponsePresenceLevels`
 //! (all pure file I/O, same convention - see finding 29 for a real bug a
@@ -3481,6 +3506,64 @@ pub fn find_maximum_speaker_to_speaker_distance(speakers: &[Point]) -> f32 {
     max
 }
 
+/// Ports the channel-selection loop shared by `readInWallImpulseResponses()`
+/// (lines 6566-6575) and `readInReflectionOrderImpulseResponses()` (lines
+/// 8224-8233): given `decoded_channels` (already-decoded, already-
+/// de-interleaved sound-file channels - `pvc-io::audio::read_audio`
+/// already returns exactly this shape, matching this module's convention
+/// of taking file *content*, never doing I/O itself) and a list of
+/// 1-indexed `channel_assignments`, selects one output channel per
+/// assignment, in assignment order.
+///
+/// An assignment of `0` or greater than `decoded_channels.len()` is the
+/// real C's own hard-exit error condition ("ONE OR MORE CHANNEL
+/// ASSIGNMENTS EXCEEDS THE NUMBER OF AVAILABLE CHANNELS," and an
+/// unchecked, out-of-bounds `channel - 1` read for a `0` assignment this
+/// port has no equivalent undefined behaviour for) - reproduced here as
+/// `None` for that assignment rather than a panic or an out-of-bounds
+/// read, leaving the actual exit-vs-recover decision to the caller.
+pub fn select_impulse_response_channels_by_assignment(
+    decoded_channels: &[Vec<f32>],
+    channel_assignments: &[usize],
+) -> Vec<Option<Vec<f32>>> {
+    channel_assignments
+        .iter()
+        .map(|&assignment| {
+            let index = assignment.checked_sub(1)?;
+            decoded_channels.get(index).cloned()
+        })
+        .collect()
+}
+
+/// Ports `readInWallImpulseResponses()`'s own "WALL IMPULSE RESPONSES IS
+/// OFF" branch (lines 6472-6499): when no wall impulse response sound
+/// file is in use, every wall gets the same trivial impulse response
+/// instead of a real one read from a file - a single unit sample at frame
+/// `0` followed by silence (a bare Dirac pulse), `number_of_frames`
+/// samples long. Unlike its reflection-order sibling (which hard-exits
+/// when off - see the module's own "what's still not covered" note), this
+/// branch is genuine pure math in the C itself, not merely
+/// extractable-in-hindsight math.
+///
+/// The C's own hardcoded default for `number_of_frames` is `16384`
+/// (`wall_numberOfFrames = (long int) 16384`); this port takes it as a
+/// parameter rather than a hardcoded constant, leaving that default to
+/// whichever future phase wires up the CLI.
+pub fn make_wall_pulse_impulse_responses(
+    number_of_wall_channel_assignments: usize,
+    number_of_frames: usize,
+) -> Vec<Vec<f32>> {
+    (0..number_of_wall_channel_assignments)
+        .map(|_| {
+            let mut channel = vec![0.0f32; number_of_frames];
+            if let Some(first) = channel.first_mut() {
+                *first = 1.0;
+            }
+            channel
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5094,5 +5177,42 @@ mod tests {
             find_maximum_speaker_to_speaker_distance(&[Point::new(1.0, 1.0)]),
             0.0
         );
+    }
+
+    #[test]
+    fn select_impulse_response_channels_by_assignment_picks_in_assignment_order() {
+        let decoded = vec![vec![1.0, 1.0], vec![2.0, 2.0], vec![3.0, 3.0]];
+        // 1-indexed assignments, and out of the decoded channels' own order.
+        let out = select_impulse_response_channels_by_assignment(&decoded, &[3, 1, 2]);
+        assert_eq!(
+            out,
+            vec![
+                Some(vec![3.0, 3.0]),
+                Some(vec![1.0, 1.0]),
+                Some(vec![2.0, 2.0]),
+            ]
+        );
+    }
+
+    #[test]
+    fn select_impulse_response_channels_by_assignment_out_of_range_is_none() {
+        let decoded = vec![vec![1.0], vec![2.0]];
+        let out = select_impulse_response_channels_by_assignment(&decoded, &[0, 3, 1]);
+        assert_eq!(out, vec![None, None, Some(vec![1.0])]);
+    }
+
+    #[test]
+    fn make_wall_pulse_impulse_responses_gives_every_channel_a_unit_pulse() {
+        let out = make_wall_pulse_impulse_responses(3, 5);
+        assert_eq!(out.len(), 3);
+        for ch in &out {
+            assert_eq!(ch, &vec![1.0, 0.0, 0.0, 0.0, 0.0]);
+        }
+    }
+
+    #[test]
+    fn make_wall_pulse_impulse_responses_zero_frames_does_not_panic() {
+        let out = make_wall_pulse_impulse_responses(2, 0);
+        assert_eq!(out, vec![Vec::<f32>::new(), Vec::<f32>::new()]);
     }
 }

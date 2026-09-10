@@ -77,6 +77,7 @@ file. Read the module doc comment for the current findings.
 | 6 | Wall/reflection-order impulse-response cache bookkeeping (the longest-cached-prefix search a new reflection reuses instead of recomputing a shared convolution chain) | `c4859e3` |
 | 7 | Filter/normalize and truncate/envelope/normalize orchestration for wall and reflection-order impulse responses | `94fe45a` |
 | 8 | Reflection-order convolution-sequence bookkeeping, presence-level balance math, and maximum speaker-to-listener/speaker-to-speaker distance search | `dd3ef9f` |
+| 9 | Channel-assignment selection for wall/reflection-order impulse response reads, and the wall pulse-mode default | pending |
 
 Phase 6 also settled an open question from Phase 4: the wall
 channel-assignment and gainscale-level readers turned out to hold no pure
@@ -113,11 +114,23 @@ readers has a real inconsistency with its own sibling reader. A future
 reader of that file needs to decide on that inconsistency on purpose
 (finding 29).
 
-Work still not started, after Phase 8 lands:
+Phase 9 read the two wall/reflection-order impulse-response sound-file
+readers in full. It ported the two pieces of them that are not file I/O.
+The first piece is the shared channel-assignment selection logic. The
+second piece is a wall-only pulse-mode default. That default stands in
+for a sound file whenever wall impulse responses are off.
+`pvc-io::audio::read_audio` already decodes and de-interleaves a sound
+file into per-channel data. So the new channel-assignment function only
+needs to pick and reorder channels, not decode anything. This phase
+closes out almost all of the pure math left in `roomresponsemaker.c`.
+What remains is file I/O, subprocess orchestration, and CLI control flow,
+not more math for `pvc-core` to hold.
 
-- The actual file I/O that reads and writes per-wall and
-  per-reflection-order impulse-response files, and the presence-level and
-  gainscale-level files that feed them.
+Work still not started, after Phase 9 lands:
+
+- The actual sound-file reads inside the wall/reflection-order
+  impulse-response readers, and the channel-assignment, presence-level,
+  and gainscale-level files that feed them.
 - The external shell-out pre-convolution pipeline in
   `preConvolveReflectionOrderImpulseResponsesWithIrconvolver` (finding 31).
   This is a subprocess-orchestration question, not a math one.
