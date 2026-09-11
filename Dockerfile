@@ -45,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=legacy-build /opt/pvc-legacy /opt/pvc-legacy
 
 ENV PATH="/opt/pvc-legacy/bin:${PATH}"
-WORKDIR /workspaces/docker-pvcplus
+WORKDIR /workspaces/pvcplus
 CMD ["zsh"]
 
 # ---- runtime: minimal image with pvc plus the legacy tools ----

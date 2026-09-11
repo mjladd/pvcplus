@@ -6,8 +6,8 @@
 binary today.
 
 ```bash
-git clone https://github.com/mjladd/docker-pvcplus.git
-cd docker-pvcplus/rust
+git clone https://github.com/mjladd/pvcplus.git
+cd pvcplus/rust
 cargo build --release -p pvc-cli
 ./target/release/pvc --help
 ```

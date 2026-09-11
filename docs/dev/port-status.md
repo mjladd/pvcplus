@@ -100,8 +100,11 @@ Everything below is what is left against the plan, as of 2026-09-10.
   below.
 - **`roomresponsesequencer`**: not started. Both tools are optional
   under the plan's own "consider leaving legacy-only" note.
-- **Repo rename**: the plan's decision 7 approves renaming this
-  repository from `docker-pvcplus` to `pvcplus`. Nobody did this yet.
+- ~~**Repo rename**~~: done. This repository is now `pvcplus` on
+  GitHub. `rust/Cargo.toml`, `docs/getting-started.md`, and the
+  devcontainer's own `WORKDIR` all point at the new name. The GHCR
+  image name was already `ghcr.io/mjladd/pvcplus` from Phase 4.4, so
+  it needed no change.
 - ~~**SuperCollider scripts**~~: done. `legacy/supercollider_scripts/DEPRECATED.md`
   points to `pvc run --set`/presets, and to `pvc migrate-script` for
   converting an `S.plainpv`-shaped script directly. The plan's own text
