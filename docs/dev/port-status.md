@@ -118,9 +118,14 @@ Everything below is what is left against the plan, as of 2026-09-10.
   file, both run inside the same `runtime` Docker image. Result: `pvc`
   is about 4% slower, not at least as fast as the plan's own target.
   Nobody profiled the gap yet.
-- **GHCR image**: the release workflow from Phase 4.4 is ready. Nobody
-  pushed a version tag yet, so no image exists at
-  `ghcr.io/mjladd/pvcplus`.
+- ~~**GHCR image**~~: mostly done. `v0.1.0` is tagged and pushed. Real
+  images exist at `ghcr.io/mjladd/pvcplus`, tagged `latest`, `legacy`,
+  and `0.1.0`. A real bug in `release.yml` stripped the leading `v` before this first
+  release ran. The image carries the tag `0.1.0`, not `v0.1.0`, for now. The workflow itself is fixed, so `v1.0.0`
+  and onward need no such fix. Both `mjladd/pvcplus` (the repository)
+  and its own GHCR package needed a separate visibility change to
+  public. Repository visibility does not carry over to an existing
+  package on its own.
 
 ## roomresponsemaker sub-phases
 
