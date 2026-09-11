@@ -11,6 +11,17 @@ phase-vocoder work. The original C tools still ship alongside it. See
 [docs/migration.md](docs/migration.md) for how each one maps to a new
 `pvc` command.
 
+## Prerequisites
+
+Building from source needs a Rust toolchain, version 1.87 or newer.
+Run `cargo --version` to check whether you already have one. If not,
+install one from [rustup.rs](https://rustup.rs). `pvc` uses pure-Rust
+file I/O, so no other system library is needed.
+
+If you have no Rust toolchain on your machine, use
+[Docker](docs/getting-started.md#docker) instead. The image builds
+`pvc` for you.
+
 ## Quickstart
 
 ```bash

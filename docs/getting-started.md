@@ -1,9 +1,14 @@
 # Getting started
 
-## Build from source
+## Prerequisites
 
-`pvc` is a Rust workspace. This is the working way to get a `pvc`
-binary today.
+Pick one of the two paths below. Building from source needs a Rust
+toolchain, version 1.87 or newer, from [rustup.rs](https://rustup.rs).
+Run `cargo --version` first to check whether you already have one.
+The Docker path needs only Docker itself. The image builds `pvc` for
+you.
+
+## Build from source
 
 ```bash
 git clone https://github.com/mjladd/pvcplus.git
@@ -17,18 +22,21 @@ Put `./target/release/pvc` on your `PATH`, or run it by its full path.
 ## Docker
 
 ```bash
-docker build -t pvcplus .
+docker pull ghcr.io/mjladd/pvcplus:latest
 mkdir -p ~/pvctest/input ~/pvctest/output
 docker run --rm -v ~/pvctest/input:/audio/input -v ~/pvctest/output:/audio/output \
-  pvcplus stretch --factor 2.0 /audio/input/input.wav /audio/output/stretched.wav
+  ghcr.io/mjladd/pvcplus:latest stretch --factor 2.0 /audio/input/input.wav /audio/output/stretched.wav
 ```
 
-The image's entrypoint is `pvc` itself, so `docker run --rm pvcplus`
-with no arguments prints `pvc --help`. Legacy tools are still there,
-reached through `docker run --rm pvcplus legacy <tool> <flags>`
-instead of by their own name directly. See [Migration](migration.md).
-No image is published yet, so `docker build .` is the only way to get
-one today.
+The image's entrypoint is `pvc` itself, so `docker run --rm
+ghcr.io/mjladd/pvcplus:latest` with no arguments prints `pvc --help`.
+Legacy tools are still there, reached through `docker run --rm
+ghcr.io/mjladd/pvcplus:latest legacy <tool> <flags>` instead of by
+their own name directly. See [Migration](migration.md). A `:legacy`
+tag has the original C tools only, with no `pvc` binary, for the old
+direct-by-name invocation style. Building your own image locally still
+works too: `docker build -t pvcplus .`, then use `pvcplus` in place of
+`ghcr.io/mjladd/pvcplus:latest` above.
 
 The devcontainer (`--target dev`) has both the Rust and C toolchains,
 plus a shell, for working on `pvc` itself.
