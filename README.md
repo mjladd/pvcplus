@@ -18,11 +18,21 @@ Run `cargo --version` to check whether you already have one. If not,
 install one from [rustup.rs](https://rustup.rs). `pvc` uses pure-Rust
 file I/O, so no other system library is needed.
 
-If you have no Rust toolchain on your machine, use
-[Docker](docs/getting-started.md#docker) instead. The image builds
+If you have no Rust toolchain on your machine, install a
+[prebuilt binary](docs/getting-started.md#prebuilt-binaries) instead,
+or use [Docker](docs/getting-started.md#docker). The image builds
 `pvc` for you.
 
 ## Quickstart
+
+Install the latest release for Linux or macOS with one command:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/mjladd/pvcplus/releases/latest/download/pvc-cli-installer.sh | sh
+pvc stretch --factor 2.0 input.wav output.wav
+```
+
+Building from source instead:
 
 ```bash
 cd rust

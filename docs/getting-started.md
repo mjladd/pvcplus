@@ -2,11 +2,38 @@
 
 ## Prerequisites
 
-Pick one of the two paths below. Building from source needs a Rust
-toolchain, version 1.87 or newer, from [rustup.rs](https://rustup.rs).
-Run `cargo --version` first to check whether you already have one.
-The Docker path needs only Docker itself. The image builds `pvc` for
-you.
+Pick one of the three paths below. Prebuilt binaries need nothing
+but `curl` or a browser. Building from source needs a Rust toolchain,
+version 1.87 or newer, from [rustup.rs](https://rustup.rs). Run
+`cargo --version` first to check whether you already have one. The
+Docker path needs only Docker itself. The image builds `pvc` for you.
+
+## Prebuilt binaries
+
+Linux (x86_64, aarch64) and macOS (Intel, Apple Silicon) binaries are
+attached to every [release](https://github.com/mjladd/pvcplus/releases).
+Run this command to install the latest one:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/mjladd/pvcplus/releases/latest/download/pvc-cli-installer.sh | sh
+```
+
+The installer downloads the right binary for your machine. It makes
+sure that the binary matches its checksum, and puts `pvc` on your
+`PATH`.
+
+Restart your shell afterward. You can also run the `source` command
+the installer prints instead of restarting.
+
+To install a specific version, replace `latest/download` with
+`download/vX.Y.Z`. For example, use `download/v0.1.1` for version
+0.1.1.
+
+If you do not want to run a script from the internet, download the
+tarball instead. Get it from the
+[releases page](https://github.com/mjladd/pvcplus/releases). Make
+sure that it matches the checksum file next to it. Then extract it,
+and put the `pvc` binary from inside on your `PATH` yourself.
 
 ## Build from source
 
