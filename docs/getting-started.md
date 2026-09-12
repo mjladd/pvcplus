@@ -107,6 +107,42 @@ Play both output files. The stretched one keeps the same pitch, over
 roughly twice the time. The pitched one sounds higher, around 659 Hz
 for a 440 Hz input, at close to the original duration.
 
+## Uninstall
+
+Steps depend on how you installed `pvc`.
+
+### Prebuilt binary
+
+The shell installer creates no separate uninstaller. Remove the
+files it placed instead:
+
+```bash
+rm -f ~/.cargo/bin/pvc ~/.cargo/bin/gen-man
+rm -f ~/.config/pvc-cli/pvc-cli-receipt.json
+```
+
+The installer also adds a line to your shell profile. When
+`~/.cargo/bin` is already on your `PATH`, it skips that step. A Rust
+toolchain from rustup.rs is one common reason to already have it
+there. If you have no other reason to keep `~/.cargo/bin` on your
+`PATH`, remove that line from your profile too.
+
+### Docker
+
+Remove the image instead of a file:
+
+```bash
+docker rmi ghcr.io/mjladd/pvcplus:latest
+```
+
+Repeat for any other tag you pulled, such as `:legacy` or a version
+tag.
+
+### Build from source
+
+Delete the cloned repository. If you copied
+`rust/target/release/pvc` somewhere else first, delete that copy too.
+
 ## Where to go next
 
 - [Tutorial](tutorial.md) walks through a full session: chaining
