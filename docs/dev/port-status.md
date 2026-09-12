@@ -126,6 +126,17 @@ Everything below is what is left against the plan, as of 2026-09-10.
   and its own GHCR package needed a separate visibility change to
   public. Repository visibility does not carry over to an existing
   package on its own.
+- ~~**Downloadable binaries**~~: done. `dist-workspace.toml` at the
+  repo root configures `cargo-dist` for four targets: Linux x86_64
+  and aarch64, and macOS Intel and Apple Silicon. `v0.1.1` is the
+  first tag built this way. The GitHub Release at that tag carries a
+  tarball per target, a SHA-256 sum per tarball, and a shell installer.
+  The plan named `cargo-dist` for this and left it as a future
+  option, not in scope. The repo owner asked for it after testing
+  the finished project and finding nothing to download directly,
+  only the GHCR image. `docs/getting-started.md` documents all
+  three install paths now: prebuilt binary, Docker, and build from
+  source.
 
 ## roomresponsemaker sub-phases
 
