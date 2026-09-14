@@ -1,28 +1,15 @@
 # Parameter inventory (Task 1.4)
 
-Source of truth for the new `pvc` CLI's flag names and the TOML preset
-schema (§2.1/§2.2 of the modernization plan). Derived from two sources per
-tool: its recorded `tests/golden/usage/<tool>.txt` (the authoritative text
-a user actually sees) and, where usage() turned out to be incomplete or
-wrong (found while building the golden harness - noted inline below), the
-`case '<flag>':` switch in `legacy/pvc_src/<tool>.c` itself.
+Source of truth for the new `pvc` CLI's flag names and the TOML preset schema (§2.1/§2.2 of the modernization plan). Derived from two sources per tool: its recorded `tests/golden/usage/<tool>.txt` (the authoritative text a user actually sees) and, where usage() turned out to be incomplete or wrong (found while building the golden harness - noted inline below), the `case '<flag>':` switch in `legacy/pvc_src/<tool>.c` itself.
 
 **Columns:**
 - **Legacy flag** — the single-letter flag from `crack()`.
-- **Proposed long name** — the new `pvc` CLI's `--long-name`. Follows the
-  plan's §2.1 rules: descriptive, no abbreviations where avoidable, grouped
-  by concept (e.g. every shelf-EQ flag becomes `--shelf-*`).
-- **Type/range** — as documented; `0-N` for enumerated integer modes (the
-  new CLI should take a name, e.g. `--window hamming`, not the integer).
-- **Func?** — whether the legacy flag accepts `(func)`: a constant *or* a
-  path to a control-function file (`crackstring`/`crackfloat`). The new
-  CLI's equivalent takes `<number>` or `@path`, no sniffing (plan §2.1).
+- **Proposed long name** — the new `pvc` CLI's `--long-name`. Follows the plan's §2.1 rules: descriptive, no abbreviations where avoidable, grouped by concept (e.g. every shelf-EQ flag becomes `--shelf-*`).
+- **Type/range** — as documented; `0-N` for enumerated integer modes (the new CLI should take a name, e.g. `--window hamming`, not the integer).
+- **Func?** — whether the legacy flag accepts `(func)`: a constant *or* a path to a control-function file (`crackstring`/`crackfloat`). The new CLI's equivalent takes `<number>` or `@path`, no sniffing (plan §2.1).
 - **Default** — the legacy default, verbatim from usage() unless noted.
 
-Flags shared across nearly every tool (`-N`, `-M`, `-w`, `-D`, `-b`/`-e`,
-`-t`, `-p`/`-i`, `-_`, `-=`, `-C`, shelf EQ) are listed once in §1 and not
-repeated in every per-tool table - they carry the same meaning everywhere
-they appear (confirmed identical across every usage.txt reviewed).
+Flags shared across nearly every tool (`-N`, `-M`, `-w`, `-D`, `-b`/`-e`, `-t`, `-p`/`-i`, `-_`, `-=`, `-C`, shelf EQ) are listed once in §1 and not repeated in every per-tool table - they carry the same meaning everywhere they appear (confirmed identical across every usage.txt reviewed).
 
 ---
 
@@ -54,12 +41,7 @@ they appear (confirmed identical across every usage.txt reviewed).
 
 ## 2. plainpv → `pvc pv`
 
-843 lines, the template every other tool is structured like. `main()` picks
-overlap-add resynthesis unless `-P`/`-a` are non-default, in which case it
-switches to the oscillator bank (`obank = ptrans.n != 1. \|\| ptrans.A[0] != 0.
-\|\| harmadd...`, `legacy/pvc_src/plainpv.c` around the `DETERMINE OVERLAP/ADD
-OR OSCIL BANK RESYNTHESIS` comment) - this is the tolerance-kind split used
-throughout `tests/golden/cases/`.
+843 lines, the template every other tool is structured like. `main()` picks overlap-add resynthesis unless `-P`/`-a` are non-default, in which case it switches to the oscillator bank (`obank = ptrans.n != 1. \|\| ptrans.A[0] != 0. \|\| harmadd...`, `legacy/pvc_src/plainpv.c` around the `DETERMINE OVERLAP/ADD OR OSCIL BANK RESYNTHESIS` comment) - this is the tolerance-kind split used throughout `tests/golden/cases/`.
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -71,13 +53,11 @@ throughout `tests/golden/cases/`.
 | `-c` | `--graph` | enum: `off\|freq\|db\|db-waterfall` | no | `off` |
 | `-d` | `--graph-file` | path | no | `./ascii.out` |
 
-All other flags are the §1 common set. `--pitch @path` is the plan's
-worked example of a func-able parameter (§1.2's `-P@ramp` case).
+All other flags are the §1 common set. `--pitch @path` is the plan's worked example of a func-able parameter (§1.2's `-P@ramp` case).
 
 ## 3. pvanalysis → `pvc analyze`
 
-Writes the analysis file `twarp`/`tvfilter`/etc. consume (§2.4's `.pva`
-format decision: new format only, no legacy write path).
+Writes the analysis file `twarp`/`tvfilter`/etc. consume (§2.4's `.pva` format decision: new format only, no legacy write path).
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -85,31 +65,11 @@ format decision: new format only, no legacy write path).
 | `-P` | `--print-spectrum` | bool, or int > 1 = hi cutoff Hz for the printout | no | off |
 | `-W` | `--warp` | float | yes | `0.0` |
 
-`-H`/`-X`/`-m`/`-R` here are **not** func-able (no `(func)` tag, unlike
-every other tool's shelf EQ), and `-A` (gain) also isn't - worth flagging
-in the CLI design rather than silently making them func-able for
-consistency with the rest of the shelf-EQ/gain family.
+`-H`/`-X`/`-m`/`-R` here are **not** func-able (no `(func)` tag, unlike every other tool's shelf EQ), and `-A` (gain) also isn't - worth flagging in the CLI design rather than silently making them func-able for consistency with the rest of the shelf-EQ/gain family.
 
 ## 4. twarp → `pvc twarp`
 
-Time-varying resynthesis driven by a `.pva` analysis file. **Correction**
-(confirmed by reading `twarp.c` directly and empirically, via a debug
-build printing the resolved `obank` flag): this does *not* always use the
-oscillator bank - unlike `plainpv`, whose selector has an extra hardcoded
-`phaseLockFlag == 1 ||` clause forcing oscillator-bank unconditionally,
-`twarp`'s otherwise-identical-looking selector lacks that clause, so it
-genuinely takes the overlap-add path whenever pitch transposition (`-P`)
-and frequency shift (`-a`) are both left at their constant-zero defaults,
-switching to the oscillator bank only when either is used. Verified: a
-default invocation (no `-P`/`-a`) printed `obank=0`; adding `-P7` flipped
-it to `obank=1`. Both existing golden cases (`basic_chain.toml`,
-`rate_multiplier.toml`) use neither flag, so both were recorded via the
-overlap-add path, not the oscillator bank as this section previously
-(incorrectly) claimed. **Output file must already exist** with a valid
-header (`outfile_setup` opens it `SFM_READ` first purely to read sample
-rate/channels - it never creates one; found via the golden harness, see
-`tests/golden/cases/twarp/*.toml`). The new CLI should just create the
-output file itself rather than reproducing this quirk.
+Time-varying resynthesis driven by a `.pva` analysis file. **Correction** (confirmed by reading `twarp.c` directly and empirically, via a debug build printing the resolved `obank` flag): this does *not* always use the oscillator bank - unlike `plainpv`, whose selector has an extra hardcoded `phaseLockFlag == 1 ||` clause forcing oscillator-bank unconditionally, `twarp`'s otherwise-identical-looking selector lacks that clause, so it genuinely takes the overlap-add path whenever pitch transposition (`-P`) and frequency shift (`-a`) are both left at their constant-zero defaults, switching to the oscillator bank only when either is used. Verified: a default invocation (no `-P`/`-a`) printed `obank=0`; adding `-P7` flipped it to `obank=1`. Both existing golden cases (`basic_chain.toml`, `rate_multiplier.toml`) use neither flag, so both were recorded via the overlap-add path, not the oscillator bank as this section previously (incorrectly) claimed. **Output file must already exist** with a valid header (`outfile_setup` opens it `SFM_READ` first purely to read sample rate/channels - it never creates one; found via the golden harness, see `tests/golden/cases/twarp/*.toml`). The new CLI should just create the output file itself rather than reproducing this quirk.
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -130,15 +90,11 @@ output file itself rather than reproducing this quirk.
 | `-I`/`-J`/`-N` | `--variation-rolloff`/`--variation-cutoff`/`--variation-shape` | Hz / Hz / index | yes | `22050` / `0` / `0` |
 | `-f` | `--freq-response-time` | seconds | yes | `0.0` |
 
-Note `-b` is reused for two unrelated things across the codebase (begin
-time in most tools, loop-smooth time here) - the long names disambiguate
-this; keep an eye out for other such collisions when designing the shared
-flag-name table.
+Note `-b` is reused for two unrelated things across the codebase (begin time in most tools, loop-smooth time here) - the long names disambiguate this; keep an eye out for other such collisions when designing the shared flag-name table.
 
 ## 5. freqresponse → `pvc freqresponse`
 
-Analysis-driven `.fr` file writer (as opposed to filtresponsemaker/
-chordresponsemaker's synthesis).
+Analysis-driven `.fr` file writer (as opposed to filtresponsemaker/ chordresponsemaker's synthesis).
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -153,15 +109,11 @@ chordresponsemaker's synthesis).
 | `-a`/`-o`/`-i`/`-F` | `--plot-db`/`--plot-formants`/`--formants-ascii`/`--formants-file` | paths | no | none |
 | `-P` | `--printout-cutoff` | Hz (`0`=off) | no | `0` |
 
-`-A` here (gain, listed as `A: minimum formant peak amplitude in dB` in
-usage) is **not** the common `-A`=gain flag - a naming collision worth
-resolving in the new CLI (`--formant-floor`, not `--gain`, for this one).
+`-A` here (gain, listed as `A: minimum formant peak amplitude in dB` in usage) is **not** the common `-A`=gain flag - a naming collision worth resolving in the new CLI (`--formant-floor`, not `--gain`, for this one).
 
 ## 6. filtresponsemaker → `pvc fn response filtresponsemaker` / chordresponsemaker → `pvc fn response chordresponsemaker`
 
-Both synthesize a `.fr` file from a breakpoint/partial-table data file
-rather than analyzing a soundfile; `filter` then applies whichever `.fr`
-it's pointed at.
+Both synthesize a `.fr` file from a breakpoint/partial-table data file rather than analyzing a soundfile; `filter` then applies whichever `.fr` it's pointed at.
 
 **filtresponsemaker:**
 
@@ -198,10 +150,7 @@ it's pointed at.
 
 ## 8. compander → `pvc compand`
 
-Always requires `-F` (a peaks/frequency-response file) - not optional
-despite usage() not marking it required; confirmed via the golden harness
-(`compander -o-30 -O15 <in> <out>` with no `-F` exits with "YOU MUST
-PROVIDE A PEAKS FILE. BYE.").
+Always requires `-F` (a peaks/frequency-response file) - not optional despite usage() not marking it required; confirmed via the golden harness (`compander -o-30 -O15 <in> <out>` with no `-F` exits with "YOU MUST PROVIDE A PEAKS FILE. BYE.").
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -228,10 +177,7 @@ PROVIDE A PEAKS FILE. BYE.").
 
 ## 10. filter → `pvc filter`
 
-The biggest per-tool flag surface among the core set (~35 flags) — source
-and filter response paths each get their own transposition/shift/gain, and
-the filter's own response gets a full EQ→compand→warp→invert→smooth→
-normalize chain.
+The biggest per-tool flag surface among the core set (~35 flags) — source and filter response paths each get their own transposition/shift/gain, and the filter's own response gets a full EQ→compand→warp→invert→smooth→ normalize chain.
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -252,11 +198,7 @@ normalize chain.
 
 ## 11. harmonizer → `pvc harmonize`
 
-Data-table format (§2.1's `pvc harmonize --table harm.toml`): the plan's
-example already anticipates converting harmonizer's ASCII table into TOML
-`[[band]]` entries. The table's 8 columns (from usage(), confirmed against
-source at `legacy/pvc_src/harmonizer.c` since usage() undersells one of
-them):
+Data-table format (§2.1's `pvc harmonize --table harm.toml`): the plan's example already anticipates converting harmonizer's ASCII table into TOML `[[band]]` entries. The table's 8 columns (from usage(), confirmed against source at `legacy/pvc_src/harmonizer.c` since usage() undersells one of them):
 
 | Column | Legacy usage() name | Notes |
 |---|---|---|
@@ -269,17 +211,7 @@ them):
 | 7 | Q-index | `0`=linear, `+`=sharper/thinner, `-`=smoother/wider |
 | 8 | time delay (seconds) | |
 
-Also found via the harness: five "data file macro modifier" scalers
-(`-Y`/`-U`/`-o`/`-O`/`-j`, i.e. shift-factor/frequency/peak-dB/stopband-dB/
-time-delay scalers) are documented as defaulting to `1` but were actually
-uninitialized globals defaulting to `0`, silently zeroing every table
-column unless all five flags were passed explicitly - **fixed** in
-`legacy/pvc_src/harmonizer.c` (see git history) rather than just noted,
-since it broke the tool's basic documented default behavior, not an edge
-case. The new CLI doesn't need an equivalent bug, but should note in its
-own docs/tests that a data-table-driven case with defaults must produce
-non-zero, pass-through-scaled values - that's exactly the regression this
-bug would have reproduced if left unfixed and silently ported.
+Also found via the harness: five "data file macro modifier" scalers (`-Y`/`-U`/`-o`/`-O`/`-j`, i.e. shift-factor/frequency/peak-dB/stopband-dB/ time-delay scalers) are documented as defaulting to `1` but were actually uninitialized globals defaulting to `0`, silently zeroing every table column unless all five flags were passed explicitly - **fixed** in `legacy/pvc_src/harmonizer.c` (see git history) rather than just noted, since it broke the tool's basic documented default behavior, not an edge case. The new CLI doesn't need an equivalent bug, but should note in its own docs/tests that a data-table-driven case with defaults must produce non-zero, pass-through-scaled values - that's exactly the regression this bug would have reproduced if left unfixed and silently ported.
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -295,10 +227,7 @@ bug would have reproduced if left unfixed and silently ported.
 
 ## 12. envelope → `pvc envelope`, centroid → `pvc centroid`, fluxoid → `pvc flux`
 
-These three (plus pitchtracker below) share one shape: FFT analysis over a
-frequency detection band, a compressor/gate, distribution warp, and a
-choice of ASCII vs. float output at an interpolated output rate. Their
-usage() texts are near-identical; differences noted below.
+These three (plus pitchtracker below) share one shape: FFT analysis over a frequency detection band, a compressor/gate, distribution warp, and a choice of ASCII vs. float output at an interpolated output rate. Their usage() texts are near-identical; differences noted below.
 
 | Legacy | Proposed | Type/range | Func? | Default |
 |---|---|---|---|---|
@@ -313,20 +242,11 @@ usage() texts are near-identical; differences noted below.
 | `-g` | `--output-format` | enum: `ascii\|float` | no | `ascii` (`envelope`/`fluxoid`) or `float` (`pitchtracker`, see below) |
 | `-P` | `--plot` | bool | no | off |
 
-**envelope-only:** `-j`/`-k`/`-m` (`--filtered-attack`/`--filtered-release`/
-`--filtered-cut`, the "envelope that can be subtracted out" feature) and
-`-q` (`--output-scale`: `amp\|db\|inverted-amp\|inverted-db`).
+**envelope-only:** `-j`/`-k`/`-m` (`--filtered-attack`/`--filtered-release`/ `--filtered-cut`, the "envelope that can be subtracted out" feature) and `-q` (`--output-scale`: `amp\|db\|inverted-amp\|inverted-db`).
 
-**centroid-only:** `-H` (`--warp`, magnitude response reshape - a second,
-different warp from `-W`'s distribution warp), `-q` (`--output-format`:
-`freq\|octave\|octave-pitchclass\|semitones-deviation`), `-G`
-(`--reference-pitch`, for the semitones-deviation format — **note this
-collides with the common `-G`=compress-amount flag**; the long names
-disambiguate).
+**centroid-only:** `-H` (`--warp`, magnitude response reshape - a second, different warp from `-W`'s distribution warp), `-q` (`--output-format`: `freq\|octave\|octave-pitchclass\|semitones-deviation`), `-G` (`--reference-pitch`, for the semitones-deviation format — **note this collides with the common `-G`=compress-amount flag**; the long names disambiguate).
 
-**fluxoid-only:** `-A` (`--amplitude-weighting`, bool, default on) —
-fluxoid's job (tracking bin-frequency change weighted by amplitude) makes
-this the one flag that's genuinely fluxoid-specific.
+**fluxoid-only:** `-A` (`--amplitude-weighting`, bool, default on) — fluxoid's job (tracking bin-frequency change weighted by amplitude) makes this the one flag that's genuinely fluxoid-specific.
 
 ## 13. pitchtracker → `pvc pitchtrack`
 
@@ -347,33 +267,13 @@ Same shape as §12 plus pitch-specific detection parameters.
 
 ## 14. reshape → `pvc fn reshape`
 
-**Scope note, matching the plan's own §Phase-3.1 guidance** ("port the
-modes used by `utilities/*` and `S.*` scripts first... document rest as
-TODO"): `reshape.c` is 2489 lines with a `crack()` flag string covering
-nearly the entire alphabet (`A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|
-W|X|Y|Z|a|b|c|d|e|f||h|j|k|l|m|n|o|p|r|s|t|u|w|x|y|z`). No `S.reshape`
-script exists in this repo to derive real-world usage from, and its bare
-`reshape` invocation doesn't print a flag-by-flag usage() the way every
-other tool does (it just starts reading stdin) - `tests/golden/usage/
-reshape.txt` reflects that: it's a stdin-read transcript, not a help
-banner. `tests/golden/cases/reshape/stdin_default.toml` covers only the
-default (`-A0`) stdin-pipe path. **A full flag inventory for reshape is
-deferred** to whoever actually ports it in Phase 3.1 - reading through
-~2500 lines of an unfamiliar, densely-flagged file speculatively, with no
-real caller to validate the reading against, isn't a good use of a
-parameter-inventory pass; it belongs next to the porting work where each
-flag's behavior can be verified against a real case as it's added.
+**Scope note, matching the plan's own §Phase-3.1 guidance** ("port the modes used by `utilities/*` and `S.*` scripts first... document rest as TODO"): `reshape.c` is 2489 lines with a `crack()` flag string covering nearly the entire alphabet (`A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V| W|X|Y|Z|a|b|c|d|e|f||h|j|k|l|m|n|o|p|r|s|t|u|w|x|y|z`). No `S.reshape` script exists in this repo to derive real-world usage from, and its bare `reshape` invocation doesn't print a flag-by-flag usage() the way every other tool does (it just starts reading stdin) - `tests/golden/usage/ reshape.txt` reflects that: it's a stdin-read transcript, not a help banner. `tests/golden/cases/reshape/stdin_default.toml` covers only the default (`-A0`) stdin-pipe path. **A full flag inventory for reshape is deferred** to whoever actually ports it in Phase 3.1 - reading through ~2500 lines of an unfamiliar, densely-flagged file speculatively, with no real caller to validate the reading against, isn't a good use of a parameter-inventory pass; it belongs next to the porting work where each flag's behavior can be verified against a real case as it's added.
 
-One real bug found and fixed while getting reshape working for the
-harness at all: it segfaulted on *every* invocation that reads from stdin
-(including a bare no-args run) — two redundant `fclose(NULL)` calls in its
-"find a unique /tmp scratch filename" loops (see git history, Task 1.2).
+One real bug found and fixed while getting reshape working for the harness at all: it segfaulted on *every* invocation that reads from stdin (including a bare no-args run) — two redundant `fclose(NULL)` calls in its "find a unique /tmp scratch filename" loops (see git history, Task 1.2).
 
 ## 15. gen1..gen6 → `pvc fn gen1`..`pvc fn gen6`
 
-CARL/cmusic control-function generators; output is a headerless native f32
-stream (or ASCII to a tty). None take the common flags from §1 - each has
-its own tiny, positional-argument grammar.
+CARL/cmusic control-function generators; output is a headerless native f32 stream (or ASCII to a tty). None take the common flags from §1 - each has its own tiny, positional-argument grammar.
 
 | Tool | Legacy usage | Notes |
 |---|---|---|
@@ -388,25 +288,12 @@ its own tiny, positional-argument grammar.
 
 ## Cross-cutting naming collisions found while compiling this table
 
-Worth resolving explicitly in the shared flag-name table rather than
-per-tool, since the same legacy letter means different things depending on
-which tool it's attached to:
+Worth resolving explicitly in the shared flag-name table rather than per-tool, since the same legacy letter means different things depending on which tool it's attached to:
 
-- **`-A`**: gain (dB) almost everywhere, but "minimum formant peak
-  amplitude" in `freqresponse` and "auto-adjust FFT limit" in
-  `filtresponsemaker`.
-- **`-G`**: compression amount (dB) in the envelope/centroid/fluxoid/
-  pitchtracker family, but "reference pitch" in `centroid`'s `-q2` output
-  format and "source gain" in `harmonizer`.
+- **`-A`**: gain (dB) almost everywhere, but "minimum formant peak amplitude" in `freqresponse` and "auto-adjust FFT limit" in `filtresponsemaker`.
+- **`-G`**: compression amount (dB) in the envelope/centroid/fluxoid/ pitchtracker family, but "reference pitch" in `centroid`'s `-q2` output format and "source gain" in `harmonizer`.
 - **`-b`**: begin time almost everywhere, but "loop smooth time" in `twarp`.
-- **`-B`**: noise-analysis begin time in `noisefilter`, but "transpose
-  target" in `filter` and "EQ normalization flag" in `freqresponse`.
-- **`-Q`**: detection-band data type in the envelope family, expansion
-  amount in `compander`/`spectwarper`, response smoothing in `filter`,
-  and a data-table stopband shifter in `harmonizer`.
+- **`-B`**: noise-analysis begin time in `noisefilter`, but "transpose target" in `filter` and "EQ normalization flag" in `freqresponse`.
+- **`-Q`**: detection-band data type in the envelope family, expansion amount in `compander`/`spectwarper`, response smoothing in `filter`, and a data-table stopband shifter in `harmonizer`.
 
-None of these are bugs - each tool's `crack()` flag string is independent
-- but they're exactly the kind of thing that makes memorizing the legacy
-CLI hard, and exactly what moving to long names fixes. Listed here so the
-shared-flag-name table (§1) doesn't accidentally reuse one name for two
-unrelated legacy flags that happen to share a letter.
+None of these are bugs - each tool's `crack()` flag string is independent - but they're exactly the kind of thing that makes memorizing the legacy CLI hard, and exactly what moving to long names fixes. Listed here so the shared-flag-name table (§1) doesn't accidentally reuse one name for two unrelated legacy flags that happen to share a letter.

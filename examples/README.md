@@ -1,7 +1,6 @@
 # Examples
 
-`examples/presets/` holds five ready-to-run [presets](../docs/presets.md),
-each showing a different kind of transform.
+`examples/presets/` holds five ready-to-run [presets](../docs/presets.md), each showing a different kind of transform.
 
 | Preset | Tool | What it does |
 |---|---|---|
@@ -17,13 +16,9 @@ each showing a different kind of transform.
 make demo
 ```
 
-This builds `pvc` and generates a short 440 Hz test tone with `sox`.
-It then runs all five presets against that tone, and writes the
-results to `examples/output/`. Play the files there and compare them
-against `examples/output/input.wav`.
+This builds `pvc` and generates a short 440 Hz test tone with `sox`. It then runs all five presets against that tone, and writes the results to `examples/output/`. Play the files there and compare them against `examples/output/input.wav`.
 
-`make demo` requires `sox`. Without it, run any preset by hand against
-your own audio file:
+`make demo` requires `sox`. Without it, run any preset by hand against your own audio file:
 
 ```bash
 pvc run examples/presets/ring-reverb.toml --set input=my-file.wav --set output=result.wav
