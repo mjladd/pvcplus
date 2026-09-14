@@ -1,0 +1,14 @@
+# Harness preset for `pvc delayfilter`. See harness/README.md.
+# Like twarp, this tool has no audio <INPUT> positional at all: usage
+# is `pvc delayfilter --delay-filter <DELAY_FILTER> <ANALYSIS> <OUTPUT>`.
+# The harness's own SPECIAL_PREREQS entry builds the .pva (via analyze)
+# and the groupdelaymaker .fr (via `pvc fn response groupdelaymaker`,
+# using the fixed harness/fixtures/groupdelaymaker_partials.txt table),
+# then feeds both paths in: the .pva as this preset's `input` field
+# (really the ANALYSIS positional), and the .fr as `delay_filter`.
+tool = "delayfilter"
+input = "in.pva"
+output = "out.wav"
+
+[params]
+delay_filter = "delay.fr"
