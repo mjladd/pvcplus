@@ -1,0 +1,7 @@
+# Harness preset for `pvc flux`. See harness/README.md.
+tool = "flux"
+input = "in.wav"
+output = "out.txt"
+
+[params]
+output_rate = 200

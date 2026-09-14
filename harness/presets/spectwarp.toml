@@ -1,0 +1,8 @@
+# Harness preset for `pvc spectwarp`. See harness/README.md.
+tool = "spectwarp"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+compress_threshold = -6.0
+compress_amount = -3.0

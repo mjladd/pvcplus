@@ -1,0 +1,9 @@
+# Harness preset for `pvc spectrummapper`. See harness/README.md.
+# This tool has no <OUTPUT> positional; --segments-file is the result
+# file instead, so this preset has no `output` field. The harness sets
+# `segments_file` directly (see SPECIAL_OUTPUT in harness/run.py).
+tool = "spectrummapper"
+input = "in.wav"
+
+[params]
+segments_file = "out.segments"

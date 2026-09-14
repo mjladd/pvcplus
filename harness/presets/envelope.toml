@@ -1,0 +1,7 @@
+# Harness preset for `pvc envelope`. See harness/README.md.
+tool = "envelope"
+input = "in.wav"
+output = "out.txt"
+
+[params]
+output_rate = 200

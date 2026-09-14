@@ -1,0 +1,7 @@
+# Harness preset for `pvc centroid`. See harness/README.md.
+tool = "centroid"
+input = "in.wav"
+output = "out.txt"
+
+[params]
+output_rate = 200

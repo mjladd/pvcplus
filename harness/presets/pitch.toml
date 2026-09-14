@@ -1,0 +1,7 @@
+# Harness preset for `pvc pitch`. See harness/README.md.
+tool = "pitch"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+semitones = 7.0
