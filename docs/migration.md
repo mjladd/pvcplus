@@ -1,10 +1,6 @@
 # Migration: legacy tool name to new `pvc` command
 
-This page maps every tool in `legacy/pvc_src/` to its `pvc` equivalent.
-Every legacy tool still works today through `pvc legacy <name> <flags>`
-(see [Getting started](getting-started.md)), whether or not it has a
-native `pvc` command yet. Use this page to find a starting point, then
-read the tool's own page under `tools/` for its exact new flags.
+This page maps every tool in `legacy/pvc_src/` to its `pvc` equivalent. Every legacy tool still works today through `pvc legacy <name> <flags>` (see [Getting started](getting-started.md)), whether or not it has a native `pvc` command yet. Use this page to find a starting point, then read the tool's own page under `tools/` for its exact new flags.
 
 ## Basic routines
 
@@ -86,11 +82,7 @@ read the tool's own page under `tools/` for its exact new flags.
 
 ## Long tail (Phase 5)
 
-These tools have no legacy shell-script wrapper of their own in the
-original release. Each now has a native `pvc` command with the same
-name: `impulseresponse`, `irconvolver`, `irconvolvesequencer`,
-`peakformant`, `specflattracker`, `spectralextractor`, `delayfilter`,
-`ratechanger`, `formantsmapper`, `spectrummapper`.
+These tools have no legacy shell-script wrapper of their own in the original release. Each now has a native `pvc` command with the same name: `impulseresponse`, `irconvolver`, `irconvolvesequencer`, `peakformant`, `specflattracker`, `spectralextractor`, `delayfilter`, `ratechanger`, `formantsmapper`, `spectrummapper`.
 
 ## Not planned as direct ports
 
@@ -102,7 +94,4 @@ name: `impulseresponse`, `irconvolver`, `irconvolvesequencer`,
 
 ## Deprecated
 
-SuperCollider scripts under `legacy/supercollider_scripts/` are
-deprecated. Use a [preset](presets.md) with `pvc run --set` instead.
-See [legacy/supercollider_scripts/DEPRECATED.md](../legacy/supercollider_scripts/DEPRECATED.md)
-for the full replacement guide.
+SuperCollider scripts under `legacy/supercollider_scripts/` are deprecated. Use a [preset](presets.md) with `pvc run --set` instead. See [legacy/supercollider_scripts/DEPRECATED.md](../legacy/supercollider_scripts/DEPRECATED.md) for the full replacement guide.
