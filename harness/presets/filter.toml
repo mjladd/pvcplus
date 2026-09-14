@@ -1,0 +1,9 @@
+# Harness preset for `pvc filter`. See harness/README.md.
+# --response needs a .fr file; the harness builds it from the same
+# input audio via `pvc freqresponse` first (see PREREQS in run.py).
+tool = "filter"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+response = "response.fr"

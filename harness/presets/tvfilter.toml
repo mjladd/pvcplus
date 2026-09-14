@@ -1,0 +1,9 @@
+# Harness preset for `pvc tvfilter`. See harness/README.md.
+# --filter-response needs a .pva file; the harness builds it from the
+# same input audio via `pvc analyze` first (see PREREQS in run.py).
+tool = "tvfilter"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+filter_response = "filter.pva"

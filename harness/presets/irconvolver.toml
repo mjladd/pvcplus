@@ -1,0 +1,9 @@
+# Harness preset for `pvc irconvolver`. See harness/README.md.
+# --ir needs a .ir file; the harness builds it from the same input
+# audio via `pvc impulseresponse` first (see PREREQS in run.py).
+tool = "irconvolver"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+ir = "response.ir"

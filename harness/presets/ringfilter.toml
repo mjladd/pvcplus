@@ -1,0 +1,11 @@
+# Harness preset for `pvc ringfilter`. See harness/README.md.
+# --filter-response needs a .fr file (same format `pvc filter` reads);
+# the harness builds it from the same input audio via `pvc freqresponse`
+# first (see PREREQS in run.py).
+tool = "ringfilter"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+filter_response = "response.fr"
+source_pitch = 5.0

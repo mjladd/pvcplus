@@ -1,0 +1,11 @@
+# Harness preset for `pvc twarp`. See harness/README.md.
+# twarp has no audio <INPUT> positional at all: usage is
+# `pvc twarp [OPTIONS] <ANALYSIS> <OUTPUT>`. The harness's own PREREQS
+# entry feeds analyze's .pva output into this preset's `input` field
+# directly (it is really the ANALYSIS positional, not an audio file).
+tool = "twarp"
+input = "in.pva"
+output = "out.wav"
+
+[params]
+rate = 1.5

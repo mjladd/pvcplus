@@ -25,14 +25,30 @@ SPECIAL_OUTPUT = {
 # Tools needing one or more prerequisite pvc runs, against the same input
 # audio file, before they can run for real. Each entry is a list of
 # (prereq tool name, --set key on the target preset that receives the
-# prerequisite's own output path). Empty until a later phase adds
-# prerequisite-chaining tools.
-PREREQS = {}
+# prerequisite's own output path).
+#
+# `twarp` is a special case: its own usage is `<ANALYSIS> <OUTPUT>`, with
+# no separate audio <INPUT> positional at all, so its prereq's own output
+# fills the target preset's `input` field directly (see run_one).
+PREREQS = {
+    "twarp": [("analyze", "input")],
+    "tvfilter": [("analyze", "filter_response")],
+    "ringtvfilter": [("analyze", "filter_response")],
+    "tvfiltdeviator": [("analyze", "filter_response")],
+    "compand": [("freqresponse", "peaks")],
+    "filtdeviator": [("freqresponse", "response")],
+    "filter": [("freqresponse", "response")],
+    "ringfilter": [("freqresponse", "filter_response")],
+    "convolver": [("analyze", "filter_response")],
+    "irconvolver": [("impulseresponse", "ir")],
+}
 
 # Tools whose result file is playable audio, worth a pvc info sanity line.
 AUDIO_OUTPUT_TOOLS = {
     "denoise", "pitch", "pv", "ratechanger", "ring", "spectralextractor",
     "spectwarp", "stretch",
+    "twarp", "tvfilter", "ringtvfilter", "tvfiltdeviator", "compand",
+    "filtdeviator", "filter", "ringfilter", "convolver", "irconvolver",
 }
 
 
@@ -85,9 +101,10 @@ def run_one(pvc_bin, tool, preset_path, audio_file, output_dir):
     stem = audio_file.stem
     result_path = output_dir / tool / f"{stem}.{ext}"
     result_path.parent.mkdir(parents=True, exist_ok=True)
-
-    sets = [("input", audio_file)]
     workdir = result_path.parent
+
+    sets = []
+    prereq_targets = set()
 
     for prereq_tool, target_key in PREREQS.get(tool, []):
         prereq_preset = PRESETS_DIR / f"{prereq_tool}.toml"
@@ -103,7 +120,13 @@ def run_one(pvc_bin, tool, preset_path, audio_file, output_dir):
                 "error": (proc.stderr or proc.stdout).strip()[-500:],
             }
         sets.append((target_key, prereq_out))
+        prereq_targets.add(target_key)
 
+    # `twarp` has no <INPUT> positional at all (usage: <ANALYSIS> <OUTPUT>),
+    # so its own prereq fills the preset's `input` field directly instead
+    # of the raw audio file (see PREREQS and harness/README.md).
+    if "input" not in prereq_targets:
+        sets.append(("input", audio_file))
     sets.append((key, result_path))
     proc, elapsed = run_pvc_preset(pvc_bin, preset_path, sets)
     ok = proc.returncode == 0 and result_path.exists() and result_path.stat().st_size > 0
