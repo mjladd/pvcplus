@@ -79,12 +79,19 @@ above) and its own 23-field tone data table. That table's format was
 only partly documented on its own doc page, six of the fields, not
 all 23. This preset's fixture comes from the Rust source instead:
 `rust/crates/pvc-core/src/tools/chordmapperplus.rs`'s own `ToneParams`
-struct, and its `parse_tone_data_file_reads_all_23_fields` test.
+struct, and its `parse_tone_data_file_reads_all_23_fields` test. Like
+`twarp` and `delayfilter`, this tool has no audio `<INPUT>` positional
+at all. Unlike either of them, it has no other positional either.
+Only `--analysis` and `--tones` name its two input files.
 
-Like `twarp` and `delayfilter`,
-this tool has no audio `<INPUT>` positional at all, and unlike either
-of them, it has no other positional either. Only `--analysis` and
-`--tones` name its two input files.
+`formantsmapper` needs two binary formant-list files, one each for
+`--source-formants` and `--target-formants`. Its own doc page says the
+format is "produced externally, not by any tool in this project," with
+no layout given. The real layout turns out to be fully documented in
+`rust/crates/pvc-io/src/formants.rs`'s own doc comment instead: a
+32-bit formant count, a 32-bit `n2` (`--fft / 2`, checked against
+`--fft` at load time), then that many 28-byte little-endian records.
+Both fixtures were generated straight from that doc comment.
 
 Two tools are excluded on purpose, not just left for later:
 

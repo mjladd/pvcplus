@@ -1,0 +1,17 @@
+# Harness preset for `pvc formantsmapper`. See harness/README.md.
+# --source-formants/--target-formants need binary formant-list files.
+# Their own doc page says the format is "produced externally, not by
+# any tool in this project," but the real layout is fully documented
+# in rust/crates/pvc-io/src/formants.rs's own doc comment: i32
+# num_formants, i32 n2 (= --fft / 2, checked against --fft at load
+# time), then that many 28-byte little-endian records. Both fixtures
+# here were generated from that doc comment for n2=512 (fft=1024,
+# this preset's own default, left unset on purpose so it keeps
+# matching).
+tool = "formantsmapper"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+source_formants = "source.bin"
+target_formants = "target.bin"
