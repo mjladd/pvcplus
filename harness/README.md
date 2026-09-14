@@ -49,10 +49,18 @@ for all of them today:
 - `pv`, `ratechanger`, `ring`, `specflattracker`, `spectralextractor`
 - `spectrummapper`, `spectwarp`, `stretch`
 
-Roughly 16 more tools need a companion file built first. Each one needs
-a `.pva`, `.fr`, or `.ir` file, or a hand-authored data table. These are
-not covered yet. `docs/dev/port-status.md` tracks this work the same
-way it tracks the rest of the project.
+These 10 more need one companion file first. The file is a `.pva` or a
+`.fr` file, from `pvc analyze` or `pvc freqresponse`. Two tools need a
+`.ir` file instead, from `pvc impulseresponse`. `run.py`'s own
+`PREREQS` mapping builds that companion file from the same audio file.
+It then feeds the companion file's path into the target preset:
+
+- `twarp`, `tvfilter`, `ringtvfilter`, `tvfiltdeviator` (`.pva`)
+- `compand`, `filtdeviator`, `filter`, `ringfilter` (`.fr`)
+- `convolver` (`.pva`), `irconvolver` (`.ir`)
+
+Roughly six more tools need a multi-step chain or a hand-authored data
+table instead of a same-file companion. These are not covered yet.
 
 Two tools are excluded on purpose, not just left for later:
 

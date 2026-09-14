@@ -1,0 +1,10 @@
+# Harness preset for `pvc ringtvfilter`. See harness/README.md.
+# --filter-response needs a .pva file; the harness builds it from the
+# same input audio via `pvc analyze` first (see PREREQS in run.py).
+tool = "ringtvfilter"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+filter_response = "filter.pva"
+source_pitch = 5.0

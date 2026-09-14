@@ -1,0 +1,11 @@
+# Harness preset for `pvc convolver`. See harness/README.md.
+# --filter-response is "Sound B", a .pva analysis file. The harness
+# builds it from the SAME input audio via `pvc analyze` first (see
+# PREREQS in run.py), so this convolves the test file against its own
+# analysis rather than a second, unrelated sound.
+tool = "convolver"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+filter_response = "soundb.pva"

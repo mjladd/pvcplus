@@ -1,0 +1,13 @@
+# Harness preset for `pvc compand`. See harness/README.md.
+# --peaks needs a .fr file whose size matches --fft exactly. The
+# harness builds it from the same input audio via `pvc freqresponse`
+# first (see PREREQS in run.py). Neither preset overrides fft, so both
+# stay at the shared default of 1024 and the sizes match.
+tool = "compand"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+peaks = "peaks.fr"
+compress_threshold = -6.0
+compress_amount = -3.0
