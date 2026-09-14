@@ -45,13 +45,18 @@ PREREQS = {
     "chordmapperplus": [("analyze", "analysis")],
 }
 
-# Tools needing a fixed, non-audio-dependent fixture file, set via one
-# preset param key. Unlike PREREQS, these never change per audio file.
-# Maps tool name -> (--set key, file name under harness/fixtures/).
+# Tools needing one or more fixed, non-audio-dependent fixture files,
+# each set via one preset param key. Unlike PREREQS, these never change
+# per audio file. Maps tool name -> list of (--set key, file name under
+# harness/fixtures/).
 STATIC_FIXTURES = {
-    "harmonize": ("table", "harmonize_bands.txt"),
-    "inharmonator": ("partials", "inharmonator_partials.txt"),
-    "chordmapperplus": ("tones", "chordmapperplus_tones.txt"),
+    "harmonize": [("table", "harmonize_bands.txt")],
+    "inharmonator": [("partials", "inharmonator_partials.txt")],
+    "chordmapperplus": [("tones", "chordmapperplus_tones.txt")],
+    "formantsmapper": [
+        ("source_formants", "formantsmapper_source.bin"),
+        ("target_formants", "formantsmapper_target.bin"),
+    ],
 }
 
 # Tools with no audio <INPUT> positional at all (only <OUTPUT>, plus
@@ -129,7 +134,7 @@ AUDIO_OUTPUT_TOOLS = {
     "twarp", "tvfilter", "ringtvfilter", "tvfiltdeviator", "compand",
     "filtdeviator", "filter", "ringfilter", "convolver", "irconvolver",
     "delayfilter", "irconvolvesequencer", "harmonize", "inharmonator",
-    "chordmapperplus",
+    "chordmapperplus", "formantsmapper",
 }
 
 
@@ -210,8 +215,7 @@ def run_one(pvc_bin, tool, preset_path, audio_file, output_dir):
         sets.append((target_key, prereq_out))
         prereq_targets.add(target_key)
 
-    if tool in STATIC_FIXTURES:
-        fixture_key, fixture_name = STATIC_FIXTURES[tool]
+    for fixture_key, fixture_name in STATIC_FIXTURES.get(tool, []):
         sets.append((fixture_key, FIXTURES_DIR / fixture_name))
 
     # `twarp` and `delayfilter` have no <INPUT> positional at all (usage:
