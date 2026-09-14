@@ -1,0 +1,28 @@
+{ One tone, 23 whitespace-separated fields. Field order and meaning are
+  documented on ToneParams in rust/crates/pvc-core/src/tools/chordmapperplus.rs,
+  confirmed against that module's own parse_tone_data_file_reads_all_23_fields
+  unit test. Curly braces are a real, supported comment syntax for this
+  file format (cut_data_lines strips them before parsing). }
+8     { 0: source point, octave.pitchclass since 0 < value < 13 }
+0     { 1: transpose_point_pitch, a control fn, 0 = no shift }
+1     { 2: low_partial, must be >= 1 }
+1     { 3: partial_spacing, >= 1 selects passmode }
+4     { 4: number_of_partials, >= 1 overrides the auto count }
+0.1   { 5: bandwidth, > 0, proportion of the source frequency }
+0     { 6: partial_shift, a control fn }
+0     { 7: spectral_stretch_compress, a control fn }
+0     { 8: tone_db, a control fn }
+0     { 9: stasis_median_harmony_db, a control fn }
+0     { 10: noise_db, a control fn }
+0     { 11: stasis_median_noise_db, a control fn }
+0     { 12: noise_switch, 0 or 1 }
+0     { 13: transpose_point_noise, a control fn }
+0     { 14: force_factor, a control fn }
+0     { 15: master_transposition_switch, 1 enables it }
+0     { 16: synthetic_vibrato_switch, 0 or 1 }
+0     { 17: bandpass_cf, a control fn }
+0     { 18: bandpass_rolloff_db_per_octave, a control fn }
+0     { 19: tone_filter_switch_raw, encodes filter on/off and type }
+0     { 20: delay_time_switch_scaler }
+0     { 21: delay_time, a control fn }
+0     { 22: tone_channel_output_number, 0 means every channel }
