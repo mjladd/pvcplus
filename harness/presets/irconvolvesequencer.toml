@@ -1,0 +1,11 @@
+# Harness preset for `pvc irconvolvesequencer`. See harness/README.md.
+# --impulse-list-dir needs a directory holding an `impulseFileNames`
+# list file. The harness's own SPECIAL_PREREQS entry writes a
+# single-impulse list naming the same audio file under test (any WAV
+# qualifies as an impulse per the tool's own doc page).
+tool = "irconvolvesequencer"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+impulse_list_dir = "irlist"

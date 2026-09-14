@@ -14,6 +14,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PRESETS_DIR = Path(__file__).resolve().parent / "presets"
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 AUDIO_EXTS = {".wav", ".aiff", ".aif", ".flac"}
 
 # Tools whose final result file is not the preset's own `output` field.
@@ -43,12 +44,82 @@ PREREQS = {
     "irconvolver": [("impulseresponse", "ir")],
 }
 
+# Tools needing a fixed, non-audio-dependent fixture file, set via one
+# preset param key. Unlike PREREQS, these never change per audio file.
+# Maps tool name -> (--set key, file name under harness/fixtures/).
+STATIC_FIXTURES = {
+    "harmonize": ("table", "harmonize_bands.txt"),
+    "inharmonator": ("partials", "inharmonator_partials.txt"),
+}
+
+
+def _prereq_analyze(pvc_bin, audio_file, workdir, stem):
+    """Runs `pvc analyze` against audio_file. Returns (pva_path, None) or
+    (None, error_record) on failure."""
+    preset = PRESETS_DIR / "analyze.toml"
+    out = workdir / f"{stem}.analyze.pva"
+    proc, _ = run_pvc_preset(pvc_bin, preset, [("input", audio_file), ("output", out)])
+    if proc.returncode != 0 or not out.exists():
+        return None, {
+            "stage": "prereq:analyze",
+            "error": (proc.stderr or proc.stdout).strip()[-500:],
+        }
+    return out, None
+
+
+def _delayfilter_prereqs(pvc_bin, audio_file, workdir, stem):
+    """delayfilter needs a .pva (for its own <ANALYSIS> positional, it has
+    no separate audio <INPUT>, like twarp) plus a groupdelaymaker .fr file.
+    groupdelaymaker is a `pvc fn response` subcommand, which the `pvc run`
+    preset mechanism cannot drive at all (a preset's `tool` field is one
+    argv token; "fn response groupdelaymaker" is three), so this step runs
+    it directly instead of through a preset."""
+    pva, err = _prereq_analyze(pvc_bin, audio_file, workdir, stem)
+    if err:
+        return None, err
+    fr_path = workdir / f"{stem}.groupdelaymaker.fr"
+    partials = FIXTURES_DIR / "groupdelaymaker_partials.txt"
+    proc = subprocess.run(
+        [
+            str(pvc_bin), "fn", "response", "groupdelaymaker",
+            "--analysis", str(pva), "--partials", str(partials), str(fr_path),
+        ],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0 or not fr_path.exists():
+        return None, {
+            "stage": "prereq:groupdelaymaker",
+            "error": (proc.stderr or proc.stdout).strip()[-500:],
+        }
+    return [("input", pva), ("delay_filter", fr_path)], None
+
+
+def _irconvolvesequencer_prereqs(pvc_bin, audio_file, workdir, stem):
+    """--impulse-list-dir needs a directory holding an `impulseFileNames`
+    list file (a count, then that many impulse sound-file paths). Any WAV
+    qualifies as an impulse per the tool's own doc page, so this points
+    the single-impulse list at the same audio file under test."""
+    list_dir = workdir / f"{stem}_irlist"
+    list_dir.mkdir(parents=True, exist_ok=True)
+    (list_dir / "impulseFileNames").write_text(f"1\n{audio_file}\n")
+    return [("impulse_list_dir", list_dir)], None
+
+
+# Tools whose prerequisite chain does not fit PREREQS' simple
+# (prereq tool, target key) shape (a raw, non-preset pvc subcommand, or a
+# hand-built fixture file rather than another tool's own output).
+SPECIAL_PREREQS = {
+    "delayfilter": _delayfilter_prereqs,
+    "irconvolvesequencer": _irconvolvesequencer_prereqs,
+}
+
 # Tools whose result file is playable audio, worth a pvc info sanity line.
 AUDIO_OUTPUT_TOOLS = {
     "denoise", "pitch", "pv", "ratechanger", "ring", "spectralextractor",
     "spectwarp", "stretch",
     "twarp", "tvfilter", "ringtvfilter", "tvfiltdeviator", "compand",
     "filtdeviator", "filter", "ringfilter", "convolver", "irconvolver",
+    "delayfilter", "irconvolvesequencer", "harmonize", "inharmonator",
 }
 
 
@@ -106,6 +177,13 @@ def run_one(pvc_bin, tool, preset_path, audio_file, output_dir):
     sets = []
     prereq_targets = set()
 
+    if tool in SPECIAL_PREREQS:
+        extra_sets, err = SPECIAL_PREREQS[tool](pvc_bin, audio_file, workdir, stem)
+        if err:
+            return {"tool": tool, "audio_file": str(audio_file), "ok": False, **err}
+        sets.extend(extra_sets)
+        prereq_targets.update(k for k, _ in extra_sets)
+
     for prereq_tool, target_key in PREREQS.get(tool, []):
         prereq_preset = PRESETS_DIR / f"{prereq_tool}.toml"
         prereq_key, prereq_ext = output_spec(prereq_tool, prereq_preset)
@@ -122,9 +200,14 @@ def run_one(pvc_bin, tool, preset_path, audio_file, output_dir):
         sets.append((target_key, prereq_out))
         prereq_targets.add(target_key)
 
-    # `twarp` has no <INPUT> positional at all (usage: <ANALYSIS> <OUTPUT>),
-    # so its own prereq fills the preset's `input` field directly instead
-    # of the raw audio file (see PREREQS and harness/README.md).
+    if tool in STATIC_FIXTURES:
+        fixture_key, fixture_name = STATIC_FIXTURES[tool]
+        sets.append((fixture_key, FIXTURES_DIR / fixture_name))
+
+    # `twarp` and `delayfilter` have no <INPUT> positional at all (usage:
+    # <ANALYSIS> <OUTPUT>), so their own prereq fills the preset's `input`
+    # field directly instead of the raw audio file (see PREREQS,
+    # SPECIAL_PREREQS, and harness/README.md).
     if "input" not in prereq_targets:
         sets.append(("input", audio_file))
     sets.append((key, result_path))

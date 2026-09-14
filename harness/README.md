@@ -59,8 +59,20 @@ It then feeds the companion file's path into the target preset:
 - `compand`, `filtdeviator`, `filter`, `ringfilter` (`.fr`)
 - `convolver` (`.pva`), `irconvolver` (`.ir`)
 
-Roughly six more tools need a multi-step chain or a hand-authored data
-table instead of a same-file companion. These are not covered yet.
+These four more need a multi-step chain, or a fixed, hand-authored
+data table instead of a same-file companion. `run.py`'s own
+`SPECIAL_PREREQS` and `STATIC_FIXTURES` mappings cover them:
+
+- `delayfilter` chains two prerequisites: `pvc analyze` builds a
+  `.pva`, then `pvc fn response groupdelaymaker` builds a `.fr` from
+  that `.pva` plus a fixed partials table under `harness/fixtures/`.
+  Like `twarp`, this tool has no audio `<INPUT>` positional at all.
+- `irconvolvesequencer` needs a directory holding an
+  `impulseFileNames` list file. `run.py` writes a single-impulse list
+  naming the same audio file under test.
+- `harmonize` and `inharmonator` each read a fixed data table under
+  `harness/fixtures/`. Neither table depends on the audio file under
+  test.
 
 Two tools are excluded on purpose, not just left for later:
 

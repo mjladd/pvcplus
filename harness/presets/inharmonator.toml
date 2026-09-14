@@ -1,0 +1,11 @@
+# Harness preset for `pvc inharmonator`. See harness/README.md.
+# --partials needs a fixed, hand-authored partials data file. It does
+# not depend on the audio file under test, so it lives under
+# harness/fixtures/ instead of being built per-file by a prerequisite.
+tool = "inharmonator"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+partials = "inharmonator_partials.txt"
+fundamental = 220.0

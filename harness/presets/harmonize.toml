@@ -1,0 +1,10 @@
+# Harness preset for `pvc harmonize`. See harness/README.md.
+# --table needs a fixed, hand-authored band data file. It does not
+# depend on the audio file under test, so it lives under
+# harness/fixtures/ instead of being built per-file by a prerequisite.
+tool = "harmonize"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+table = "harmonize_bands.txt"
