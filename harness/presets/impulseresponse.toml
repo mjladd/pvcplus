@@ -1,0 +1,4 @@
+# Harness preset for `pvc impulseresponse`. See harness/README.md.
+tool = "impulseresponse"
+input = "in.wav"
+output = "out.ir"

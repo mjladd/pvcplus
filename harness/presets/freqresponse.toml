@@ -1,0 +1,7 @@
+# Harness preset for `pvc freqresponse`. See harness/README.md.
+tool = "freqresponse"
+input = "in.wav"
+output = "out.fr"
+
+[params]
+frames_per_sec = 200

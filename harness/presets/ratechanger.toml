@@ -1,0 +1,7 @@
+# Harness preset for `pvc ratechanger`. See harness/README.md.
+tool = "ratechanger"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+rate_in = 1.2

@@ -1,0 +1,7 @@
+# Harness preset for `pvc spectralextractor`. See harness/README.md.
+tool = "spectralextractor"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+spectral_type = "periodic"

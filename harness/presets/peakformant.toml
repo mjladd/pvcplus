@@ -1,0 +1,7 @@
+# Harness preset for `pvc peakformant`. See harness/README.md.
+tool = "peakformant"
+input = "in.wav"
+output = "out.txt"
+
+[params]
+output_rate = 200

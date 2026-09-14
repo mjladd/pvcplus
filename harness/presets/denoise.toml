@@ -1,0 +1,8 @@
+# Harness preset for `pvc denoise`. See harness/README.md.
+tool = "denoise"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+noise_begin = 0.0
+noise_end = 0.5

@@ -1,0 +1,7 @@
+# Harness preset for `pvc specflattracker`. See harness/README.md.
+tool = "specflattracker"
+input = "in.wav"
+output = "out.txt"
+
+[params]
+output_rate = 200

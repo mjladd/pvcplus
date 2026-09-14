@@ -1,0 +1,7 @@
+# Harness preset for `pvc stretch`. See harness/README.md.
+tool = "stretch"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+factor = 1.5

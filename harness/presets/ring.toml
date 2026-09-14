@@ -1,0 +1,10 @@
+# Harness preset for `pvc ring`. See harness/README.md.
+# Feedback stays off (the default) so the low-shelf-gain "200 dB" C bug
+# documented in docs/tools/ring.md never triggers. See ring-reverb.toml
+# under examples/presets/ for the workaround if feedback is ever added here.
+tool = "ring"
+input = "in.wav"
+output = "out.wav"
+
+[params]
+source_pitch = 5.0

@@ -1,0 +1,7 @@
+# Harness preset for `pvc analyze`. See harness/README.md.
+tool = "analyze"
+input = "in.wav"
+output = "out.pva"
+
+[params]
+frames_per_sec = 200
