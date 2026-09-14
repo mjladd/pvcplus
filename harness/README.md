@@ -74,6 +74,18 @@ data table instead of a same-file companion. `run.py`'s own
   `harness/fixtures/`. Neither table depends on the audio file under
   test.
 
+`chordmapperplus` needs a `.pva` (via `pvc analyze`, like the tools
+above) and its own 23-field tone data table. That table's format was
+only partly documented on its own doc page, six of the fields, not
+all 23. This preset's fixture comes from the Rust source instead:
+`rust/crates/pvc-core/src/tools/chordmapperplus.rs`'s own `ToneParams`
+struct, and its `parse_tone_data_file_reads_all_23_fields` test.
+
+Like `twarp` and `delayfilter`,
+this tool has no audio `<INPUT>` positional at all, and unlike either
+of them, it has no other positional either. Only `--analysis` and
+`--tones` name its two input files.
+
 Two tools are excluded on purpose, not just left for later:
 
 - `convert-units` takes no audio file at all. It converts numbers

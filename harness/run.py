@@ -42,6 +42,7 @@ PREREQS = {
     "ringfilter": [("freqresponse", "filter_response")],
     "convolver": [("analyze", "filter_response")],
     "irconvolver": [("impulseresponse", "ir")],
+    "chordmapperplus": [("analyze", "analysis")],
 }
 
 # Tools needing a fixed, non-audio-dependent fixture file, set via one
@@ -50,7 +51,15 @@ PREREQS = {
 STATIC_FIXTURES = {
     "harmonize": ("table", "harmonize_bands.txt"),
     "inharmonator": ("partials", "inharmonator_partials.txt"),
+    "chordmapperplus": ("tones", "chordmapperplus_tones.txt"),
 }
+
+# Tools with no audio <INPUT> positional at all (only <OUTPUT>, plus
+# named flags for whatever file each one actually reads). Unlike twarp
+# and delayfilter, chordmapperplus's own prereq target key is `analysis`,
+# not `input`, so it needs its own explicit exemption from the "fall
+# back to the raw audio file as input" rule in run_one.
+NO_AUDIO_INPUT = {"chordmapperplus"}
 
 
 def _prereq_analyze(pvc_bin, audio_file, workdir, stem):
@@ -120,6 +129,7 @@ AUDIO_OUTPUT_TOOLS = {
     "twarp", "tvfilter", "ringtvfilter", "tvfiltdeviator", "compand",
     "filtdeviator", "filter", "ringfilter", "convolver", "irconvolver",
     "delayfilter", "irconvolvesequencer", "harmonize", "inharmonator",
+    "chordmapperplus",
 }
 
 
@@ -207,8 +217,11 @@ def run_one(pvc_bin, tool, preset_path, audio_file, output_dir):
     # `twarp` and `delayfilter` have no <INPUT> positional at all (usage:
     # <ANALYSIS> <OUTPUT>), so their own prereq fills the preset's `input`
     # field directly instead of the raw audio file (see PREREQS,
-    # SPECIAL_PREREQS, and harness/README.md).
-    if "input" not in prereq_targets:
+    # SPECIAL_PREREQS, and harness/README.md). `chordmapperplus` has no
+    # <INPUT> positional either, but its own prereq target key is
+    # `analysis`, not `input`, so it needs the explicit NO_AUDIO_INPUT
+    # exemption instead.
+    if "input" not in prereq_targets and tool not in NO_AUDIO_INPUT:
         sets.append(("input", audio_file))
     sets.append((key, result_path))
     proc, elapsed = run_pvc_preset(pvc_bin, preset_path, sets)

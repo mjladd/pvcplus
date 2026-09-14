@@ -1,0 +1,12 @@
+# Harness preset for `pvc chordmapperplus`. See harness/README.md.
+# This tool has no audio <INPUT> positional at all: usage is
+# `pvc chordmapperplus --analysis <ANALYSIS> --tones <TONES> <OUTPUT>`.
+# The harness's own PREREQS entry builds a .pva (via analyze) into
+# `analysis`, and STATIC_FIXTURES points `tones` at a fixed,
+# hand-authored 23-field tone data file under harness/fixtures/.
+tool = "chordmapperplus"
+output = "out.wav"
+
+[params]
+analysis = "in.pva"
+tones = "tones.txt"
