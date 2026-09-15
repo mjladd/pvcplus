@@ -38,6 +38,7 @@ Full setup and a verified walkthrough live in [docs/getting-started.md](docs/get
 - [Presets](docs/presets.md): `pvc run` and TOML presets, the replacement for the old `S.*` shell scripts.
 - `docs/tools/<name>.md`: one page per `pvc` subcommand, with its own flags and an example. Start from `pvc --help` for the full list.
 - `docs/dev/`: internal notes for contributors (build, CI, port status, verification findings).
+- [harness/README.md](harness/README.md): a QA script that runs every covered `pvc` tool's own preset against a directory of your own audio files.
 
 ## Project layout
 
