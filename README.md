@@ -19,6 +19,12 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/mjladd/pvcplus/releases
 pvc stretch --factor 2.0 input.wav output.wav
 ```
 
+On macOS, a binary you download with a browser is quarantined, and it does not open. Remove the quarantine attribute before you run it:
+
+```bash
+xattr -d com.apple.quarantine /path/to/pvc
+```
+
 Building from source instead:
 
 ```bash

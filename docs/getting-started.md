@@ -18,6 +18,16 @@ Restart your shell afterward. You can also run the `source` command the installe
 
 To install a specific version, replace `latest/download` with `download/vX.Y.Z`. For example, use `download/v0.1.1` for version 0.1.1.
 
+### macOS quarantine
+
+macOS marks a file you download with a browser as quarantined. Gatekeeper, the macOS check that blocks unsigned downloads, then refuses to open `pvc`. The message says that Apple cannot check it for malicious software. Remove the quarantine attribute from the binary:
+
+```bash
+xattr -d com.apple.quarantine /path/to/pvc
+```
+
+Run the command on the extracted `pvc` binary, not on the tarball. If the binary is already on your `PATH`, use `xattr -d com.apple.quarantine $(which pvc)`. The installer script above downloads with `curl`, so it does not set this attribute.
+
 If you do not want to run a script from the internet, download the tarball instead. Get it from the [releases page](https://github.com/mjladd/pvcplus/releases). Make sure that it matches the checksum file next to it. Then extract it, and put the `pvc` binary from inside on your `PATH` yourself.
 
 ## Build from source
