@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-spectrummapper 1  "pvc-spectrummapper " 
 .SH NAME
-pvc\-spectrummapper \- Formant\-*tracking* analysis tool: extracts formant peaks frame by frame from raw audio, greedily assembles them into time\-continuous segments (tracks), links separate segments into longer chains, and writes the result to ASCII/binary formant\-track files. Writes no audio output at all
+pvc\-spectrummapper \- Track formant peaks into continuous tracks
 .SH SYNOPSIS
 \fBpvc\-spectrummapper\fR <\fB\-\-segments\-file\fR> [\fB\-\-scatter\-file\fR] [\fB\-\-ascii\-segments\-file\fR] [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-channel\fR] [\fB\-\-eq\-bypass\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-low\-freq\-limit\fR] [\fB\-\-high\-freq\-limit\fR] [\fB\-\-min\-formant\-db\fR] [\fB\-\-formant\-threshold\fR] [\fB\-\-min\-decibels\fR] [\fB\-\-max\-decibels\fR] [\fB\-\-min\-segment\-length\fR] [\fB\-\-max\-segment\-length\fR] [\fB\-\-min\-segment\-duration\fR] [\fB\-\-max\-segment\-duration\fR] [\fB\-\-max\-freq\-change\fR] [\fB\-\-max\-db\-rise\fR] [\fB\-\-max\-db\-fall\fR] [\fB\-\-linkage\-time\fR] [\fB\-\-max\-freq\-linkage\fR] [\fB\-\-onset\-release\-mode\fR] [\fB\-\-onset\-duration\fR] [\fB\-\-release\-duration\fR] [\fB\-\-time\-shift\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> 
 .SH DESCRIPTION

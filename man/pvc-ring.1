@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-ring 1  "pvc-ring " 
 .SH NAME
-pvc\-ring \- Phase\-vocoder feedback reverberator/resonator: a delay network built out of spectral frames rather than time\-domain samples, combining an independently pitch/frequency\-shiftable copy of the dry source with a recirculating, EQ\*(Aqd and envelope\-gated feedback path. See `pvc\-core::tools::ring`\*(Aqs doc comment for real dead flags, a real swapped\-default bug reproduced faithfully, and what\*(Aqs out of scope (Phase 5\*(Aqs long tail)
+pvc\-ring \- Resonate through a spectral feedback loop
 .SH SYNOPSIS
 \fBpvc\-ring\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-oscbank\-threshold\fR] [\fB\-\-master\-gain\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-feedback\-gain\fR] [\fB\-\-feedback\-freq\-shift\fR] [\fB\-\-feedback\-pitch\fR] [\fB\-\-feedback\-decay\fR] [\fB\-\-feedback\-threshold\fR] [\fB\-\-feedback\-threshold\-mode\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-input\-eq\-low\-gain\fR] [\fB\-\-input\-eq\-high\-gain\fR] [\fB\-\-input\-eq\-low\-freq\fR] [\fB\-\-input\-eq\-high\-freq\fR] [\fB\-\-loop\-eq\-decay\fR] [\fB\-\-loop\-balance\-limit\fR] [\fB\-\-loop\-eq\-low\-gain\fR] [\fB\-\-loop\-eq\-high\-gain\fR] [\fB\-\-loop\-eq\-low\-freq\fR] [\fB\-\-loop\-eq\-high\-freq\fR] [\fB\-\-output\-eq\-low\-gain\fR] [\fB\-\-output\-eq\-high\-gain\fR] [\fB\-\-output\-eq\-low\-freq\fR] [\fB\-\-output\-eq\-high\-freq\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
 .SH DESCRIPTION

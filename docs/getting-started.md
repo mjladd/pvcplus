@@ -117,6 +117,12 @@ Repeat for any other tag you pulled, such as `:legacy` or a version tag.
 
 Delete the cloned repository. If you copied `rust/target/release/pvc` somewhere else first, delete that copy too.
 
+## Finding a command
+
+`pvc --help` lists every command under a heading for its family, such as "Time and pitch" or "Feature extraction", with a one-line description of each one. The same one-line description comes back from `pvc <command> -h`.
+
+For the full description of a command, with every flag, run `pvc <command> --help`. The page under `docs/tools/<name>.md` covers the same ground with an example.
+
 ## Where to go next
 
 - [Tutorial](tutorial.md) walks through a full session: chaining tools, presets, `--set` overrides, `--json` scripting, and migrating an old `S.*` script.

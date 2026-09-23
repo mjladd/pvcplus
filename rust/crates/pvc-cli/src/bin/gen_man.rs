@@ -9,8 +9,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use clap::{Command, CommandFactory};
-use pvc_cli::cli::Cli;
+use clap::Command;
+use pvc_cli::cli;
 
 fn main() -> std::io::Result<()> {
     let out_dir: PathBuf = std::env::args().nth(1).map_or_else(
@@ -19,7 +19,7 @@ fn main() -> std::io::Result<()> {
     );
     fs::create_dir_all(&out_dir)?;
 
-    let root = Cli::command();
+    let root = cli::command();
     let mut count = 0usize;
     write_man_page(&root, &[], &out_dir, &mut count)?;
 

@@ -5,14 +5,15 @@
 
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use pvc_core::{ControlFn, Window};
 
 #[derive(Parser, Debug)]
 #[command(
     name = "pvc",
     version,
-    about = "A modern CLI for the PVCplus phase-vocoder toolkit."
+    about = "A modern CLI for the PVCplus phase-vocoder toolkit.",
+    help_template = HELP_TEMPLATE
 )]
 pub struct Cli {
     /// Suppress non-essential output.
@@ -31,9 +32,150 @@ pub struct Cli {
     pub command: Command,
 }
 
+/// `pvc --help`'s own layout. It drops clap's own flat `{subcommands}`
+/// list, because 40-odd commands in one alphabetical block are hard to
+/// read. `command()` renders the grouped list instead and passes it in
+/// as the after-help text.
+const HELP_TEMPLATE: &str = "\
+{about-with-newline}
+{usage-heading} {usage}{after-help}
+
+Options:
+{options}";
+
+/// The headings `pvc --help` lists its commands under, and the order
+/// the commands appear in. The headings follow `docs/migration.md`'s
+/// own sections, which group the legacy tools the same way.
+///
+/// Every subcommand belongs under exactly one heading. The
+/// `command_groups_cover_every_subcommand` test in `tests/cli.rs`
+/// fails when a new command is added here or to `Command` alone.
+pub const COMMAND_GROUPS: &[(&str, &[&str])] = &[
+    (
+        "Time and pitch",
+        &["pv", "stretch", "pitch", "analyze", "twarp", "ratechanger"],
+    ),
+    (
+        "Filtering and convolution",
+        &[
+            "freqresponse",
+            "filter",
+            "tvfilter",
+            "denoise",
+            "convolver",
+            "impulseresponse",
+            "irconvolver",
+            "irconvolvesequencer",
+            "spectralextractor",
+        ],
+    ),
+    ("Amplitude warping", &["compand", "spectwarp"]),
+    (
+        "Additive synthesis",
+        &[
+            "harmonize",
+            "inharmonator",
+            "chordmapperplus",
+            "formantsmapper",
+        ],
+    ),
+    (
+        "Resonance and reverb",
+        &["ring", "ringfilter", "ringtvfilter"],
+    ),
+    (
+        "Frequency deviation",
+        &["delayfilter", "filtdeviator", "tvfiltdeviator"],
+    ),
+    (
+        "Feature extraction",
+        &[
+            "envelope",
+            "centroid",
+            "flux",
+            "pitchtrack",
+            "peakformant",
+            "specflattracker",
+            "spectrummapper",
+        ],
+    ),
+    ("Control functions", &["fn"]),
+    (
+        "Presets and scripting",
+        &["preset", "run", "migrate-script"],
+    ),
+    (
+        "Utilities",
+        &["info", "convert-units", "legacy", "completions", "help"],
+    ),
+];
+
+/// Returns `pvc`'s own root command, with its subcommands listed under
+/// `COMMAND_GROUPS`'s headings rather than in one flat block. Every
+/// entry point that parses arguments, renders help, writes man pages,
+/// or generates completions builds its command here, so all of them
+/// show the same list.
+pub fn command() -> clap::Command {
+    let grouped = render_command_groups();
+    Cli::command().after_help(grouped)
+}
+
+/// Renders the grouped command list. Each command's own one-line
+/// description comes from clap itself (the `about` on its `Command`
+/// variant), so this list cannot drift out of step with the commands.
+fn render_command_groups() -> String {
+    // `Cli::command()` adds the built-in `help` subcommand while it
+    // builds, so introspect a built copy rather than the raw one.
+    let mut built = Cli::command();
+    built.build();
+
+    let subcommands: Vec<(&str, String)> = built
+        .get_subcommands()
+        .map(|sub| {
+            let about = sub.get_about().map(ToString::to_string).unwrap_or_default();
+            (sub.get_name(), about)
+        })
+        .collect();
+    let width = subcommands
+        .iter()
+        .map(|(name, _)| name.len())
+        .max()
+        .unwrap_or(0);
+
+    let mut out = String::new();
+    let mut listed: Vec<&str> = Vec::new();
+    for (heading, names) in COMMAND_GROUPS {
+        let mut rows = String::new();
+        for name in *names {
+            if let Some((name, about)) = subcommands.iter().find(|(sub, _)| sub == name) {
+                rows.push_str(&format!("  {name:<width$}  {about}\n"));
+                listed.push(name);
+            }
+        }
+        if !rows.is_empty() {
+            out.push_str(&format!("{heading}:\n{rows}\n"));
+        }
+    }
+
+    // A command that `COMMAND_GROUPS` does not name still appears, so
+    // that a new command is never invisible in `pvc --help`.
+    let mut rest = String::new();
+    for (name, about) in &subcommands {
+        if !listed.contains(name) {
+            rest.push_str(&format!("  {name:<width$}  {about}\n"));
+        }
+    }
+    if !rest.is_empty() {
+        out.push_str(&format!("Other:\n{rest}\n"));
+    }
+
+    out.trim_end().to_string()
+}
+
 #[derive(Subcommand, Debug)]
 pub enum Command {
     /// Print information about an audio file or a `.pva` analysis file.
+    #[command(about = "Show details of an audio file or a .pva file")]
     Info {
         /// Path to an audio file (wav/aiff/flac/...) or a `.pva` file.
         path: PathBuf,
@@ -50,7 +192,7 @@ pub enum Command {
     /// flags - none of the legacy tools' single-dash flags collide with
     /// `--quiet`/`--json`/`--dry-run` today, but `--` makes that certain
     /// regardless.
-    #[command(disable_help_flag = true)]
+    #[command(disable_help_flag = true, about = "Run an original C tool directly")]
     Legacy {
         /// Legacy tool name, e.g. `plainpv`, `pvanalysis`.
         tool: String,
@@ -61,12 +203,14 @@ pub enum Command {
     },
 
     /// Manage presets (TOML files consumed by `pvc run`).
+    #[command(about = "Manage preset TOML files for pvc run")]
     Preset {
         #[command(subcommand)]
         action: PresetAction,
     },
 
     /// Run a preset, optionally overriding fields with `--set key=value`.
+    #[command(about = "Run a preset, with optional --set overrides")]
     Run {
         /// Path to a preset TOML file.
         preset: PathBuf,
@@ -79,6 +223,7 @@ pub enum Command {
     },
 
     /// Control-function generators (the CARL/cmusic "GEN" family).
+    #[command(about = "Generate control functions and response files")]
     Fn {
         #[command(subcommand)]
         generator: FnCommand,
@@ -91,6 +236,7 @@ pub enum Command {
     /// today - see `pvc-cli::migrate`'s doc comment. Any variable with
     /// no `pvc pv` equivalent is listed in a trailing comment rather
     /// than silently dropped.
+    #[command(about = "Convert a legacy S.* script into a preset")]
     MigrateScript {
         /// Path to the legacy `S.*` script to migrate.
         script: PathBuf,
@@ -101,6 +247,7 @@ pub enum Command {
     /// Source it directly, or write it to your shell's own completion
     /// directory, e.g. `pvc completions zsh > ~/.zfunc/_pvc` (make sure
     /// `~/.zfunc` is on `fpath` first).
+    #[command(about = "Print a shell completion script")]
     Completions { shell: clap_complete::Shell },
 
     /// Phase vocoder: analyze then resynthesize.
@@ -111,10 +258,12 @@ pub enum Command {
     /// plainpv.c`) - see `pvc-core::tools::pv`'s doc comment for exactly
     /// what's in and out of scope (its debug/display-only flags aren't
     /// ported).
+    #[command(about = "Stretch, transpose, filter, and warp a sound")]
     Pv(Box<PvArgs>),
 
     /// Time-stretch only - `pvc pv --stretch <factor>` with everything
     /// else at its default.
+    #[command(about = "Change duration without changing pitch")]
     Stretch {
         /// Time-stretch factor (`1.0` = unchanged, `2.0` = twice as long).
         #[arg(long)]
@@ -125,6 +274,7 @@ pub enum Command {
 
     /// Pitch transposition only - `pvc pv --pitch <semitones>` with
     /// everything else at its default.
+    #[command(about = "Transpose in semitones, keeping the duration")]
     Pitch {
         /// Pitch shift in semitones (positive = up, negative = down).
         #[arg(long)]
@@ -141,6 +291,7 @@ pub enum Command {
     /// what's in and out of scope. Always writes the new `PVA1` format
     /// (see `pvc_io::pva`'s module doc comment) - never the legacy
     /// layout, which is a read-only oracle-comparison format here.
+    #[command(about = "Write a .pva analysis file, without resynthesis")]
     Analyze(Box<AnalyzeArgs>),
 
     /// Time-varying resynthesis: navigates a virtual time position
@@ -152,6 +303,7 @@ pub enum Command {
     /// of scope (time-point dither, loop-boundary amplitude
     /// normalization, and random amplitude/frequency "shimmer" aren't
     /// ported yet).
+    #[command(about = "Resynthesize along a moving point in a .pva file")]
     Twarp(Box<TwarpArgs>),
 
     /// Analysis-driven `.fr` frequency response: accumulates a sound
@@ -163,6 +315,7 @@ pub enum Command {
     /// freqresponse.c`); see `pvc-core::tools::freqresponse`'s doc
     /// comment for what's in and out of scope (plot/ASCII/binary formant
     /// report files aren't ported - pure reporting).
+    #[command(about = "Analyze a sound into a .fr response file")]
     Freqresponse(Box<FreqresponseArgs>),
 
     /// Fixed-spectrum phase-vocoder filter: multiplies each frame's
@@ -173,6 +326,7 @@ pub enum Command {
     /// filter.c`); see `pvc-core::tools::filter`'s doc comment for what's
     /// in and out of scope (oscillator-bank resynthesis - needed only
     /// for pitch/frequency-shifted output - isn't ported yet).
+    #[command(about = "Filter with a fixed .fr response file")]
     Filter(Box<FilterArgs>),
 
     /// Like `filter`, but the response is a time-varying sequence of
@@ -184,6 +338,7 @@ pub enum Command {
     /// tvfilter.c`); see `pvc-core::tools::tvfilter`'s doc comment for
     /// what's in and out of scope (oscillator-bank resynthesis, and a
     /// dead `-u` flag).
+    #[command(about = "Filter with a time-varying .pva analysis file")]
     Tvfilter(Box<TvfilterArgs>),
 
     /// Spectral noise gate: builds a noise-response profile by analyzing
@@ -195,6 +350,7 @@ pub enum Command {
     /// Ports `noisefilter`'s audio-processing path (`legacy/pvc_src/
     /// noisefilter.c`); see `pvc-core::tools::noisefilter`'s doc comment
     /// for what's in and out of scope.
+    #[command(about = "Gate out noise learned from part of the input")]
     Denoise(Box<DenoiseArgs>),
 
     /// Per-bin dynamics processor: compresses or expands each bin's
@@ -205,6 +361,7 @@ pub enum Command {
     /// compander.c`); see `pvc-core::tools::compander`'s doc comment for
     /// what's in and out of scope (`-L`/release is a real no-op in the
     /// original tool, not exposed here).
+    #[command(about = "Compand each bin against a fixed reference file")]
     Compand(Box<CompanderArgs>),
 
     /// Per-bin dynamics processor: compresses or expands each bin's
@@ -216,6 +373,7 @@ pub enum Command {
     /// spectwarper.c`); see `pvc-core::tools::spectwarper`'s doc comment
     /// for what's in and out of scope, including a real bound bug in the
     /// original tool's sliding-window mode, reproduced faithfully.
+    #[command(about = "Compand each bin against its own frame's peak")]
     Spectwarp(Box<SpectwarpArgs>),
 
     /// Builds one or more "voices" from a data table of frequency bands,
@@ -228,6 +386,7 @@ pub enum Command {
     /// for the data-table format and what's in and out of scope
     /// (including a real crash bug it validates against instead of
     /// reproducing, and a real cross-band bug it reproduces faithfully).
+    #[command(about = "Add transposed copies of frequency bands")]
     Harmonize(Box<HarmonizeArgs>),
 
     /// Amplitude envelope over a frequency band: a time-series of
@@ -237,6 +396,7 @@ pub enum Command {
     /// envelope.c`); see `pvc-core::tools::envelope`'s doc comment for
     /// the two-pass design and a real pass-1/pass-2 state-carryover
     /// quirk reproduced faithfully.
+    #[command(about = "Track amplitude over a frequency band")]
     Envelope(Box<EnvelopeArgs>),
 
     /// Spectral centroid (amplitude²-weighted mean frequency) over a
@@ -245,6 +405,7 @@ pub enum Command {
     /// Ports `centroid`'s audio-processing path (`legacy/pvc_src/
     /// centroid.c`); see `pvc-core::tools::centroid`'s doc comment for
     /// two provably-dead flags this port doesn't expose.
+    #[command(about = "Track the weighted mean frequency of a band")]
     Centroid(Box<CentroidArgs>),
 
     /// Spectral flux (frame-to-frame frequency change, optionally
@@ -254,6 +415,7 @@ pub enum Command {
     /// Ports `fluxoid`'s audio-processing path (`legacy/pvc_src/
     /// fluxoid.c`); see `pvc-core::tools::fluxoid`'s doc comment for the
     /// shared two-pass shape.
+    #[command(about = "Track frame-to-frame frequency change in a band")]
     Flux(Box<FluxArgs>),
 
     /// Fundamental-frequency tracker: a time-series of scalar pitch
@@ -263,6 +425,7 @@ pub enum Command {
     /// pitchtracker.c`); see `pvc-core::tools::pitchtracker`'s doc
     /// comment for two doc-corrected defaults and several real bugs
     /// reproduced faithfully.
+    #[command(about = "Track the fundamental frequency over time")]
     Pitchtrack(Box<PitchtrackArgs>),
 
     /// Convert between amplitude/decibel and Hz/octave.pitchclass units.
@@ -271,6 +434,7 @@ pub enum Command {
     /// `dBtoamp`, `Hztopitch`, `pitchtoHz` (`legacy/pvc_src/*.c`) with one
     /// command taking a `--from`/`--to` unit pair (`amp`, `db`, `hz`,
     /// `oppc`). `--norm` (`amptodB`'s `-n`) only applies to `amp -> db`.
+    #[command(about = "Convert amplitude, decibel, Hz, and pitch units")]
     ConvertUnits {
         /// Unit to convert from: `amp`, `db`, `hz`, or `oppc`.
         #[arg(long, value_parser = parse_convert_unit)]
@@ -297,6 +461,7 @@ pub enum Command {
     ///
     /// Ports `impulseresponse`'s analysis path (`legacy/pvc_src/
     /// impulseresponse.c`).
+    #[command(about = "Write a .ir file from a window of a sound")]
     Impulseresponse(Box<ImpulseresponseArgs>),
 
     /// Fast FFT convolution (or deconvolution) of each input channel
@@ -306,6 +471,7 @@ pub enum Command {
     ///
     /// Ports `irconvolver`'s resynthesis path (`legacy/pvc_src/
     /// irconvolver.c`).
+    #[command(about = "Convolve or deconvolve a sound with a .ir file")]
     Irconvolver(Box<IrconvolverArgs>),
 
     /// Phase-vocoder feedback reverberator/resonator: a delay network
@@ -317,6 +483,7 @@ pub enum Command {
     /// what's out of scope (Phase 5's long tail).
     ///
     /// Ports `ring`'s audio-processing path (`legacy/pvc_src/ring.c`).
+    #[command(about = "Resonate through a spectral feedback loop")]
     Ring(Box<RingArgs>),
 
     /// `pvc ring` plus a switchable fixed-spectrum filter (a `.fr`
@@ -327,6 +494,7 @@ pub enum Command {
     ///
     /// Ports `ringfilter`'s audio-processing path (`legacy/pvc_src/
     /// ringfilter.c`).
+    #[command(about = "Resonate through a loop with a fixed .fr filter")]
     Ringfilter(Box<RingfilterArgs>),
 
     /// `pvc ring` plus a switchable *time-varying* filter (a `.pva`
@@ -339,6 +507,7 @@ pub enum Command {
     ///
     /// Ports `ringtvfilter`'s audio-processing path (`legacy/pvc_src/
     /// ringtvfilter.c`).
+    #[command(about = "Resonate through a loop with a .pva filter")]
     Ringtvfilter(Box<RingtvfilterArgs>),
 
     /// Crossfades a signal through a sequence of impulse responses,
@@ -348,6 +517,7 @@ pub enum Command {
     ///
     /// Ports `irconvolvesequencer` (`legacy/pvc_src/
     /// irconvolvesequencer.c`).
+    #[command(about = "Convolve through a morphing series of .ir files")]
     Irconvolvesequencer(Box<IrconvolvesequencerArgs>),
 
     /// Short-term FFT spectral multiplier: convolves a live input
@@ -363,6 +533,7 @@ pub enum Command {
     /// per-index multiply instead, reproduced faithfully) and a real
     /// uninitialized-memory bug in its `-l`/`-L` smoothing path, not
     /// exposed here.
+    #[command(about = "Multiply a sound's spectrum by a .pva file")]
     Convolver(Box<ConvolverArgs>),
 
     /// Peak formant tracker: a time-series of the loudest bin's
@@ -373,6 +544,7 @@ pub enum Command {
     /// for why it reuses `pvc centroid`'s whole two-pass pipeline
     /// (confirmed byte-for-byte identical apart from the one real
     /// per-frame analysis difference).
+    #[command(about = "Track the loudest bin's frequency over time")]
     Peakformant(Box<PeakformantArgs>),
 
     /// Spectral flatness tracker: a time-series of the geometric-to-
@@ -385,6 +557,7 @@ pub enum Command {
     /// specflattracker`'s doc comment for why it reuses most of `pvc
     /// centroid`'s two-pass pipeline, plus a real pass-2 interpolation
     /// quirk absent from `centroid` and reproduced faithfully here.
+    #[command(about = "Track how noise-like or tonal each frame is")]
     Specflattracker(Box<SpecflattrackerArgs>),
 
     /// Periodic/noise spectrum separator: tracks each bin's frame-to-
@@ -396,6 +569,7 @@ pub enum Command {
     /// pvc_src/spectralextractor.c`); see `pvc-core::tools::
     /// spectralextractor`'s doc comment for a real dead pitch/frequency-
     /// shift computation reproduced faithfully, and what's out of scope.
+    #[command(about = "Split a sound into its tonal and noise parts")]
     Spectralextractor(Box<SpectralExtractorArgs>),
 
     /// Per-bin time-delay resynthesis: reads a source `.pva` file and, for
@@ -408,6 +582,7 @@ pub enum Command {
     /// delayfilter.c`); see `pvc-core::tools::delayfilter`'s doc comment
     /// for what's in and out of scope, including a real `-C` flag whose
     /// own numeric value is never actually used by the original tool.
+    #[command(about = "Delay each bin by its own response-driven time")]
     Delayfilter(Box<DelayfilterArgs>),
 
     /// Fixed-spectrum, additive source+filter phase-vocoder filter (like
@@ -423,6 +598,7 @@ pub enum Command {
     /// computation (`-~`'s own decay-time response warp) and every
     /// `randf()`-based mode this project defers by established
     /// precedent.
+    #[command(about = "Filter, plus per-bin delay and frequency deviation")]
     Filtdeviator(Box<FiltdeviatorArgs>),
 
     /// `pvc tvfilter`'s own time-varying cross-synthetic filter plus a
@@ -436,6 +612,7 @@ pub enum Command {
     /// comment for what's in and out of scope, including the same
     /// `analysis_N`-vs-`analysis_Nplus2` filter-fetch stride bug already
     /// found and reproduced in `pvc convolver`.
+    #[command(about = "Time-varying filter, plus delay and deviation")]
     Tvfiltdeviator(Box<TvfiltdeviatorArgs>),
 
     /// Varispeed resampler: reads raw audio directly (no `.pva` analysis
@@ -448,6 +625,7 @@ pub enum Command {
     /// of scope, including a real, verified heap-buffer-overflow in the
     /// C's own default sinc-table lookup (confirmed under ASan - safely
     /// clamped here instead of reproduced).
+    #[command(about = "Resample at a variable rate (varispeed)")]
     Ratechanger(Box<RatechangerArgs>),
 
     /// Inharmonic partials remapper: builds a per-bin filter from a data
@@ -463,6 +641,7 @@ pub enum Command {
     /// passed (this port uses `usage()`'s own documented defaults
     /// instead), and a real finding that "master gain" only ever affects
     /// the source signal, never the resynthesized partials.
+    #[command(about = "Remap partials onto a table of target partials")]
     Inharmonator(Box<InharmonatorArgs>),
 
     /// Formant mapper: reads source and target formant lists (binary
@@ -478,6 +657,7 @@ pub enum Command {
     /// out of scope, including an entirely dead "duplicate formant
     /// amplitude" correction subsystem and a real bug where enabling
     /// residue bins together with dual-bank mode silently drops bank B.
+    #[command(about = "Remap source formants onto target formants")]
     Formantsmapper(Box<FormantsmapperArgs>),
 
     /// Formant-*tracking* analysis tool: extracts formant peaks frame by
@@ -492,6 +672,7 @@ pub enum Command {
     /// double-applies a frame's own peak amplitude whenever that peak is
     /// `>= 1.0`, and a real `dB_to_amp`-for-`amp_to_dB` copy-paste bug in
     /// the "impose" onset envelope.
+    #[command(about = "Track formant peaks into continuous tracks")]
     Spectrummapper(Box<SpectrummapperArgs>),
 
     /// Data-file-driven multi-tone additive chord/harmony synthesizer -
@@ -511,6 +692,7 @@ pub enum Command {
     /// Source-signal mixing (`-s`/`-a`/`-P`/`-G`) and the
     /// auto-adjust-center-frequency/bandwidth refinement (`-n`/`-o`/`-l`)
     /// are not implemented and have no flag here.
+    #[command(about = "Synthesize chords from a table of tones")]
     Chordmapperplus(Box<ChordmapperplusArgs>),
 }
 

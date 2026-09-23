@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-denoise 1  "pvc-denoise " 
 .SH NAME
-pvc\-denoise \- Spectral noise gate: builds a noise\-response profile by analyzing a `[\-\-noise\-begin, \-\-noise\-end)` window of the input itself (default: the whole file \- point these at an actual noise\-only stretch, e.g. leading silence), then expands any bin quieter than its noise\-response threshold toward silence
+pvc\-denoise \- Gate out noise learned from part of the input
 .SH SYNOPSIS
 \fBpvc\-denoise\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-stretch\fR] [\fB\-\-noise\-begin\fR] [\fB\-\-noise\-end\fR] [\fB\-\-noise\-method\fR] [\fB\-\-noise\-bypass\-threshold\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-gain\fR] [\fB\-\-noise\-threshold\-gain\fR] [\fB\-\-expansion\-index\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
 .SH DESCRIPTION

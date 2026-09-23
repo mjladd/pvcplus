@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-filter 1  "pvc-filter " 
 .SH NAME
-pvc\-filter \- Fixed\-spectrum phase\-vocoder filter: multiplies each frame\*(Aqs amplitude by a shaped copy of a `.fr` response, then mixes the filtered signal with (unless disabled) the original source
+pvc\-filter \- Filter with a fixed .fr response file
 .SH SYNOPSIS
 \fBpvc\-filter\fR <\fB\-\-response\fR> [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-stretch\fR] [\fB\-\-filter\-pitch\fR] [\fB\-\-filter\-freq\-shift\fR] [\fB\-\-filter\-gain\fR] [\fB\-\-filter\-time\-delay\fR] [\fB\-\-delay\-time\-scaler\fR] [\fB\-\-source\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-time\-delay\fR] [\fB\-\-response\-pitch\fR] [\fB\-\-response\-freq\-shift\fR] [\fB\-\-response\-warp\fR] [\fB\-\-response\-smoothing\fR] [\fB\-\-source\-floor\fR] [\fB\-\-pitch\-shift\-source\-only\fR] [\fB\-\-band\-reject\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-comp\-threshold\fR] [\fB\-\-comp\-amount\fR] [\fB\-\-expand\-threshold\fR] [\fB\-\-expand\-amount\fR] [\fB\-\-normalization\-limit\fR] [\fB\-\-normalize\-to\-response\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
 .SH DESCRIPTION
