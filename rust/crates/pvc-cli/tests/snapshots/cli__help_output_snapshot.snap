@@ -6,49 +6,67 @@ A modern CLI for the PVCplus phase-vocoder toolkit.
 
 Usage: pvc [OPTIONS] <COMMAND>
 
-Commands:
-  info                 Print information about an audio file or a `.pva` analysis file
-  legacy               Run a legacy C tool directly (transition path)
-  preset               Manage presets (TOML files consumed by `pvc run`)
-  run                  Run a preset, optionally overriding fields with `--set key=value`
-  fn                   Control-function generators (the CARL/cmusic "GEN" family)
-  migrate-script       Migrates a legacy `S.*` shell script's own variable block into a preset TOML for `pvc run`, printed to stdout
-  completions          Print a shell completion script to stdout
-  pv                   Phase vocoder: analyze then resynthesize
-  stretch              Time-stretch only - `pvc pv --stretch <factor>` with everything else at its default
-  pitch                Pitch transposition only - `pvc pv --pitch <semitones>` with everything else at its default
-  analyze              Phase vocoder analysis only: writes a `.pva` frame file, no resynthesis
-  twarp                Time-varying resynthesis: navigates a virtual time position through a `.pva` analysis file (rate/origin/window-driven) and resynthesizes from whatever frame it lands on
-  freqresponse         Analysis-driven `.fr` frequency response: accumulates a sound file's spectrum (by average or peak amplitude, across all channels combined) into a response file, with formant detection and optional formant-band normalization/companding
-  filter               Fixed-spectrum phase-vocoder filter: multiplies each frame's amplitude by a shaped copy of a `.fr` response, then mixes the filtered signal with (unless disabled) the original source
-  tvfilter             Like `filter`, but the response is a time-varying sequence of frames (a legacy `.pva` file) navigated over time the same way `twarp` navigates its own resynthesis source, rather than one static `.fr` file
-  denoise              Spectral noise gate: builds a noise-response profile by analyzing a `[--noise-begin, --noise-end)` window of the input itself (default: the whole file - point these at an actual noise-only stretch, e.g. leading silence), then expands any bin quieter than its noise-response threshold toward silence
-  compand              Per-bin dynamics processor: compresses or expands each bin's amplitude relative to a static peaks/reference file (e.g. from `pvc freqresponse`), within an adjustable frequency band
-  spectwarp            Per-bin dynamics processor: compresses or expands each bin's amplitude relative to its *own frame's* live spectral peak (a self-referential envelope-follower), within an adjustable frequency band
-  harmonize            Builds one or more "voices" from a data table of frequency bands, each a pitch/frequency-shifted copy of a triangular-windowed slice of the input spectrum, optionally summed with a delayed/ shifted copy of the source signal
-  envelope             Amplitude envelope over a frequency band: a time-series of scalar values (ASCII or raw float), never audio
-  centroid             Spectral centroid (amplitude²-weighted mean frequency) over a frequency band: a time-series of scalar values, never audio
-  flux                 Spectral flux (frame-to-frame frequency change, optionally amplitude-weighted) over a frequency band: a time-series of scalar values, never audio
-  pitchtrack           Fundamental-frequency tracker: a time-series of scalar pitch values, never audio
-  convert-units        Convert between amplitude/decibel and Hz/octave.pitchclass units
-  impulseresponse      Impulse-response analysis: zero-pads and FFTs a `[--begin, --end)` window of each input channel into a peak-normalized `.ir` file (Phase 5's FFT-convolution family - see `pvc-core::tools:: impulseresponse`'s doc comment for what's out of scope)
-  irconvolver          Fast FFT convolution (or deconvolution) of each input channel against a `.ir` file's spectrum (Phase 5's FFT-convolution family). See `pvc-core::tools::irconvolver`'s doc comment for what's out of scope, and a real usage-text bug in the C corrected here
-  ring                 Phase-vocoder feedback reverberator/resonator: a delay network built out of spectral frames rather than time-domain samples, combining an independently pitch/frequency-shiftable copy of the dry source with a recirculating, EQ'd and envelope-gated feedback path. See `pvc-core::tools::ring`'s doc comment for real dead flags, a real swapped-default bug reproduced faithfully, and what's out of scope (Phase 5's long tail)
-  ringfilter           `pvc ring` plus a switchable fixed-spectrum filter (a `.fr` response file, the same format `pvc filter` reads), placed either on the feedback path's input ("prefilter") or inside the loop ("postfilter"). See `pvc-core::tools::ringfilter`'s doc comment for what's shared with `pvc ring` and what's different
-  ringtvfilter         `pvc ring` plus a switchable *time-varying* filter (a `.pva` filter-analysis file, navigated over time the same way `pvc tvfilter` navigates its own response), placed either on the feedback path's input ("prefilter") or inside the loop ("postfilter"). See `pvc-core::tools::ringtvfilter`'s doc comment for what's shared with `pvc ringfilter`/`pvc tvfilter` and what's different
-  irconvolvesequencer  Crossfades a signal through a sequence of impulse responses, morphing from one to the next (Phase 5's FFT-convolution family). See `pvc-core::tools::irconvolvesequencer`'s doc comment for the C's dead `-a` flag and what's out of scope
-  convolver            Short-term FFT spectral multiplier: convolves a live input ("Sound A") against a pre-analyzed `.pva` filter file ("Sound B"), navigated over time the same way `pvc tvfilter`/`pvc twarp` navigate their own filter/resynthesis sources, then pans between the dry sounds and their convolution
-  peakformant          Peak formant tracker: a time-series of the loudest bin's frequency over a detection band, never audio
-  specflattracker      Spectral flatness tracker: a time-series of the geometric-to- arithmetic mean ratio of each frame's bins over a detection band (near `1.0` for noise-like spectra, near `0.0` for tonal ones), never audio
-  spectralextractor    Periodic/noise spectrum separator: tracks each bin's frame-to- frame frequency deviation and gates it on or off depending on whether that deviation stays under a threshold, extracting either the tonal part of a sound or its noise residue
-  delayfilter          Per-bin time-delay resynthesis: reads a source `.pva` file and, for each frequency bin, fetches its source frame from a bin-specific point earlier in the source's own timeline - the per-bin delay times (and amp multipliers) come from a `groupdelaymaker`-produced response file
-  filtdeviator         Fixed-spectrum, additive source+filter phase-vocoder filter (like `pvc filter`) plus a per-bin, response-shaped time delay into the filter's own delay line, a self-referential decay/feedback accumulator on that same delay line, and a per-bin frequency deviation shaped by the response (the tool's own headline "response-correlated frequency deviation")
-  tvfiltdeviator       `pvc tvfilter`'s own time-varying cross-synthetic filter plus a per-bin, response-shaped time delay into the source's own delay line and a per-bin frequency deviation shaped by the response (the same "response-correlated frequency deviation" `pvc filtdeviator` has)
-  ratechanger          Varispeed resampler: reads raw audio directly (no `.pva` analysis file first) and resynthesizes it at a possibly time-varying playback rate and/or semitone shift, via windowed-sinc summation, sample-and-hold/decimation, or linear interpolation
-  inharmonator         Inharmonic partials remapper: builds a per-bin filter from a data table of discrete target partials (windowed bands around each partial's own bin), resynthesizes the residual spectrum separately, and feeds both through a spectral feedback delay line, optionally mixed with a delayed copy of the source
-  formantsmapper       Formant mapper: reads source and target formant lists (binary files produced externally, not by any tool in this project), pairs each formant with its nearest counterpart in the other list, and remaps each source formant's own bin band onto the paired target's frequency and amplitude via one or two independently-controllable oscillator banks, optionally passing unclaimed bins through as a separate residue bank
-  spectrummapper       Formant-*tracking* analysis tool: extracts formant peaks frame by frame from raw audio, greedily assembles them into time-continuous segments (tracks), links separate segments into longer chains, and writes the result to ASCII/binary formant-track files. Writes no audio output at all
-  chordmapperplus      Data-file-driven multi-tone additive chord/harmony synthesizer - the largest tool in this project's Phase 5 port. Each tone in the `--tones` data file picks a source point out of the `--analysis` `.pva` file, builds a set of partials around it, and resynthesizes them blended between the live per-frame analysis and a static spectral-morph average of the whole file
+Time and pitch:
+  pv                   Stretch, transpose, filter, and warp a sound
+  stretch              Change duration without changing pitch
+  pitch                Transpose in semitones, keeping the duration
+  analyze              Write a .pva analysis file, without resynthesis
+  twarp                Resynthesize along a moving point in a .pva file
+  ratechanger          Resample at a variable rate (varispeed)
+
+Filtering and convolution:
+  freqresponse         Analyze a sound into a .fr response file
+  filter               Filter with a fixed .fr response file
+  tvfilter             Filter with a time-varying .pva analysis file
+  denoise              Gate out noise learned from part of the input
+  convolver            Multiply a sound's spectrum by a .pva file
+  impulseresponse      Write a .ir file from a window of a sound
+  irconvolver          Convolve or deconvolve a sound with a .ir file
+  irconvolvesequencer  Convolve through a morphing series of .ir files
+  spectralextractor    Split a sound into its tonal and noise parts
+
+Amplitude warping:
+  compand              Compand each bin against a fixed reference file
+  spectwarp            Compand each bin against its own frame's peak
+
+Additive synthesis:
+  harmonize            Add transposed copies of frequency bands
+  inharmonator         Remap partials onto a table of target partials
+  chordmapperplus      Synthesize chords from a table of tones
+  formantsmapper       Remap source formants onto target formants
+
+Resonance and reverb:
+  ring                 Resonate through a spectral feedback loop
+  ringfilter           Resonate through a loop with a fixed .fr filter
+  ringtvfilter         Resonate through a loop with a .pva filter
+
+Frequency deviation:
+  delayfilter          Delay each bin by its own response-driven time
+  filtdeviator         Filter, plus per-bin delay and frequency deviation
+  tvfiltdeviator       Time-varying filter, plus delay and deviation
+
+Feature extraction:
+  envelope             Track amplitude over a frequency band
+  centroid             Track the weighted mean frequency of a band
+  flux                 Track frame-to-frame frequency change in a band
+  pitchtrack           Track the fundamental frequency over time
+  peakformant          Track the loudest bin's frequency over time
+  specflattracker      Track how noise-like or tonal each frame is
+  spectrummapper       Track formant peaks into continuous tracks
+
+Control functions:
+  fn                   Generate control functions and response files
+
+Presets and scripting:
+  preset               Manage preset TOML files for pvc run
+  run                  Run a preset, with optional --set overrides
+  migrate-script       Convert a legacy S.* script into a preset
+
+Utilities:
+  info                 Show details of an audio file or a .pva file
+  convert-units        Convert amplitude, decibel, Hz, and pitch units
+  legacy               Run an original C tool directly
+  completions          Print a shell completion script
   help                 Print this message or the help of the given subcommand(s)
 
 Options:

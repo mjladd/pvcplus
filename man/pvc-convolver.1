@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-convolver 1  "pvc-convolver " 
 .SH NAME
-pvc\-convolver \- Short\-term FFT spectral multiplier: convolves a live input ("Sound A") against a pre\-analyzed `.pva` filter file ("Sound B"), navigated over time the same way `pvc tvfilter`/`pvc twarp` navigate their own filter/resynthesis sources, then pans between the dry sounds and their convolution
+pvc\-convolver \- Multiply a sound\*(Aqs spectrum by a .pva file
 .SH SYNOPSIS
 \fBpvc\-convolver\fR [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-pitch\fR] [\fB\-\-freq\-shift\fR] [\fB\-\-gain\fR] <\fB\-\-filter\-response\fR> [\fB\-\-analysis\-channel\fR] [\fB\-\-filter\-time\-origin\fR] [\fB\-\-filter\-rate\fR] [\fB\-\-filter\-window\-low\fR] [\fB\-\-filter\-window\-high\fR] [\fB\-\-loop\-mode\fR] [\fB\-\-onset\-release\fR] [\fB\-\-autostop\fR] [\fB\-\-sound\-a\-gain\fR] [\fB\-\-sound\-b\-gain\fR] [\fB\-\-convolve\-gain\fR] [\fB\-\-pan\fR] [\fB\-\-panwarp\-a\fR] [\fB\-\-panwarp\-b\fR] [\fB\-\-shelf\-low\-gain\fR] [\fB\-\-shelf\-high\-gain\fR] [\fB\-\-shelf\-low\-freq\fR] [\fB\-\-shelf\-high\-freq\fR] [\fB\-\-frame\-norm\-limit\fR] [\fB\-\-normalize\-to\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
 .SH DESCRIPTION

@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-ratechanger 1  "pvc-ratechanger " 
 .SH NAME
-pvc\-ratechanger \- Varispeed resampler: reads raw audio directly (no `.pva` analysis file first) and resynthesizes it at a possibly time\-varying playback rate and/or semitone shift, via windowed\-sinc summation, sample\-and\-hold/decimation, or linear interpolation
+pvc\-ratechanger \- Resample at a variable rate (varispeed)
 .SH SYNOPSIS
 \fBpvc\-ratechanger\fR [\fB\-\-synthesis\-mode\fR] [\fB\-\-table\-lookup\fR] [\fB\-\-pi\-interpolation\-points\fR] [\fB\-\-truncation\-db\fR] [\fB\-\-duration\fR] [\fB\-\-synthesize\-duration\fR] [\fB\-\-channel\fR] [\fB\-\-normalize\fR] [\fB\-\-time\-origin\fR] [\fB\-\-rate\-in\fR] [\fB\-\-rate\-out\fR] [\fB\-\-semitones\-in\fR] [\fB\-\-semitones\-out\fR] [\fB\-\-gain\-in\fR] [\fB\-\-gain\-out\fR] [\fB\-\-window\-low\fR] [\fB\-\-window\-high\fR] [\fB\-\-new\-sample\-rate\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
 .SH DESCRIPTION

@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-specflattracker 1  "pvc-specflattracker " 
 .SH NAME
-pvc\-specflattracker \- Spectral flatness tracker: a time\-series of the geometric\-to\- arithmetic mean ratio of each frame\*(Aqs bins over a detection band (near `1.0` for noise\-like spectra, near `0.0` for tonal ones), never audio
+pvc\-specflattracker \- Track how noise\-like or tonal each frame is
 .SH SYNOPSIS
 \fBpvc\-specflattracker\fR [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-band\-octave\-pitchclass\fR] [\fB\-\-band\-low\fR] [\fB\-\-band\-high\fR] [\fB\-\-channel\-method\fR] [\fB\-\-method\fR] [\fB\-\-amplitude\-threshold\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-warp\fR] [\fB\-\-output\-rate\fR] [\fB\-\-output\-format\fR] [\fB\-\-output\-type\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
 .SH DESCRIPTION

@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-chordmapperplus 1  "pvc-chordmapperplus " 
 .SH NAME
-pvc\-chordmapperplus \- Data\-file\-driven multi\-tone additive chord/harmony synthesizer \- the largest tool in this project\*(Aqs Phase 5 port. Each tone in the `\-\-tones` data file picks a source point out of the `\-\-analysis` `.pva` file, builds a set of partials around it, and resynthesizes them blended between the live per\-frame analysis and a static spectral\-morph average of the whole file
+pvc\-chordmapperplus \- Synthesize chords from a table of tones
 .SH SYNOPSIS
 \fBpvc\-chordmapperplus\fR <\fB\-\-analysis\fR> <\fB\-\-tones\fR> [\fB\-\-window\-size\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-duration\fR] [\fB\-\-time\-origin\fR] [\fB\-\-rate\fR] [\fB\-\-window\-low\fR] [\fB\-\-window\-high\fR] [\fB\-\-loop\-smooth\fR] [\fB\-\-window\-mode\fR] [\fB\-\-loop\-mode\fR] [\fB\-\-onset\-release\fR] [\fB\-\-loop\-normalize\fR] [\fB\-\-master\-gain\fR] [\fB\-\-tones\-gain\fR] [\fB\-\-tones\-freq\-shift\fR] [\fB\-\-tones\-pitch\fR] [\fB\-\-rate\-correlated\-tone\fR] [\fB\-\-rate\-correlated\-noise\fR] [\fB\-\-rate\-correlated\-force\-suppression\fR] [\fB\-\-noise\-limit\fR] [\fB\-\-noise\-limit\-rolloff\fR] [\fB\-\-pitch\-change\-expansion\fR] [\fB\-\-frequency\-change\-threshold\fR] [\fB\-\-frequency\-change\-response\fR] [\fB\-\-vibrato\-rate\fR] [\fB\-\-vibrato\-period\-mechanical\fR] [\fB\-\-natural\-vibrato\fR] [\fB\-\-original\-audio\fR] [\fB\-\-vibrato\-reference\fR] [\fB\-\-vibrato\-deviation\fR] [\fB\-\-threshold\fR] [\fB\-\-channel\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIOUTPUT\fR> 
 .SH DESCRIPTION

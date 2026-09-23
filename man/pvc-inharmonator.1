@@ -2,7 +2,7 @@
 .el .ds Aq '
 .TH pvc-inharmonator 1  "pvc-inharmonator " 
 .SH NAME
-pvc\-inharmonator \- Inharmonic partials remapper: builds a per\-bin filter from a data table of discrete target partials (windowed bands around each partial\*(Aqs own bin), resynthesizes the residual spectrum separately, and feeds both through a spectral feedback delay line, optionally mixed with a delayed copy of the source
+pvc\-inharmonator \- Remap partials onto a table of target partials
 .SH SYNOPSIS
 \fBpvc\-inharmonator\fR <\fB\-\-partials\fR> [\fB\-\-fft\fR] [\fB\-\-window\-size\fR] [\fB\-\-window\fR] [\fB\-\-frames\-per\-sec\fR] [\fB\-\-time\-factor\fR] [\fB\-\-begin\fR] [\fB\-\-end\fR] [\fB\-\-channel\fR] [\fB\-\-method\fR] [\fB\-\-partial\-window\fR] [\fB\-\-partial\-bandwidth\fR] [\fB\-\-fundamental\fR] [\fB\-\-master\-gain\fR] [\fB\-\-attack\fR] [\fB\-\-release\fR] [\fB\-\-warpshape\fR] [\fB\-\-target\-freq\-shift\fR] [\fB\-\-target\-pitch\fR] [\fB\-\-target\-gain\fR] [\fB\-\-target\-amp\-interp\fR] [\fB\-\-target\-freq\-interp\fR] [\fB\-\-target\-time\-interp\fR] [\fB\-\-non\-target\-freq\-shift\fR] [\fB\-\-non\-target\-pitch\fR] [\fB\-\-non\-target\-gain\fR] [\fB\-\-non\-target\-delay\fR] [\fB\-\-non\-target\-decay\fR] [\fB\-\-source\-freq\-shift\fR] [\fB\-\-source\-pitch\fR] [\fB\-\-source\-gain\fR] [\fB\-\-source\-attack\fR] [\fB\-\-source\-release\fR] [\fB\-\-source\-delay\fR] [\fB\-\-partial\-number\-scale\fR] [\fB\-\-partial\-number\-shift\fR] [\fB\-\-partial\-db\-scale\fR] [\fB\-\-partial\-delay\-scale\fR] [\fB\-\-partial\-delay\-shift\fR] [\fB\-\-partial\-decay\-scale\fR] [\fB\-\-partial\-decay\-shift\fR] [\fB\-\-threshold\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIINPUT\fR> <\fIOUTPUT\fR> 
 .SH DESCRIPTION
