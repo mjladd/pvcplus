@@ -121,7 +121,7 @@ Delete the cloned repository. If you copied `rust/target/release/pvc` somewhere 
 
 `pvc --help` lists every command under a heading for its family, such as "Time and pitch" or "Feature extraction", with a one-line description of each one. The same one-line description comes back from `pvc <command> -h`.
 
-For the full description of a command, with every flag, run `pvc <command> --help`. The page under `docs/tools/<name>.md` covers the same ground with an example.
+For the full description of a command, with every flag, run `pvc <command> --help`. The [tool pages](tools/README.md) cover the same ground with an example, under the same family headings.
 
 ## Where to go next
 
@@ -129,6 +129,6 @@ For the full description of a command, with every flag, run `pvc <command> --hel
 - [Concepts](concepts.md) explains the phase-vocoder ideas most commands share (FFT size, window type, warp index, and more).
 - If you are coming from the original C toolkit, read [Migration](migration.md). It maps every legacy tool name to its `pvc` equivalent.
 - [Presets](presets.md) covers `pvc run` and TOML presets, the replacement for the old `S.*` shell scripts. Run `make demo` for a ready-to-hear walkthrough of five of them.
-- `docs/tools/<name>.md` documents one `pvc` subcommand's own flags in detail. Start from `pvc --help` to see the full command list.
+- [Tool pages](tools/README.md) index every `pvc` command by family. Each page documents one command's own flags in detail.
 - Every legacy tool, ported or not, still runs through `pvc legacy <name> <flags>` (its own original flags, unchanged).
 - `pvc completions <shell>` prints a shell completion script (bash, zsh, fish, elvish, or powershell). Man pages for every subcommand live under `man/` in this repository.
